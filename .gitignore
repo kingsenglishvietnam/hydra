@@ -1,0 +1,55 @@
+# --- build output ---------------------------------------------------------
+dist/
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.cat
+*.sys
+
+# --- CREDENTIALS AND MACHINE STATE -- never commit these -------------------
+# teacher.rdp holds SAVED CREDENTIALS for the seat account. It is deliberately
+# not in the repo; keep your copy in C:\Programs\hydra and back it up somewhere
+# private.
+*.rdp
+
+# Signing material. sign-driver.ps1 generates a self-signed cert at run time and
+# deletes the temp .pfx, so nothing should ever appear here -- but a stray export
+# would be a real key, so it is excluded outright.
+*.pfx
+*.pem
+*.cer
+*.key
+*.p12
+*.snk
+
+# audio-pin.json records this machine's audio endpoint GUIDs. Harmless, but it is
+# per-machine state that would be wrong on any other box.
+audio-pin.json
+audio-prefs-backup.reg
+
+# --- vendored SDK bits ----------------------------------------------------
+# Interception's header and import lib come from its own installer
+# (C:\Programs\Interception). They are restored by hand as part of a rebuild --
+# see the guide -- and are not ours to redistribute.
+input/interception.h
+input/interception.lib
+interception.dll
+
+# --- editor / OS noise -----------------------------------------------------
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+desktop.ini
+*~
+*.bak
+*.tmp
+
+# --- logs ------------------------------------------------------------------
+*.log
+logs/
