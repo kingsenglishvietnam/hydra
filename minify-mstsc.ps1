@@ -24,20 +24,50 @@ param(
     [ValidateSet('BottomRight','BottomLeft','TopRight','TopLeft')]
     [string]$Corner = 'BottomRight',
     [switch]$Fill,        # fill the LAPTOP screen (not the seat panel)
+    [switch]$Maximize,    # ask the window manager to maximize (mstsc often ignores this)
+    [int]$Margin = 60,    # px kept clear of the screen edge in -Fill mode; 0 = flush
     [switch]$Restore
 )
 
+# UNIQUE TYPE NAME PER RUN.
+#
+# A .NET type cannot be redefined once loaded into a process. Re-running this
+# script in the SAME PowerShell session after editing it means the OLD definition
+# silently wins: Add-Type errors with TYPE_ALREADY_EXISTS, execution continues,
+# and any method added since is "not found" -- while the rest of the script
+# appears to work and prints reassuring output. That cost real time twice.
+#
+# Versioning the name by hand only helps between edits, not between runs. A name
+# derived from a fresh GUID is unique every invocation, so the definition loaded
+# is always the one in this file.
+$tn = "HydraWin_" + [guid]::NewGuid().ToString("N")
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
-public class HydraWin {
+public class $tn {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(
         IntPtr hWnd, IntPtr after, int X, int Y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wp, IntPtr lp);
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
-"@
+"@ -PassThru | Out-Null
+$api = [type]$tn   # NOT $w -- that is a width variable further down
 Add-Type -AssemblyName System.Windows.Forms
+
+# BECOME DPI-AWARE BEFORE MEASURING ANYTHING.
+#
+# PowerShell is DPI-unaware by default, so on this machine -- a 3240x2160 panel
+# at 350% scaling -- Screen.WorkingArea reports 926x577 LOGICAL pixels. But
+# SetWindowPos takes PHYSICAL pixels. Sizing the window to 926x577 physical on a
+# 3240-wide screen produces a window about a quarter of the screen, which is
+# exactly the "it won't maximize" symptom: the numbers looked right and the
+# window was tiny.
+#
+# The same mismatch explains why  mirror --list  reports the monitor as 1920x1080
+# while mirror itself sees 6720x3780 -- one is DPI-aware and the other isn't.
+[void]$api::SetProcessDPIAware()
 
 $SWP_NOZORDER   = 0x0004
 $SWP_NOACTIVATE = 0x0010
@@ -71,7 +101,15 @@ Write-Host ("parking on screen {0}x{1} at {2},{3}" -f $scr.Width,$scr.Height,$sc
 # FULLSCREEN, where it grabs input and there is no obvious way back -- and if it
 # lands on the seat panel it also covers mirror. A margin keeps it a normal
 # window no matter what numbers get passed in.
-$margin = 60
+# -Margin 0 sizes the window to the entire work area, which looks the same as
+# maximized. That matters because mstsc IGNORES programmatic maximize: both
+# ShowWindow(SW_MAXIMIZE) and WM_SYSCOMMAND/SC_MAXIMIZE return success and do
+# nothing. Sizing it ourselves is the only thing that actually works.
+#
+# The default margin is not superstition: sizing a window BEYOND the screen tips
+# mstsc into RDP fullscreen, which grabs input with no obvious way out. A margin
+# of 0 is exactly the work area and is safe; anything larger is clamped below.
+$margin = [Math]::Max(0, $Margin)
 $maxW = [Math]::Max(320, $scr.Width  - $margin)
 $maxH = [Math]::Max(200, $scr.Height - $margin)
 if ($Width  -gt $maxW) { Write-Host "clamping width $Width -> $maxW"   -ForegroundColor DarkYellow; $Width  = $maxW }
@@ -79,9 +117,23 @@ if ($Height -gt $maxH) { Write-Host "clamping height $Height -> $maxH" -Foregrou
 
 foreach ($p in $procs) {
     $h = $p.MainWindowHandle
-    if ([HydraWin]::IsIconic($h)) {
-        [void][HydraWin]::ShowWindow($h, $SW_RESTORE)   # minimized = frozen panel
+    if ($api::IsIconic($h)) {
+        [void]$api::ShowWindow($h, $SW_RESTORE)   # minimized = frozen panel
         Start-Sleep -Milliseconds 300
+    }
+
+    if ($Maximize) {
+        # A real maximize, via the window manager, rather than sizing to the work
+        # area. Sizing to exactly the screen can tip mstsc into RDP FULLSCREEN,
+        # which grabs input and has no obvious way out. SC_MAXIMIZE does not.
+        #
+        # Maximizes on whichever monitor the window currently occupies, so move
+        # it to the laptop first (.\minify-mstsc.ps1) or it will maximize over
+        # the seat panel and cover mirror's output.
+        [void]$api::SendMessage($h, 0x112, [IntPtr]0xF030, [IntPtr]0)  # WM_SYSCOMMAND, SC_MAXIMIZE
+        Write-Host ("mstsc pid {0}: asked to maximize -- note mstsc often ignores this;" -f $p.Id) -ForegroundColor Yellow
+        Write-Host "  use  .\minify-mstsc.ps1 -Fill -Margin 0  instead" -ForegroundColor Yellow
+        continue
     }
 
     if ($Fill) {
@@ -92,11 +144,12 @@ foreach ($p in $procs) {
         # as visibly composited so the RDP client keeps pulling frames.
         # Deliberately a margin short of the full work area -- filling it exactly
         # is what triggers fullscreen.
-        [void][HydraWin]::SetWindowPos($h, [IntPtr]::Zero,
-                                       $scr.X + 10, $scr.Y + 10, $maxW, $maxH,
+        $fx = if ($margin -gt 0) { $scr.X + [int]($margin/2) } else { $scr.X }
+        $fy = if ($margin -gt 0) { $scr.Y + [int]($margin/2) } else { $scr.Y }
+        [void]$api::SetWindowPos($h, [IntPtr]::Zero, $fx, $fy, $maxW, $maxH,
                                        $SWP_NOZORDER -bor $SWP_NOACTIVATE)
-        Write-Host ("mstsc pid {0} -> {1}x{2} at {3},{4} (large, still windowed)" -f `
-                    $p.Id,$maxW,$maxH,($scr.X+10),($scr.Y+10)) -ForegroundColor Green
+        Write-Host ("mstsc pid {0} -> {1}x{2} at {3},{4} (still windowed)" -f `
+                    $p.Id,$maxW,$maxH,$fx,$fy) -ForegroundColor Green
         continue
     }
 
@@ -104,7 +157,7 @@ foreach ($p in $procs) {
         $w = [Math]::Min(1280, $maxW); $ht = [Math]::Min(800, $maxH)
         $x = $scr.X + [int](($scr.Width  - $w)  / 2)
         $y = $scr.Y + [int](($scr.Height - $ht) / 2)
-        [void][HydraWin]::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $w, $ht,
+        [void]$api::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $w, $ht,
                                        $SWP_NOZORDER -bor $SWP_NOACTIVATE)
         Write-Host ("mstsc pid {0} -> restored {1}x{2} at {3},{4}" -f $p.Id,$w,$ht,$x,$y) -ForegroundColor Green
         continue
@@ -116,7 +169,7 @@ foreach ($p in $procs) {
         'TopRight'    { $x = $scr.Right  - $Width - 8; $y = $scr.Top    + 8 }
         'TopLeft'     { $x = $scr.Left   + 8;          $y = $scr.Top    + 8 }
     }
-    [void][HydraWin]::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $Width, $Height,
+    [void]$api::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $Width, $Height,
                                    $SWP_NOZORDER -bor $SWP_NOACTIVATE)
     Write-Host ("mstsc pid {0} -> {1}x{2} at {3},{4} ({5})" -f $p.Id,$Width,$Height,$x,$y,$Corner) -ForegroundColor Yellow
 }

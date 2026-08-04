@@ -307,6 +307,26 @@ static void ensure_meta_section(const std::string& seat)
         }
         held[seat + ":pix"] = ph;   /* also never closed */
     }
+
+    /* Audio ring, same reasoning: the capture agent runs as the seat user and
+     * cannot create a Global\ object. See hydra_ipc.h for why audio needs its
+     * own transport at all (RDP's audio channel buffers far more than DDA
+     * capture does, so the two paths drift apart). */
+    wchar_t aname[128];
+    hydra_audio_name(aname, 128, seat.c_str());
+    HANDLE ah = CreateFileMappingW(INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE,
+                                   (DWORD)(((uint64_t)HYDRA_AUD_TOTAL) >> 32),
+                                   (DWORD)(((uint64_t)HYDRA_AUD_TOTAL) & 0xFFFFFFFFull),
+                                   aname);
+    if (!ah) {
+        hlog(L"[audio:%S] pre-create audio ring failed err=%lu", seat.c_str(), GetLastError());
+    } else {
+        if (void* av = MapViewOfFile(ah, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(HydraAudioRing))) {
+            memset(av, 0, sizeof(HydraAudioRing));
+            UnmapViewOfFile(av);
+        }
+        held[seat + ":aud"] = ah;
+    }
     hlog(L"[capture:%S] meta + pixel sections ready (created by service)", seat.c_str());
 }
 
@@ -637,6 +657,25 @@ static std::vector<Proc> plan_procs(const HydraCfg& cfg)
          * Holding a silent stream open means there is never a first opener.
          * Runs with the SEAT USER'S token: this needs the user's own audio
          * session, which is exactly what SYSTEM does not have. */
+        /* A/V SYNC: carry audio over shared memory rather than the RDP channel.
+         *   abcap:<seat>  in the SEAT'S session -- loopback-records its mix
+         *   abren:<seat>  in the CONSOLE session -- plays it to the monitor
+         * Enabled by audio_bridge = "<endpoint-substr>" in seats.toml. The RDP
+         * client must be muted or the same audio also arrives the slow way. */
+        if (!s.audioBridge.empty()) {
+            Proc ac; ac.tag = L"abcap:" + seatW;
+            ac.exe = helper_path(L"audio_bridge.exe");
+            ac.args = L"capture " + seatW;
+            ac.sessionSpec = s.session;
+            v.push_back(std::move(ac));
+
+            Proc ar; ar.tag = L"abren:" + seatW;
+            ar.exe = helper_path(L"audio_bridge.exe");
+            ar.args = L"render " + seatW + L" \"" + widen(s.audioBridge) + L"\"";
+            ar.sessionSpec = "console";
+            v.push_back(std::move(ar));
+        }
+
         if (s.audioPrime == "keepalive") {
             Proc ka; ka.tag = L"keepalive:" + seatW;
             ka.exe = helper_path(L"audio_keepalive.exe");
@@ -938,7 +977,9 @@ static std::wstring cmd_restart(const std::wstring& seatOrAll)
                      (p.tag == L"capture:" + seatOrAll) ||
                      (p.tag == L"audio:" + seatOrAll) ||
                      (p.tag == L"aroute:" + seatOrAll) ||
-                     (p.tag == L"keepalive:" + seatOrAll);
+                     (p.tag == L"keepalive:" + seatOrAll) ||
+                     (p.tag == L"abcap:" + seatOrAll) ||
+                     (p.tag == L"abren:" + seatOrAll);
         if (match) {
             kill_proc(p);
             p.dead = false; p.backoffMs = BACKOFF_MIN_MS; p.nextTryAt = 0;

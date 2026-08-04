@@ -1,12 +1,33 @@
 #requires -RunAsAdministrator
-# sign-driver.ps1 -- create a test cert (once), sign iddseat.cat, trust it.
+# sign-driver.ps1 -- create a test cert (once), sign a driver catalog, trust it.
+#
+# Takes the catalog NAME as well as the directory: there is more than one driver
+# in this tree now (iddseat, hydrakbd), and hardcoding one of them meant the
+# other silently failed to sign -- producing a .sys that builds cleanly and then
+# refuses to load, which is a confusing way to find out.
 # Run AFTER the WDK build produces dist\driver\iddseat.{dll,cat,inf}.
 #   .\sign-driver.ps1 -DriverDir .\dist\driver
-param([string]$DriverDir = ".\dist\driver")
+param(
+    [string]$DriverDir = ".\dist\driver",
+    [string]$CatalogName = ""      # default: whatever .cat is in $DriverDir
+)
 
 $ErrorActionPreference='Stop'
-$cat = Join-Path $DriverDir 'iddseat.cat'
-if (-not (Test-Path $cat)) { Write-Error "no iddseat.cat in $DriverDir -- build the driver first (see BUILD.md 2)." }
+if ($CatalogName) {
+    $cat = Join-Path $DriverDir $CatalogName
+} else {
+    # Exactly one .cat is the normal case; if there are several, be explicit
+    # rather than guessing which one was meant.
+    $cats = @(Get-ChildItem $DriverDir -Filter *.cat -ErrorAction SilentlyContinue)
+    if ($cats.Count -eq 0) {
+        Write-Error "no .cat in $DriverDir -- run inf2cat first (see BUILD.md 2)."
+    } elseif ($cats.Count -gt 1) {
+        Write-Error "several .cat files in $DriverDir -- pass -CatalogName to pick one: $($cats.Name -join ', ')"
+    }
+    $cat = $cats[0].FullName
+}
+if (-not (Test-Path $cat)) { Write-Error "catalog not found: $cat" }
+Write-Host "  signing $(Split-Path $cat -Leaf)" -ForegroundColor DarkGray
 
 # reuse an existing HydraTest cert or make one
 $cert = Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -eq 'CN=HydraTest' } | Select-Object -First 1

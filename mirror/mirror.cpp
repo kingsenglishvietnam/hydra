@@ -35,7 +35,10 @@
 #define _WIN32_WINNT 0x0A00
 #endif
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
+#include <windowsx.h>   /* GET_X_LPARAM / GET_Y_LPARAM */
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <wrl.h>
@@ -86,6 +89,250 @@ static LRESULT CALLBACK wnd_proc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
     if (m == WM_CLOSE) { PostQuitMessage(0); return 0; }
     return DefWindowProcW(h, m, w, l);
+}
+
+/* Ordinary resizable window, for viewing a seat on the console's own screen.
+ *
+ * The seat's desktop is a fixed 1920x1080 and mirror already scales whatever it
+ * receives to the surface it is given -- that is how it fills a 6720x3780 panel.
+ * Pointing a second instance at a normal window therefore gives a scaled-up view
+ * of the seat WITHOUT the RDP client's limitation: mstsc's "smart sizing" only
+ * ever scales DOWN, so its window is capped at session size plus chrome and
+ * cannot be enlarged. Mirror has no such restriction.
+ *
+ * Deliberately NOT topmost and NOT click-through: this one is a window you look
+ * at and place like any other, unlike the panel instance which must stay above
+ * everything. */
+/* ---------------------------------------------------------------------------
+ * INPUT FORWARDING (windowed view only)
+ *
+ * The view window is otherwise just a picture. Forwarding mouse and keyboard
+ * from it into the seat's session makes it a working remote view -- and mirror
+ * cannot inject directly, because SendInput only reaches the caller's own
+ * session. seatB_agent already lives in the seat's session and does exactly
+ * that job, so we speak the same 9-byte wire protocol the router uses and let
+ * the agent do the injecting.
+ *
+ * Absolute positioning is what makes this natural: the window knows where a
+ * click landed in FRAME coordinates, so it maps straight to 0..65535 across the
+ * seat's desktop regardless of how the window has been resized. That is exactly
+ * what WIRE_M_ABS was built for.
+ *
+ * Records MUST byte-match WireEvent in seat_router.c / seatB_agent.c.
+ * ------------------------------------------------------------------------- */
+#pragma pack(push, 1)
+struct WireEvent {
+    unsigned char  kind;   /* 'K' keyboard, 'M' mouse */
+    unsigned short a;      /* K: scancode      ; M: button state + flags */
+    unsigned short b;      /* K: key state     ; M: wheel delta          */
+    short          dx;     /* M: dx, or absolute x with WIRE_M_ABS       */
+    short          dy;     /* M: dy, or absolute y with WIRE_M_ABS       */
+};
+#pragma pack(pop)
+
+#define WIRE_M_ABS      0x1000
+#define I_KEY_UP        0x01
+#define I_KEY_E0        0x02
+#define I_M_LEFTDOWN    0x001
+#define I_M_LEFTUP      0x002
+#define I_M_RIGHTDOWN   0x004
+#define I_M_RIGHTUP     0x008
+#define I_M_MIDDLEDOWN  0x010
+#define I_M_MIDDLEUP    0x020
+#define I_M_WHEEL       0x400
+
+static SOCKET g_inSock = INVALID_SOCKET;
+static int    g_inPort = 0;
+
+static void input_connect(void)
+{
+    if (g_inSock != INVALID_SOCKET || g_inPort == 0) return;
+    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s == INVALID_SOCKET) return;
+    sockaddr_in sa{};
+    sa.sin_family = AF_INET;
+    sa.sin_port   = htons((u_short)g_inPort);
+    sa.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (connect(s, (sockaddr*)&sa, sizeof(sa)) != 0) { closesocket(s); return; }
+    BOOL one = TRUE;
+    setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (const char*)&one, sizeof(one));
+    g_inSock = s;
+    fwprintf(stderr, L"[mirror] input forwarding connected to router inject port %d\n", g_inPort);
+    fflush(stderr);
+}
+
+static void wire_send(const WireEvent& e)
+{
+    if (g_inSock == INVALID_SOCKET) { input_connect(); if (g_inSock == INVALID_SOCKET) return; }
+    if (send(g_inSock, (const char*)&e, (int)sizeof(e), 0) != (int)sizeof(e)) {
+        closesocket(g_inSock);
+        g_inSock = INVALID_SOCKET;   /* reconnect on the next event */
+    }
+}
+
+/* Window client point -> 0..65535 across the seat's desktop. Uses the CLIENT
+ * rect, so the mapping stays correct at any window size -- resize the window and
+ * clicks still land where you point. */
+/* Undo this session's left-handed swap before sending.
+ *
+ * Windows applies SwapMouseButtons when turning a physical press into a window
+ * message, so on a left-handed console the PHYSICAL right button arrives as
+ * WM_LBUTTONDOWN. Forwarding that as "left" means the seat's session -- which
+ * also has the swap on -- applies it a SECOND time on injection, and the click
+ * comes out as the wrong button.
+ *
+ * seat B's own mouse and mstsc are unaffected because they carry physical button
+ * state, never the logical one. So do the same: convert back to physical here,
+ * and let the seat's own setting do the single swap it expects.
+ *
+ * Read fresh each time rather than cached -- the setting can change while we
+ * run, and it costs nothing. */
+static unsigned short unswap_buttons(unsigned short b)
+{
+    if (!GetSystemMetrics(SM_SWAPBUTTON)) return b;
+    unsigned short out = (unsigned short)(b & ~(I_M_LEFTDOWN | I_M_LEFTUP |
+                                                I_M_RIGHTDOWN | I_M_RIGHTUP));
+    if (b & I_M_LEFTDOWN)  out |= I_M_RIGHTDOWN;
+    if (b & I_M_LEFTUP)    out |= I_M_RIGHTUP;
+    if (b & I_M_RIGHTDOWN) out |= I_M_LEFTDOWN;
+    if (b & I_M_RIGHTUP)   out |= I_M_LEFTUP;
+    return out;
+}
+
+static void send_mouse_abs(HWND hwnd, int cx, int cy, unsigned short buttons, short wheel)
+{
+    buttons = unswap_buttons(buttons);
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    int w = rc.right - rc.left, h = rc.bottom - rc.top;
+    if (w <= 0 || h <= 0) return;
+    if (cx < 0) cx = 0; if (cx >= w) cx = w - 1;
+    if (cy < 0) cy = 0; if (cy >= h) cy = h - 1;
+
+    WireEvent e{};
+    e.kind = 'M';
+    e.a    = (unsigned short)(buttons | WIRE_M_ABS);
+    e.b    = (unsigned short)wheel;
+    e.dx   = (short)(unsigned short)((cx * 65535) / (w > 1 ? w - 1 : 1));
+    e.dy   = (short)(unsigned short)((cy * 65535) / (h > 1 ? h - 1 : 1));
+    wire_send(e);
+}
+
+static void send_key(unsigned short scan, bool up, bool ext)
+{
+    WireEvent e{};
+    e.kind = 'K';
+    e.a    = scan;
+    e.b    = (unsigned short)((up ? I_KEY_UP : 0) | (ext ? I_KEY_E0 : 0));
+    wire_send(e);
+}
+
+/* Release every modifier in the seat.
+ *
+ * MUST be called whenever this window loses focus. A modifier's DOWN is
+ * forwarded while we have focus, but if focus moves before the UP -- Alt-Tab,
+ * clicking away, the window being raised over us -- that UP is delivered to
+ * whoever has focus now, never to us, and never to the seat. The seat is then
+ * left holding Ctrl (or Alt, or Shift) permanently: every subsequent keystroke
+ * becomes a shortcut and typing appears completely broken.
+ *
+ * seatB_agent clears modifiers on every reconnect for exactly this reason; the
+ * injector needs the same discipline. Sending an UP for a key that is already up
+ * is harmless. */
+static void release_all_modifiers(void)
+{
+    struct { unsigned short scan; bool ext; } mods[] = {
+        { 0x1D, false }, /* LCtrl  */  { 0x1D, true  }, /* RCtrl  */
+        { 0x2A, false }, /* LShift */  { 0x36, false }, /* RShift */
+        { 0x38, false }, /* LAlt   */  { 0x38, true  }, /* RAlt   */
+        { 0x5B, true  }, /* LWin   */  { 0x5C, true  }, /* RWin   */
+    };
+    for (auto& m : mods) send_key(m.scan, true, m.ext);
+}
+
+/* Window proc for the VIEW window only -- the panel window keeps the plain one,
+ * since it is click-through and must never take input. */
+static LRESULT CALLBACK view_proc(HWND h, UINT m, WPARAM wp, LPARAM lp)
+{
+    switch (m) {
+    case WM_MOUSEMOVE:
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), 0, 0);
+        return 0;
+    case WM_LBUTTONDOWN: SetCapture(h);
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_LEFTDOWN, 0); return 0;
+    case WM_LBUTTONUP:   ReleaseCapture();
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_LEFTUP, 0); return 0;
+    case WM_RBUTTONDOWN:
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_RIGHTDOWN, 0); return 0;
+    case WM_RBUTTONUP:
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_RIGHTUP, 0); return 0;
+    case WM_MBUTTONDOWN:
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_MIDDLEDOWN, 0); return 0;
+    case WM_MBUTTONUP:
+        send_mouse_abs(h, GET_X_LPARAM(lp), GET_Y_LPARAM(lp), I_M_MIDDLEUP, 0); return 0;
+
+    case WM_MOUSEWHEEL: {
+        /* Wheel arrives in screen coordinates; the agent wants client. */
+        POINT p{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+        ScreenToClient(h, &p);
+        send_mouse_abs(h, p.x, p.y, I_M_WHEEL, (short)GET_WHEEL_DELTA_WPARAM(wp));
+        return 0;
+    }
+
+    /* Scan codes, not virtual keys: the agent injects with KEYEVENTF_SCANCODE,
+     * so the seat's own keyboard layout applies rather than ours. */
+    case WM_KEYDOWN: case WM_SYSKEYDOWN:
+        send_key((unsigned short)((lp >> 16) & 0xFF), false, (lp & (1 << 24)) != 0);
+        return 0;
+    case WM_KEYUP: case WM_SYSKEYUP:
+        send_key((unsigned short)((lp >> 16) & 0xFF), true,  (lp & (1 << 24)) != 0);
+        return 0;
+
+    /* Focus left us: whatever is held down will never get its keyup, so let go
+     * of everything in the seat now. */
+    case WM_KILLFOCUS:
+        release_all_modifiers();
+        return 0;
+
+    case WM_ACTIVATE:
+        if (LOWORD(wp) == WA_INACTIVE) release_all_modifiers();
+        return 0;
+
+    case WM_CLOSE:
+        release_all_modifiers();   /* don't leave the seat holding keys */
+        DestroyWindow(h);
+        return 0;
+    case WM_DESTROY: PostQuitMessage(0); return 0;
+    }
+    return DefWindowProcW(h, m, wp, lp);
+}
+
+static HWND make_view_window(int w, int h)
+{
+    WNDCLASSW wc{};
+    wc.lpfnWndProc   = view_proc;
+    wc.hInstance     = GetModuleHandleW(nullptr);
+    wc.lpszClassName = L"hydra_mirror_view";
+    wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+    /* No background brush: GetStockObject lives in gdi32, which mirror does not
+     * otherwise link, and the whole client area is covered by the presented
+     * frame on the first Present anyway. */
+    RegisterClassW(&wc);
+
+    /* Size the CLIENT area to the requested dimensions, so "1920x1080" means the
+     * picture is that size rather than the frame. */
+    RECT r{ 0, 0, w, h };
+    AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
+
+    HWND hwnd = CreateWindowExW(
+        0, wc.lpszClassName, L"Hydra - seat view", WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
+        nullptr, nullptr, wc.hInstance, nullptr);
+    /* Start maximized. Unlike mstsc -- which ignores both SW_MAXIMIZE and
+     * SC_MAXIMIZE because its window is capped at session size -- this is our
+     * own window, and the frame is scaled to whatever size it ends up. */
+    ShowWindow(hwnd, SW_MAXIMIZE);
+    SetForegroundWindow(hwnd);
+    return hwnd;
 }
 
 static HWND make_window(const RECT& rc)
@@ -317,6 +564,11 @@ struct PixelReader {
 
 static PixelReader g_pix;
 
+/* Set when the GPU device is lost; the main loop rebuilds Gfx from scratch.
+ * Nothing created from a removed device can be reused, so partial recovery is
+ * not an option. */
+static bool g_deviceLost = false;
+
 /* Present from the shared-memory transport. */
 static bool present_pixels(Gfx& g, const char* seat)
 {
@@ -361,7 +613,39 @@ static bool present_pixels(Gfx& g, const char* seat)
         g.ctx->CopyResource(back.Get(), g_pix.tex.Get());
         ++shown;
     }
-    g.swap->Present(1, 0);
+
+    /* CHECK WHAT PRESENT RETURNS.
+     *
+     * Ignoring it meant a GPU device reset went completely unnoticed: the panel
+     * went black while this process cheerfully carried on incrementing
+     * "presented=" every frame, because every step still "succeeded" locally.
+     * The giveaway in the log was an unrelated-looking 0x88760870 appearing
+     * mid-run -- a DXGI device-removed error.
+     *
+     * A device reset happens for ordinary reasons: a display driver update, a
+     * resolution or mode change, waking from hibernate, or the GPU TDR-ing. The
+     * D3D device and everything created from it are permanently dead afterwards
+     * and cannot be revived -- only rebuilt. */
+    HRESULT ph = g.swap->Present(1, 0);
+    if (ph == DXGI_ERROR_DEVICE_REMOVED || ph == DXGI_ERROR_DEVICE_RESET ||
+        ph == DXGI_ERROR_DEVICE_HUNG    || ph == DXGI_ERROR_DRIVER_INTERNAL_ERROR)
+    {
+        HRESULT reason = g.dev ? g.dev->GetDeviceRemovedReason() : ph;
+        fwprintf(stderr, L"[mirror] device lost (Present hr=0x%08lX, reason=0x%08lX)"
+                         L" -- rebuilding\n",
+                 (unsigned long)ph, (unsigned long)reason);
+        fflush(stderr);
+        g_deviceLost = true;      /* main loop tears down and re-inits Gfx */
+        return false;
+    }
+    else if (FAILED(ph)) {
+        static HRESULT lastPh = S_OK;
+        if (ph != lastPh) {
+            lastPh = ph;
+            fwprintf(stderr, L"[mirror] Present failed hr=0x%08lX\n", (unsigned long)ph);
+            fflush(stderr);
+        }
+    }
 
     DWORD nowMs = GetTickCount();
     if (nowMs - lastLog >= 300000) {   /* 5 min heartbeat, not 4 s */
@@ -458,6 +742,33 @@ int wmain(int argc, wchar_t** argv)
     char seat[64] = {};
     for (int i = 0; seatW[i] && i < 63; ++i) seat[i] = (char)seatW[i];
 
+    /* Windowed view mode:  mirror.exe B --window [WxH]
+     * Shows the seat in a normal resizable window on this screen instead of
+     * taking over a panel. Resize it freely -- the seat's 1920x1080 frame is
+     * scaled to fit, which is the thing mstsc refuses to do. */
+    bool viewMode = (_wcsicmp(dev, L"--window") == 0);
+    int  viewW = 1280, viewH = 720;
+    for (int i = 3; viewMode && i < argc; ++i) {
+        int a = 0, b = 0, port = 0;
+        if (swscanf(argv[i], L"%dx%d", &a, &b) == 2 && a > 160 && b > 120) {
+            viewW = a; viewH = b;
+        } else if (swscanf(argv[i], L"%d", &port) == 1 && port > 0 && port < 65536) {
+            /* Seat port from seats.toml. We connect to port+1000, the router's
+             * INJECT listener -- NOT the agent port.
+             *
+             * The agent port is where seatB_agent connects TO the router, and
+             * that accept loop is "newest connection wins": an injector arriving
+             * there displaces the real agent and the seat loses input entirely.
+             * That was measured the hard way. The inject listener is a separate
+             * socket that reads events and forwards them into the seat. */
+            g_inPort = port + 1000;
+        }
+    }
+    if (viewMode && g_inPort) {
+        WSADATA wsa{};
+        WSAStartup(MAKEWORD(2, 2), &wsa);
+    }
+
     SetProcessDPIAware();
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
@@ -474,7 +785,7 @@ int wmain(int argc, wchar_t** argv)
      * panel, and a monitor can legitimately appear (or come back) at any time --
      * a cable replug, a dock, a resolution change. */
     MonMatch mm{};
-    {
+    if (!viewMode) {
         DWORD waited = 0;
         for (;;) {
             mm = find_monitor(dev);
@@ -489,7 +800,17 @@ int wmain(int argc, wchar_t** argv)
             fwprintf(stderr, L"[mirror %s] monitor %s appeared after %lums\n", seatW, dev, waited);
         fflush(stderr);
     }
-    HWND hwnd = make_window(mm.rc);
+    HWND hwnd;
+    if (viewMode) {
+        hwnd = make_view_window(viewW, viewH);
+        GetClientRect(hwnd, &mm.rc);
+        mm.found = true;
+        fwprintf(stderr, L"[mirror %s] windowed view %dx%d (resize freely; the seat's "
+                         L"frame is scaled to fit)\n", seatW, viewW, viewH);
+        fflush(stderr);
+    } else {
+        hwnd = make_window(mm.rc);
+    }
 
     /* Wait for the producer's metadata to be ready (iddseat may start after us).
      * Read the LUID from it, then build our device on that GPU. */
@@ -580,6 +901,38 @@ int wmain(int argc, wchar_t** argv)
                 fwprintf(stderr, L"[mirror] state: ready=%d haveSurface=%d gen=%u\n",
                          ready ? 1 : 0, haveSurface ? 1 : 0, (unsigned)gen);
                 fflush(stderr);
+            }
+        }
+
+        /* A lost GPU device means every D3D object we hold is dead. Rebuild the
+         * whole graphics stack -- swapchain, device, the lot -- and let the
+         * pixel reader re-upload into fresh textures. */
+        if (g_deviceLost) {
+            g_deviceLost = false;
+            fwprintf(stderr, L"[mirror] re-initialising graphics after device loss\n");
+            fflush(stderr);
+            g_pix.tex.Reset();          /* belonged to the dead device */
+            g_pix.w = g_pix.h = 0;
+            g_pix.lastSeq = 0;          /* force a fresh upload */
+            g = Gfx{};
+            /* In windowed mode there is no panel to look up -- rebuild against
+             * the existing window instead. */
+            MonMatch mm2{};
+            if (viewMode) { GetClientRect(hwnd, &mm2.rc); mm2.found = true; }
+            else          { mm2 = find_monitor(dev); }
+            if (mm2.found) {
+                HWND hwnd2 = viewMode ? hwnd : make_window(mm2.rc);
+                if (!g.init(hwnd2, mm2.rc, luid)) {
+                    fwprintf(stderr, L"[mirror] re-init failed; retrying\n");
+                    fflush(stderr);
+                    Sleep(1000);
+                    continue;
+                }
+                fwprintf(stderr, L"[mirror] graphics re-initialised\n");
+                fflush(stderr);
+            } else {
+                Sleep(1000);
+                continue;
             }
         }
 

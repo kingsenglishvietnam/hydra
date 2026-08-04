@@ -265,7 +265,12 @@ if ($mb -gt 40) {
 $minify = Join-Path $root 'minify-mstsc.ps1'
 if (Test-Path $minify) {
     Say "tucking the RDP window into a corner..."
-    try { & $minify -Fill | Out-Null } catch { Say "  minify failed: $_" 'Yellow' }
+    # -Margin 0 = the entire work area, which looks the same as maximized.
+    # mstsc IGNORES programmatic maximize (both ShowWindow(SW_MAXIMIZE) and
+    # WM_SYSCOMMAND/SC_MAXIMIZE return success and do nothing), and its saved
+    # winposstr is overridden by this call anyway, so sizing it explicitly is the
+    # only thing that actually decides where the window ends up.
+    try { & $minify -Fill -Margin 0 | Out-Null } catch { Say "  minify failed: $_" 'Yellow' }
 } else {
     Say "minify-mstsc.ps1 not found; leaving the RDP window as-is" 'Yellow'
 }

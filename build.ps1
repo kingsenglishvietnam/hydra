@@ -96,7 +96,8 @@ $cHelpers = @(
     @{ src = 'audio\session_route.c'; out = 'session_route.exe'; libs = @('ole32.lib','mmdevapi.lib','wtsapi32.lib') },
     @{ src = 'audio\mutetest.c';     out = 'mutetest.exe';     libs = @('ole32.lib','mmdevapi.lib') },
     @{ src = 'audio\route_endpoint.c'; out = 'route_endpoint.exe'; libs = @('ole32.lib','mmdevapi.lib') },
-    @{ src = 'audio\audio_keepalive.c'; out = 'audio_keepalive.exe'; libs = @('ole32.lib') }
+    @{ src = 'audio\audio_keepalive.c'; out = 'audio_keepalive.exe'; libs = @('ole32.lib') },
+    @{ src = 'audio\audio_bridge.c';    out = 'audio_bridge.exe';    libs = @('ole32.lib') }
 )
 
 # seat_router.c needs the Interception SDK. Warn clearly instead of dying in cl.
@@ -133,7 +134,7 @@ $cppTargets = @(
     @{ src = 'hydrad\hydrad.cpp';     out = 'hydrad.exe';
        libs = @('onecore.lib','wtsapi32.lib','userenv.lib','advapi32.lib','shell32.lib','ole32.lib','uuid.lib') },
     @{ src = 'mirror\mirror.cpp';     out = 'mirror.exe';
-       libs = @('d3d11.lib','dxgi.lib','user32.lib') },
+       libs = @('ws2_32.lib','d3d11.lib','dxgi.lib','user32.lib') },
     @{ src = 'capture\session_capture.cpp'; out = 'session_capture.exe';
        libs = @('d3d11.lib','dxgi.lib','user32.lib') }
 )

@@ -47,6 +47,11 @@ struct SeatCfg {
      * endpoint idle and simply moves the problem to the next opener. */
     std::string audioPrime = "chime";
 
+    /* A/V sync: endpoint-id substring for the seat's monitor. When set, audio is
+     * carried over shared memory instead of the RDP channel, which is what makes
+     * it land at the same time as the video. Empty = leave audio on RDP. */
+    std::string audioBridge;
+
     std::string audioId;         /* optional: substring of the render-endpoint id
                                   * to route THIS seat's audio to (e.g. the
                                   * monitor's speakers). Empty => no audio agent. */
@@ -166,6 +171,7 @@ inline bool hydra_parse_config(const std::string& text, HydraCfg& out, std::stri
             else if (key == "mouse_id") seat.mouseId = val;  /* stable hardware-ID match */
             else if (key == "audio_id") seat.audioId = val;  /* render-endpoint id substring */
             else if (key == "audio_prime") seat.audioPrime = val;  /* chime | keepalive | off */
+            else if (key == "audio_bridge") seat.audioBridge = val; /* monitor endpoint substr */
             else if (key == "audio_route") seat.audioRoute = val;  /* session-based routing */
             else if (key == "display_mode") seat.displayMode = val;  /* idd | capture */
             else if (key == "port")     seat.port = std::atoi(val.c_str());

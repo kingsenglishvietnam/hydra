@@ -109,6 +109,71 @@ static inline void hydra_pixels_name(wchar_t* out, size_t cch, const char* seat)
     if (i < cch) out[i] = 0;
 }
 
+
+/* ---------------------------------------------------------------------------
+ * AUDIO TRANSPORT -- for A/V sync.
+ *
+ * THE PROBLEM
+ *   Video and audio take completely different routes to the seat's monitor:
+ *     video: seat session -> DDA capture -> shared memory -> mirror -> panel
+ *     audio: seat session -> RDP channel -> mstsc -> monitor endpoint
+ *   Two independent paths with independent latency, and nothing aligning them.
+ *   The RDP audio channel buffers substantially more than DDA capture does, so
+ *   audio lags video. audioqualitymode only changes the CODEC inside that
+ *   channel, which is why neither :0 nor :2 affected sync -- wrong layer.
+ *
+ * THE FIX
+ *   Carry audio over the SAME shared-memory transport as the video. A capture
+ *   agent in the seat's session loopback-records the session mix and writes PCM
+ *   here; a render agent in the console session reads it and plays it to the
+ *   monitor. Shared memory adds a few ms, against the RDP channel's tens to
+ *   hundreds, so the two paths land far closer together.
+ *
+ *   The RDP client must then be MUTED (per-app, in the console session) or the
+ *   same audio plays twice, out of phase with itself.
+ *
+ * RING, NOT SEQLOCK
+ *   Unlike video -- where only the newest frame matters and a torn read is
+ *   simply skipped -- audio must not drop samples, so this is a proper ring
+ *   buffer. Single writer, single reader, so a monotonic write position and a
+ *   reader-owned read position need no locking at all.
+ *
+ *   A reader that falls more than the ring behind has stalled; it resynchronises
+ *   to the write head rather than playing stale audio, accepting one glitch
+ *   instead of permanent drift.
+ * ------------------------------------------------------------------------- */
+#define HYDRA_AUD_RATE     48000u
+#define HYDRA_AUD_CHANNELS 2u
+#define HYDRA_AUD_FRAMES   48000u          /* 1 second of ring */
+#define HYDRA_AUD_BYTES    ((size_t)HYDRA_AUD_FRAMES * HYDRA_AUD_CHANNELS * sizeof(float))
+
+/* How much audio the renderer tries to keep buffered. Too small and any jitter
+ * underruns; too large and we reintroduce the latency this exists to remove.
+ * 40 ms is comfortably above the WASAPI engine period and still well under the
+ * threshold where lip-sync becomes noticeable. */
+#define HYDRA_AUD_TARGET_MS 40u
+
+typedef struct HydraAudioRing {
+    volatile uint64_t writePos;   /* total frames ever written; never wraps */
+    uint32_t rate;
+    uint32_t channels;
+    uint32_t ringFrames;
+    uint32_t running;             /* producer sets 1 while it is alive */
+    /* ringFrames * channels floats follow */
+} HydraAudioRing;
+
+#define HYDRA_AUD_TOTAL (sizeof(HydraAudioRing) + HYDRA_AUD_BYTES)
+
+static inline void hydra_audio_name(wchar_t* out, size_t cch, const char* seat) {
+    size_t i = 0;
+    const wchar_t* p = L"Global\\HydraSeat_";
+    while (*p && i + 1 < cch) out[i++] = *p++;
+    while (seat && *seat && i + 1 < cch) out[i++] = (wchar_t)(unsigned char)*seat++;
+    const wchar_t* s2 = L"_aud";
+    while (*s2 && i + 1 < cch) out[i++] = *s2++;
+    if (i < cch) out[i] = 0;
+}
+
 /* Object names. Seat names are short ASCII (e.g. "B"); we widen inline.
  * Global\ so they cross the session boundary. Keep well under MAX_PATH. */
 

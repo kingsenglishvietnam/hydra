@@ -1,0 +1,74 @@
+; hydrakbd.inf -- Hydra keyboard upper filter
+;
+; Registers hydrakbd as an UPPER FILTER on the Keyboard class. Unlike iddseat
+; this is not a device of our own: it inserts into the existing stack for every
+; keyboard, above the class driver, and passes everything through.
+;
+; UPPER filter (not lower) is deliberate. We want to see scan codes after the
+; port driver has assembled them and before the class driver dispatches them --
+; that is the point where a keystroke can be withheld from the console session.
+;
+; SAFETY: removing this package restores the stock stack, because a filter that
+; is absent simply isn't in the chain. There is no state to unwind.
+;   pnputil /enum-drivers | Select-String "hydrakbd"
+;   pnputil /delete-driver oemNN.inf /uninstall
+;   (then reboot)
+;
+; Signing: KMDF drivers cannot load unsigned. Development uses test-signing plus
+; a self-signed catalog -- the same path already proven for iddseat. Shipping to
+; another machine needs an EV certificate and Microsoft attestation signing.
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Keyboard
+ClassGuid   = {4D36E96B-E325-11CE-BFC1-08002BE10318}
+Provider    = %ManufacturerName%
+CatalogFile = hydrakbd.cat
+DriverVer   = 08/04/2026,1.0.0.0
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 12          ; %windir%\system32\drivers
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[SourceDisksFiles]
+hydrakbd.sys = 1
+
+; ---------------------------------------------------------------------------
+; Class-wide filter install.
+;
+; We do not create a device. We add ourselves to the Keyboard class's
+; UpperFilters list, so the PnP manager loads us into every keyboard stack.
+; ---------------------------------------------------------------------------
+[DefaultInstall.NTamd64]
+CopyFiles = hydrakbd.CopyFiles
+AddReg    = hydrakbd.AddReg
+
+[DefaultInstall.NTamd64.Services]
+AddService = hydrakbd,,hydrakbd.Service
+
+[hydrakbd.CopyFiles]
+hydrakbd.sys
+
+; Append (0x00010008 = FLG_ADDREG_APPEND | FLG_ADDREG_TYPE_MULTI_SZ) rather than
+; replace: kbdclass may already have filters, and clobbering them would break
+; other software's keyboards.
+[hydrakbd.AddReg]
+HKLM,System\CurrentControlSet\Control\Class\{4D36E96B-E325-11CE-BFC1-08002BE10318},UpperFilters,0x00010008,hydrakbd
+
+[hydrakbd.Service]
+DisplayName   = %ServiceName%
+ServiceType   = 1            ; SERVICE_KERNEL_DRIVER
+StartType     = 3            ; SERVICE_DEMAND_START -- NOT boot-start, on purpose:
+                             ; a demand-start filter that fails to load leaves the
+                             ; keyboard working. Boot-start would not.
+ErrorControl  = 1            ; SERVICE_ERROR_NORMAL -- log and continue, never
+                             ; block boot on our account.
+ServiceBinary = %12%\hydrakbd.sys
+
+[Strings]
+ManufacturerName = "Hydra"
+DiskName         = "Hydra Keyboard Filter Installation Disk"
+ServiceName      = "Hydra Keyboard Upper Filter"

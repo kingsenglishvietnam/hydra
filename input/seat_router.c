@@ -120,6 +120,16 @@ typedef struct {
     wchar_t       mouseId[256];
     SOCKET        listener;
     SOCKET        client;                    /* guarded by g_lock            */
+    /* Separate INJECT listener, on port + 1000.
+     *
+     * Injectors (mirror's windowed seat view) send us events to forward to the
+     * seat, which is the OPPOSITE direction to the agent connection. They must
+     * not share the agent's port: this accept loop is "newest connection wins",
+     * so an injector arriving on the agent port silently DISPLACES the real
+     * agent and the seat loses input entirely. That is exactly what happened
+     * the first time this was tried. */
+    SOCKET        inj_listener;
+    SOCKET        inj_client;
     unsigned char tail[sizeof(WireEvent)];   /* unsent remainder of a record */
     int           tail_len;
     unsigned long drops;
@@ -167,6 +177,47 @@ static DWORD WINAPI accept_thread(LPVOID arg) {
                 seat_name(st), st->port);
     }
     /* not reached */
+    return 0;
+}
+
+/* Inject loop, one thread per seat. Accepts a connection on port+1000 and reads
+ * 9-byte WireEvents from it, forwarding each into the seat exactly as if it had
+ * come from the captured hardware. Used by mirror's windowed view so a teacher
+ * can drive the seat from a window on the console screen.
+ *
+ * Deliberately single-injector and blocking: this path carries hand-driven mouse
+ * and keyboard, not a firehose, so simplicity beats throughput. */
+static void forward(Seat *st, const WireEvent *ev);   /* fwd decl */
+
+static DWORD WINAPI inject_thread(LPVOID arg) {
+    Seat *st = (Seat *)arg;
+    for (;;) {
+        SOCKET s = accept(st->inj_listener, NULL, NULL);
+        if (s == INVALID_SOCKET) { Sleep(200); continue; }
+        int one = 1;
+        setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (char *)&one, sizeof(one));
+        fprintf(stderr, "[router] seat %c injector connected (port %d)\n",
+                seat_name(st), st->port + 1000);
+
+        unsigned char buf[sizeof(WireEvent) * 16];
+        int have = 0;
+        for (;;) {
+            int n = recv(s, (char *)buf + have, (int)sizeof(buf) - have, 0);
+            if (n <= 0) break;
+            have += n;
+            int off = 0;
+            while (have - off >= (int)sizeof(WireEvent)) {
+                WireEvent ev;
+                memcpy(&ev, buf + off, sizeof(ev));
+                off += (int)sizeof(ev);
+                forward(st, &ev);
+            }
+            if (off && off < have) memmove(buf, buf + off, (size_t)(have - off));
+            have -= off;
+        }
+        closesocket(s);
+        fprintf(stderr, "[router] seat %c injector disconnected\n", seat_name(st));
+    }
     return 0;
 }
 
@@ -472,10 +523,19 @@ int main(int argc, char **argv) {
 
         for (int i = 0; i < g_nseat; i++) {
             g_seat[i].client   = INVALID_SOCKET;
+            g_seat[i].inj_client = INVALID_SOCKET;
             g_seat[i].listener = make_listener(g_seat[i].port);
             CreateThread(NULL, 0, accept_thread, &g_seat[i], 0, NULL);
-            fprintf(stderr, "[router] seat %c: kbd=%d mouse=%d port=%d\n",
-                    'B' + i, g_seat[i].kbd, g_seat[i].mouse, g_seat[i].port);
+
+            /* Inject port = agent port + 1000. Separate listener because the
+             * agent accept loop is "newest wins" -- an injector on the agent
+             * port displaces the real agent and the seat goes dead. */
+            g_seat[i].inj_listener = make_listener(g_seat[i].port + 1000);
+            CreateThread(NULL, 0, inject_thread, &g_seat[i], 0, NULL);
+
+            fprintf(stderr, "[router] seat %c: kbd=%d mouse=%d port=%d inject=%d\n",
+                    'B' + i, g_seat[i].kbd, g_seat[i].mouse,
+                    g_seat[i].port, g_seat[i].port + 1000);
         }
         CreateThread(NULL, 0, heartbeat_thread, NULL, 0, NULL);
         CreateThread(NULL, 0, hang_watchdog, NULL, 0, NULL);
