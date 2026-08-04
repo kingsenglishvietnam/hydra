@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity version="1.0.0.0"
+                    processorArchitecture="amd64"
+                    name="Hydra.CursorOverlay"
+                    type="win32"/>
+  <description>Hydra per-seat cursor overlay</description>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <!-- uiAccess="true" is what lets a signed, trusted-path exe raise its
+             window Z-band above the Start menu / system UI. It REQUIRES:
+               1. this manifest embedded in the exe
+               2. the exe Authenticode-signed
+               3. the exe launched from a trusted dir (Program Files or System32)
+               4. launched by an already-elevated process
+             requireAdministrator is the standard companion level for uiAccess. -->
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="true"/>
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Win 10/11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+    </application>
+  </compatibility>
+</assembly>

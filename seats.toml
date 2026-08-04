@@ -1,0 +1,96 @@
+# seats.toml -- Hydra configuration
+#
+# STABLE HARDWARE-ID MATCHING -- device NUMBERS drift across reboots, so match by
+# hardware-ID substring instead. Verified 2026-07-22 via --learn:
+#   WIRED keyboard (yours) : VID_046D&PID_C31C   -- NOT a seat
+#   WIRED mouse    (yours) : VID_046D&PID_C077   -- NOT a seat
+#   WIRELESS keyboard      : VID_1EA7&PID_0066   -- teacher, seat B
+#   WIRELESS mouse         : VID_046D&PID_C548   -- teacher, seat B
+#
+# These substrings survive reboots/re-plugs. To re-learn if hardware changes:
+#   .\dist\seat_router.exe --learn  (move one device at a time; copy the hwid:)
+#
+# Note: the wireless mouse is a composite device (full id ends &MI_01&Col01).
+# The VID+PID substring matches regardless of collection suffix, which is fine
+# here since the teacher keyboard is a different vendor (1EA7). If you ever move
+# both onto one unifying receiver, add the &MI_ part to keep them distinct.
+
+[hostA]
+confine_monitor = '\\.\DISPLAY1'
+
+[[seat]]
+name     = "B"
+kbd_id   = "VID_1EA7&PID_0066"     # wireless keyboard (teacher's)
+mouse_id = "VID_046D&PID_C548"     # wireless mouse (teacher's)
+port     = 56789
+monitor  = '\\.\DISPLAY2'
+session  = "user:teacher"
+edid     = "1920x1080@60"
+
+# GOAL 3 -- "no RDP window": show teacher's REAL desktop on the panel via Desktop
+# Duplication instead of the IDD virtual monitor. "capture" launches
+# session_capture inside the seat session (cursor included, no mstsc window).
+# "idd" (or omit) keeps the virtual-monitor producer. DDA must run on the
+# session's interactive input desktop or it fails E_ACCESSDENIED (untested).
+# display_mode:
+#   "capture" -- WORKING DEFAULT. Desktop Duplication inside the seat's session
+#                composites the cursor into the frame, publishes it as pixels in
+#                shared memory, and mirror scales it onto the panel. Gives
+#                teacher's real desktop with a cursor that CANNOT be covered by
+#                the Start menu, and needs no cursor_overlay.exe.
+#   "off"     -- no mirror, no capture; the panel belongs to a fullscreen mstsc.
+#                Input isolation and audio routing still work. Needs
+#                cursor_overlay.exe, which loses z-order to the Start menu.
+#   "idd"     -- legacy iddseat virtual monitor. Only mode that creates the
+#                SWD\HYDRA device. Superseded; the remote-session IDD variant was
+#                tested and cannot work under RDP-Wrapper.
+# audio_prime -- avoid the "first app gets silence" problem on the seat's
+# Remote Audio endpoint. The endpoint goes bad when idle: the FIRST application
+# to open it hears nothing, a second app works, and then the first one does too.
+# Browsers lose that race reliably; media players often win it.
+#   "chime"     (default) play one short sound when the session starts, so it is
+#               the first opener and whatever you launch next is second.
+#   "keepalive" run audio_keepalive.exe for the whole session, holding a silent
+#               stream open so the endpoint can never go idle. Use this if the
+#               chime wears off mid-lesson.
+#   "off"       do nothing.
+# NOT an option: restarting Audiosrv. Tried from four contexts, fixes nothing --
+# a restart leaves the endpoint idle and hands the problem to the next opener.
+audio_prime = "chime"
+
+display_mode = "capture"
+
+# AUDIO ROUTING -- VERIFIED WORKING 2026-07-30.
+#
+# KEY FACT: on audiomode:i:0 teacher's session has NO real audio hardware. It
+# ships audio down the RDP channel and *mstsc.exe in the CONSOLE session* is what
+# actually plays it. So the thing to redirect is mstsc, not anything inside
+# teacher's session. Per-app output assignment does not disturb the shared system
+# default -- which is exactly what made audiomode:i:1 fail (change one seat's
+# device, both seats moved).
+#
+# TWO WAYS, try the simple one first:
+#
+# A) DIRECT (no cable, no agent -- comment out audio_route below):
+#      Console session -> Settings > Sound > Volume mixer -> mstsc.exe
+#      -> Output device -> "2770 (Intel(R) Display Audio)"
+#    If mstsc offers that dropdown, you are done. Nothing else needed.
+#
+# B) VIA VB-CABLE (proven working; use if A is unavailable):
+#      1. Install VB-CABLE, reboot.
+#      2. Console session -> Volume mixer -> mstsc.exe -> Output -> "CABLE Input"
+#      3. Leave audio_route set below. route_endpoint runs in session 0,
+#         loopback-captures the cable and renders it to the monitor.
+#    Chain: teacher -> RDP -> mstsc -> cable -> route_endpoint -> monitor.
+#
+# VERIFY THE IDs BEFORE TRUSTING THEM -- endpoint GUIDs are reissued on driver
+# reinstall. Run:  .\dist\route_endpoint.exe --list
+#   0329839f = CABLE Input        (was 9dd1d418 before a VB-CABLE reinstall)
+#   623f2512 = Intel Display Audio (monitor)
+#   548a2a1a = Realtek            (laptop speakers, seat 1)
+# audio_route is NOT needed. VB-CABLE was removed once it became clear the RDP
+# client can be pointed straight at the monitor: on audiomode:i:0 teacher's audio
+# is played by mstsc.exe in the CONSOLE session, so a per-app output assignment
+# (Volume mixer -> mstsc.exe -> "2770 (Intel Display Audio)") isolates the seats
+# with no cable, no loopback agent and no extra process. Leave this commented.
+# audio_route = "<cable-id>,<monitor-id>"
