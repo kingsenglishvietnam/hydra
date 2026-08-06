@@ -73,7 +73,8 @@ audio_prime = "chime"
 # THEN MUTE mstsc.exe in the console session's volume mixer, or the same audio
 # also arrives the slow way and you hear it twice, slightly apart.
 #
-# Requires both endpoints at 48000 Hz stereo (the ring format).
+# The bridge resamples, so the two endpoints need not share a rate (44100 in the
+# seat's session and 48000 on the monitor is the normal case here).
 audio_bridge = "623f2512"
 
 display_mode = "capture"

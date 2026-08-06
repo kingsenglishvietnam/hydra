@@ -24,6 +24,10 @@ param(
     [ValidateSet('BottomRight','BottomLeft','TopRight','TopLeft')]
     [string]$Corner = 'BottomRight',
     [switch]$Fill,        # fill the LAPTOP screen (not the seat panel)
+    [switch]$TopMost,     # keep it above everything -- see the note below
+    [switch]$Ghost,       # full-size but INVISIBLE and click-through (see below)
+    [int]$GhostAlpha = 1, # 0 is fully transparent; 1 keeps it "shown" to DWM
+    [string]$Process = 'mstsc',   # 'mstsc' or 'sdl-freerdp' 
     [switch]$Maximize,    # ask the window manager to maximize (mstsc often ignores this)
     [int]$Margin = 60,    # px kept clear of the screen edge in -Fill mode; 0 = flush
     [switch]$Restore
@@ -51,6 +55,9 @@ public class $tn {
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
     [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wp, IntPtr lp);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+    [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int i);
+    [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr h, int i, int v);
+    [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
 }
 "@ -PassThru | Out-Null
 $api = [type]$tn   # NOT $w -- that is a width variable further down
@@ -71,11 +78,14 @@ Add-Type -AssemblyName System.Windows.Forms
 
 $SWP_NOZORDER   = 0x0004
 $SWP_NOACTIVATE = 0x0010
+$SWP_NOMOVE     = 0x0002
+$SWP_NOSIZE     = 0x0001
+$HWND_TOPMOST   = [IntPtr]-1
 $SW_RESTORE     = 9
 
-$procs = Get-Process mstsc -ErrorAction SilentlyContinue |
+$procs = Get-Process $Process -ErrorAction SilentlyContinue |
          Where-Object { $_.MainWindowHandle -ne 0 }
-if (-not $procs) { Write-Warning "No mstsc window found -- is teacher's session connected?"; exit 1 }
+if (-not $procs) { Write-Warning "No $Process window found -- is the seat's session connected?"; exit 1 }
 
 # Park it on the screen the SEAT PANEL IS NOT ON.
 #
@@ -154,6 +164,10 @@ foreach ($p in $procs) {
     }
 
     if ($Restore) {
+        # Undo ghost mode if it was applied, or the window stays invisible.
+        $GWL_EXSTYLE = -20
+        $ex = $api::GetWindowLong($h, $GWL_EXSTYLE)
+        [void]$api::SetWindowLong($h, $GWL_EXSTYLE, $ex -band (-bnot (0x00080000 -bor 0x00000020)))
         $w = [Math]::Min(1280, $maxW); $ht = [Math]::Min(800, $maxH)
         $x = $scr.X + [int](($scr.Width  - $w)  / 2)
         $y = $scr.Y + [int](($scr.Height - $ht) / 2)
@@ -172,6 +186,65 @@ foreach ($p in $procs) {
     [void]$api::SetWindowPos($h, [IntPtr]::Zero, $x, $y, $Width, $Height,
                                    $SWP_NOZORDER -bor $SWP_NOACTIVATE)
     Write-Host ("mstsc pid {0} -> {1}x{2} at {3},{4} ({5})" -f $p.Id,$Width,$Height,$x,$y,$Corner) -ForegroundColor Yellow
+}
+
+# GHOST MODE: full-size, invisible, click-through.
+#
+# The freeze happens because a COVERED client stops requesting screen updates --
+# the seat's desktop then stops being composed and the panel holds its last
+# frame. Windows still reports such a window as visible, so nothing detects it.
+#
+# The thumbnail approach avoids this by being small and topmost, but it costs a
+# corner of the screen and something to look at. Ghost mode is better: leave the
+# client MAXIMIZED so it is unambiguously unoccluded, then make it invisible with
+# WS_EX_LAYERED at near-zero alpha and click-through with WS_EX_TRANSPARENT. The
+# client believes it is fully visible and keeps streaming; you see and click the
+# view window behind it.
+#
+# Alpha 1 rather than 0 deliberately: a fully transparent layered window can be
+# treated as not-rendering by DWM, which would defeat the whole point. 1/255 is
+# invisible to the eye and unambiguous to the compositor.
+if ($Ghost) {
+    $GWL_EXSTYLE     = -20
+    $WS_EX_LAYERED   = 0x00080000
+    $WS_EX_TRANSPARENT = 0x00000020
+    $LWA_ALPHA       = 0x2
+    foreach ($p in $procs) {
+        $h = $p.MainWindowHandle
+        $ex = $api::GetWindowLong($h, $GWL_EXSTYLE)
+        [void]$api::SetWindowLong($h, $GWL_EXSTYLE, $ex -bor $WS_EX_LAYERED -bor $WS_EX_TRANSPARENT)
+        [void]$api::SetLayeredWindowAttributes($h, 0, [byte]$GhostAlpha, $LWA_ALPHA)
+        # Full work area, so it cannot be occluded by anything.
+        [void]$api::SetWindowPos($h, $HWND_TOPMOST, $scr.X, $scr.Y, $scr.Width, $scr.Height,
+                                 $SWP_NOACTIVATE)
+        Write-Host ("mstsc pid {0} -> GHOST {1}x{2} (invisible, click-through, topmost)" -f `
+                    $p.Id, $scr.Width, $scr.Height) -ForegroundColor Green
+    }
+    Write-Host "  the client is now unoccludable but invisible -- the panel cannot freeze" -ForegroundColor Cyan
+    Write-Host "  undo with:  .\minify-mstsc.ps1 -Process $Process -Restore" -ForegroundColor DarkGray
+    return
+}
+
+# TOPMOST, so nothing can cover it.
+#
+# This is the whole reason the panel freezes. An RDP client that is COVERED stops
+# requesting screen updates, the seat's desktop stops being composed, Desktop
+# Duplication sees nothing, and the panel holds its last frame -- while every
+# process still looks healthy and Windows still reports the window as
+# IsWindowVisible=True. Occlusion simply does not register as "not visible", so
+# nothing detects it.
+#
+# Measured with both mstsc and SDL-FreeRDP, so it is not a quirk of one client.
+# The maximized mirror view window covering the client is the usual culprit.
+#
+# Keeping the client topmost as a small thumbnail means it can never be covered,
+# which lets the view window be maximized underneath it.
+if ($TopMost) {
+    foreach ($p in $procs) {
+        [void]$api::SetWindowPos($p.MainWindowHandle, $HWND_TOPMOST, 0, 0, 0, 0,
+                                 $SWP_NOMOVE -bor $SWP_NOSIZE -bor $SWP_NOACTIVATE)
+    }
+    Write-Host "  pinned topmost -- nothing can cover it, so the panel cannot freeze" -ForegroundColor Green
 }
 
 Write-Host ""

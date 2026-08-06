@@ -80,6 +80,24 @@ static void L(const wchar_t* fmt, ...)
     fflush(stderr);
 }
 
+/* Report a retry failure, rate-limited, with a running count.
+ *
+ * Every failure path here used to `goto again` in silence, so a bridge that
+ * could never start looked exactly like one working quietly: the process alive,
+ * the log holding only its startup lines. That is the same trap the capture
+ * agent fell into -- a permanent failure indistinguishable from health -- and it
+ * is worth an extra line of log to never repeat it.
+ *
+ * Rate-limited to one line per ~10 attempts so a long outage does not fill the
+ * log, while still proving something is wrong. */
+static void retry_note(const wchar_t* what, HRESULT hr, int* attempt)
+{
+    if ((*attempt % 10) == 0)
+        L(L"%ls failed (hr=0x%08lX) -- retry %d; will keep trying",
+          what, (unsigned long)hr, *attempt);
+    (*attempt)++;
+}
+
 static int wcontains_ci(const wchar_t* hay, const wchar_t* needle)
 {
     if (!hay || !needle || !*needle) return 0;
@@ -157,21 +175,29 @@ static int run_capture(const char* seat)
     hdr->rate = HYDRA_AUD_RATE; hdr->channels = HYDRA_AUD_CHANNELS;
     hdr->ringFrames = HYDRA_AUD_FRAMES;
 
+    int attempt = 0;
     while (g_run) {
         IMMDeviceEnumerator* en = NULL; IMMDevice* dev = NULL;
         IAudioClient* cli = NULL; IAudioCaptureClient* cap = NULL;
         WAVEFORMATEX* fmt = NULL;
+        HRESULT hr;
 
-        if (FAILED(CoCreateInstance(&HG_CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL,
-                                    &HG_IID_IMMDeviceEnumerator, (void**)&en))) goto again;
+        hr = CoCreateInstance(&HG_CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL,
+                              &HG_IID_IMMDeviceEnumerator, (void**)&en);
+        if (FAILED(hr)) { retry_note(L"MMDeviceEnumerator", hr, &attempt); goto again; }
 
         /* The session's default endpoint. Inside an RDP session that is
          * "Remote Audio" -- virtual, so loopback-recording it cannot feed back. */
-        if (FAILED(IMMDeviceEnumerator_GetDefaultAudioEndpoint(en, eRender, eConsole, &dev)))
+        hr = IMMDeviceEnumerator_GetDefaultAudioEndpoint(en, eRender, eConsole, &dev);
+        if (FAILED(hr)) {
+            retry_note(L"no default render endpoint in this session "
+                       L"(is the RDP session connected?)", hr, &attempt);
             goto again;
-        if (FAILED(IMMDevice_Activate(dev, &HG_IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&cli)))
-            goto again;
-        if (FAILED(IAudioClient_GetMixFormat(cli, &fmt))) goto again;
+        }
+        hr = IMMDevice_Activate(dev, &HG_IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&cli);
+        if (FAILED(hr)) { retry_note(L"endpoint Activate", hr, &attempt); goto again; }
+        hr = IAudioClient_GetMixFormat(cli, &fmt);
+        if (FAILED(hr)) { retry_note(L"GetMixFormat", hr, &attempt); goto again; }
 
         /* Take whatever rate the session's endpoint runs at and record it in the
          * ring header; the renderer resamples. Insisting on a fixed rate was
@@ -184,13 +210,16 @@ static int run_capture(const char* seat)
         }
         hdr->rate = fmt->nSamplesPerSec;
 
-        if (FAILED(IAudioClient_Initialize(cli, AUDCLNT_SHAREMODE_SHARED,
-                                           AUDCLNT_STREAMFLAGS_LOOPBACK,
-                                           2000000, 0, fmt, NULL))) goto again;
-        if (FAILED(IAudioClient_GetService(cli, &HG_IID_IAudioCaptureClient, (void**)&cap)))
-            goto again;
-        if (FAILED(IAudioClient_Start(cli))) goto again;
+        hr = IAudioClient_Initialize(cli, AUDCLNT_SHAREMODE_SHARED,
+                                     AUDCLNT_STREAMFLAGS_LOOPBACK,
+                                     2000000, 0, fmt, NULL);
+        if (FAILED(hr)) { retry_note(L"loopback Initialize", hr, &attempt); goto again; }
+        hr = IAudioClient_GetService(cli, &HG_IID_IAudioCaptureClient, (void**)&cap);
+        if (FAILED(hr)) { retry_note(L"GetService(capture)", hr, &attempt); goto again; }
+        hr = IAudioClient_Start(cli);
+        if (FAILED(hr)) { retry_note(L"capture Start", hr, &attempt); goto again; }
 
+        attempt = 0;      /* recovered */
         hdr->running = 1;
         L(L"capturing session mix: %luHz/%uch", fmt->nSamplesPerSec, fmt->nChannels);
 
@@ -254,19 +283,30 @@ static int run_render(const char* seat, const wchar_t* epMatch)
     double  readPos = 0.0;
     int     primed  = 0;
 
+    int attempt = 0;
     while (g_run) {
         IMMDeviceEnumerator* en = NULL; IMMDevice* dev = NULL;
         IAudioClient* cli = NULL; IAudioRenderClient* ren = NULL;
         WAVEFORMATEX* fmt = NULL;
         UINT32 bufFrames = 0;
+        HRESULT hr;
 
-        if (FAILED(CoCreateInstance(&HG_CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL,
-                                    &HG_IID_IMMDeviceEnumerator, (void**)&en))) goto again;
+        hr = CoCreateInstance(&HG_CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL,
+                              &HG_IID_IMMDeviceEnumerator, (void**)&en);
+        if (FAILED(hr)) { retry_note(L"MMDeviceEnumerator", hr, &attempt); goto again; }
+
         dev = find_render_ep(en, epMatch);
-        if (!dev) { L(L"no endpoint matching \"%ls\"", epMatch ? epMatch : L"(default)"); goto again; }
-        if (FAILED(IMMDevice_Activate(dev, &HG_IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&cli)))
+        if (!dev) {
+            if ((attempt % 10) == 0)
+                L(L"no render endpoint matching \"%ls\" -- retry %d. Check the id with: "
+                  L"route_endpoint.exe --list", epMatch ? epMatch : L"(default)", attempt);
+            attempt++;
             goto again;
-        if (FAILED(IAudioClient_GetMixFormat(cli, &fmt))) goto again;
+        }
+        hr = IMMDevice_Activate(dev, &HG_IID_IAudioClient, CLSCTX_ALL, NULL, (void**)&cli);
+        if (FAILED(hr)) { retry_note(L"endpoint Activate", hr, &attempt); goto again; }
+        hr = IAudioClient_GetMixFormat(cli, &fmt);
+        if (FAILED(hr)) { retry_note(L"GetMixFormat", hr, &attempt); goto again; }
 
         /* Any rate is fine -- we resample. Stereo is required. */
         if (fmt->nChannels != HYDRA_AUD_CHANNELS) {
@@ -275,13 +315,16 @@ static int run_render(const char* seat, const wchar_t* epMatch)
         }
 
         /* Small buffer: this is the latency we are trying to keep down. */
-        if (FAILED(IAudioClient_Initialize(cli, AUDCLNT_SHAREMODE_SHARED, 0,
-                                           (REFERENCE_TIME)HYDRA_AUD_TARGET_MS * 10000 * 2,
-                                           0, fmt, NULL))) goto again;
-        if (FAILED(IAudioClient_GetService(cli, &HG_IID_IAudioRenderClient, (void**)&ren)))
-            goto again;
+        hr = IAudioClient_Initialize(cli, AUDCLNT_SHAREMODE_SHARED, 0,
+                                     (REFERENCE_TIME)HYDRA_AUD_TARGET_MS * 10000 * 2,
+                                     0, fmt, NULL);
+        if (FAILED(hr)) { retry_note(L"render Initialize", hr, &attempt); goto again; }
+        hr = IAudioClient_GetService(cli, &HG_IID_IAudioRenderClient, (void**)&ren);
+        if (FAILED(hr)) { retry_note(L"GetService(render)", hr, &attempt); goto again; }
         IAudioClient_GetBufferSize(cli, &bufFrames);
-        if (FAILED(IAudioClient_Start(cli))) goto again;
+        hr = IAudioClient_Start(cli);
+        if (FAILED(hr)) { retry_note(L"render Start", hr, &attempt); goto again; }
+        attempt = 0;      /* recovered */
 
         L(L"rendering: ring %uHz -> endpoint %luHz/%uch, %u-frame buffer, %ums behind",
           hdr->rate ? hdr->rate : HYDRA_AUD_RATE,
@@ -291,6 +334,18 @@ static int run_render(const char* seat, const wchar_t* epMatch)
         while (g_run) {
             uint64_t w = hdr->writePos;
             MemoryBarrier();
+
+            /* The producer flags itself; without it there is nothing to play and
+             * "no sound" would otherwise be indistinguishable from silence. */
+            {
+                static DWORD lastWarn = 0;
+                DWORD nowMs = GetTickCount();
+                if (!hdr->running && (nowMs - lastWarn) > 15000) {
+                    lastWarn = nowMs;
+                    L(L"capture side is not running -- no audio to play "
+                      L"(is abcap:<seat> up in the seat's session?)");
+                }
+            }
 
             uint32_t srcRate = hdr->rate ? hdr->rate : HYDRA_AUD_RATE;
             /* Source frames consumed per output frame. 44100/48000 = 0.91875 --

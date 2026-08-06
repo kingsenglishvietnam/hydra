@@ -249,6 +249,41 @@ static void release_all_modifiers(void)
     for (auto& m : mods) send_key(m.scan, true, m.ext);
 }
 
+/* Borderless fullscreen toggle for the view window.
+ *
+ * "Maximized" still leaves a title bar and the taskbar. Borderless means the
+ * seat's frame fills the whole monitor -- and because this is our own window
+ * with the frame simply removed, rather than an exclusive-mode fullscreen, it
+ * still Alt-Tabs normally. mstsc's fullscreen traps input; this does not.
+ *
+ * Remembers the previous placement so the toggle is reversible. */
+static bool       g_viewFull = false;
+static WINDOWPLACEMENT g_viewPrev = { sizeof(WINDOWPLACEMENT) };
+
+static void toggle_view_fullscreen(HWND h)
+{
+    LONG_PTR style = GetWindowLongPtrW(h, GWL_STYLE);
+    if (!g_viewFull) {
+        GetWindowPlacement(h, &g_viewPrev);
+        MONITORINFO mi{ sizeof(mi) };
+        if (!GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mi)) return;
+        SetWindowLongPtrW(h, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
+        SetWindowPos(h, HWND_TOP,
+                     mi.rcMonitor.left, mi.rcMonitor.top,
+                     mi.rcMonitor.right  - mi.rcMonitor.left,
+                     mi.rcMonitor.bottom - mi.rcMonitor.top,
+                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        g_viewFull = true;
+    } else {
+        SetWindowLongPtrW(h, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
+        SetWindowPlacement(h, &g_viewPrev);
+        SetWindowPos(h, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        g_viewFull = false;
+    }
+}
+
 /* Window proc for the VIEW window only -- the panel window keeps the plain one,
  * since it is click-through and must never take input. */
 static LRESULT CALLBACK view_proc(HWND h, UINT m, WPARAM wp, LPARAM lp)
@@ -278,9 +313,16 @@ static LRESULT CALLBACK view_proc(HWND h, UINT m, WPARAM wp, LPARAM lp)
         return 0;
     }
 
+    /* F11 toggles borderless fullscreen locally -- NOT forwarded to the seat,
+     * since it is our own view control rather than something the seat should
+     * see. Everything else goes through. */
+    case WM_KEYDOWN:
+        if (wp == VK_F11) { toggle_view_fullscreen(h); return 0; }
+        [[fallthrough]];
+
     /* Scan codes, not virtual keys: the agent injects with KEYEVENTF_SCANCODE,
      * so the seat's own keyboard layout applies rather than ours. */
-    case WM_KEYDOWN: case WM_SYSKEYDOWN:
+    case WM_SYSKEYDOWN:
         send_key((unsigned short)((lp >> 16) & 0xFF), false, (lp & (1 << 24)) != 0);
         return 0;
     case WM_KEYUP: case WM_SYSKEYUP:
@@ -327,10 +369,12 @@ static HWND make_view_window(int w, int h)
         0, wc.lpszClassName, L"Hydra - seat view", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
         nullptr, nullptr, wc.hInstance, nullptr);
-    /* Start maximized. Unlike mstsc -- which ignores both SW_MAXIMIZE and
-     * SC_MAXIMIZE because its window is capped at session size -- this is our
-     * own window, and the frame is scaled to whatever size it ends up. */
-    ShowWindow(hwnd, SW_MAXIMIZE);
+    /* Open BORDERLESS FULLSCREEN, not merely maximized: maximized still leaves a
+     * title bar and the taskbar. This is our own window with the frame removed,
+     * so unlike mstsc's fullscreen it does not trap input and Alt-Tab works
+     * normally. F11 toggles back. */
+    ShowWindow(hwnd, SW_SHOW);
+    toggle_view_fullscreen(hwnd);
     SetForegroundWindow(hwnd);
     return hwnd;
 }
@@ -648,6 +692,29 @@ static bool present_pixels(Gfx& g, const char* seat)
     }
 
     DWORD nowMs = GetTickCount();
+    /* STALL DETECTOR.
+     *
+     * A frozen panel is invisible from inside: every component is alive, frames
+     * are "presented", and nothing errors -- the picture simply stops changing.
+     * The give-away is the producer's sequence number standing still. Say so
+     * loudly, and name the usual cause, rather than leaving it silent. */
+    {
+        static uint64_t stallSeq = 0;
+        static DWORD    stallSince = 0;
+        static bool     reported = false;
+        if (g_pix.lastSeq != stallSeq) {
+            stallSeq = g_pix.lastSeq; stallSince = nowMs; reported = false;
+        } else if (!reported && stallSince && (nowMs - stallSince) > 20000) {
+            reported = true;
+            fwprintf(stderr, L"[mirror] PANEL FROZEN: no new frames for 20s "
+                             L"(seq stuck at %llu). The seat's desktop has stopped "
+                             L"being composed -- check the RDP client is on-screen, "
+                             L"not minimized and not on an inactive virtual desktop.\n",
+                     (unsigned long long)stallSeq);
+            fflush(stderr);
+        }
+    }
+
     if (nowMs - lastLog >= 300000) {   /* 5 min heartbeat, not 4 s */
         lastLog = nowMs;
         fwprintf(stderr, L"[mirror] pixels: %ux%u seq=%llu presented=%llu\n",
@@ -746,6 +813,42 @@ int wmain(int argc, wchar_t** argv)
      * Shows the seat in a normal resizable window on this screen instead of
      * taking over a panel. Resize it freely -- the seat's 1920x1080 frame is
      * scaled to fit, which is the thing mstsc refuses to do. */
+    /* PROBE MODE:  mirror.exe <seat> --probe [seconds]
+     *
+     * Opens the pixel transport, samples the producer's sequence number, and
+     * reports how many frames arrived. Nothing is displayed.
+     *
+     * Exists because "is the panel frozen?" was being judged by staring at a
+     * monitor for minutes at a time, which is slow and unreliable -- and the
+     * question came up for every candidate client-window size. This turns it
+     * into a number.
+     *
+     * NOTE: the seat's desktop must have something CHANGING on it (a clock, a
+     * blinking caret, a video). Desktop Duplication publishes on change, so a
+     * genuinely idle desktop legitimately produces almost no frames and would
+     * read as frozen. */
+    if (_wcsicmp(dev, L"--probe") == 0) {
+        int secs = 10;
+        if (argc >= 4) { int v = _wtoi(argv[3]); if (v > 0 && v < 3600) secs = v; }
+
+        if (!g_pix.open(seat)) {
+            fwprintf(stderr, L"[probe] no pixel transport for seat %s -- is capture running?\n", seatW);
+            return 2;
+        }
+        uint64_t a = g_pix.hdr->seq;
+        fwprintf(stderr, L"[probe] seat %s: sampling %d s (seq starts at %llu)\n",
+                 seatW, secs, (unsigned long long)a);
+        fflush(stderr);
+        Sleep((DWORD)secs * 1000);
+        uint64_t b = g_pix.hdr->seq;
+        double fps = (double)(b - a) / (double)secs;
+        fwprintf(stderr, L"[probe] seat %s: %llu frames in %d s (%.1f fps) -- %ls\n",
+                 seatW, (unsigned long long)(b - a), secs, fps,
+                 (b - a) < 3 ? L"FROZEN" : L"alive");
+        fflush(stderr);
+        return ((b - a) < 3) ? 1 : 0;    /* exit code: 0 alive, 1 frozen */
+    }
+
     bool viewMode = (_wcsicmp(dev, L"--window") == 0);
     int  viewW = 1280, viewH = 720;
     for (int i = 3; viewMode && i < argc; ++i) {

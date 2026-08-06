@@ -907,6 +907,35 @@ static bool load_and_apply()
 /* ===================================================================== *
  * Control pipe server (hydractl talks to this)
  * ===================================================================== */
+/* "capture:B" -> "B" */
+static std::string narrow_tag_seat(const std::wstring& tag)
+{
+    size_t c = tag.find(L':');
+    std::string out;
+    if (c != std::wstring::npos)
+        for (size_t i = c + 1; i < tag.size(); ++i) out += (char)tag[i];
+    return out;
+}
+
+/* Read the stall counter the capture agent publishes into shared metadata.
+ * Opens read-only each call -- this runs once per status request, not in a loop,
+ * and holding a mapping open would outlive the agent it describes. */
+static uint32_t read_capture_stall(const std::string& seat)
+{
+    if (seat.empty()) return 0;
+    wchar_t name[128];
+    hydra_meta_name(name, 128, seat.c_str());
+    HANDLE m = OpenFileMappingW(FILE_MAP_READ, FALSE, name);
+    if (!m) return 0;
+    uint32_t v = 0;
+    if (void* p = MapViewOfFile(m, FILE_MAP_READ, 0, 0, sizeof(HydraSeatMeta))) {
+        v = ((const HydraSeatMeta*)p)->stalled;
+        UnmapViewOfFile(p);
+    }
+    CloseHandle(m);
+    return v;
+}
+
 static std::wstring cmd_status()
 {
     std::lock_guard<std::mutex> lk(g_planMx);
@@ -923,6 +952,19 @@ static std::wstring cmd_status()
         s += L"    " + p.tag + L": " + st;
         if (p.h && p.startedAt) s += L" (up " + std::to_wstring((now - p.startedAt) / 1000) + L"s)";
         if (!p.h && !p.dead)    s += L" (session " + widen(p.sessionSpec) + L")";
+
+        /* A capture agent can be RUNNING and yet producing nothing: attached to
+         * the seat's desktop, but EnumOutputs returns no display, so it retries
+         * forever. That state used to be invisible here -- "running" with a quiet
+         * log -- and cost an evening of debugging the wrong layer. Read the flag
+         * the agent publishes and say so plainly. */
+        if (p.h && p.tag.rfind(L"capture:", 0) == 0) {
+            std::string seatName = narrow_tag_seat(p.tag);
+            uint32_t stalled = read_capture_stall(seatName);
+            if (stalled)
+                s += L"  *** STALLED: no display in session (retry "
+                   + std::to_wstring(stalled) + L") -- reconnect the seat's RDP session";
+        }
         s += L"\r\n";
     }
     return s;

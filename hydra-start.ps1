@@ -26,6 +26,45 @@ param(
     [string]$Seat    = 'B',
     [string]$Monitor = '\\.\DISPLAY2',
     [string]$RdpFile = "$PSScriptRoot\teacher.rdp",
+
+    # Which RDP client holds the seat's session open.
+    #
+    #   "mstsc"   Microsoft's client. Works, but SUPPRESSES OUTPUT when it is not
+    #             visible -- minimized, covered, or on an inactive virtual
+    #             desktop. The seat's desktop then stops being composed, Desktop
+    #             Duplication sees nothing, and the panel freezes on its last
+    #             frame while every process still looks healthy. That is a client
+    #             decision we cannot influence.
+    #   "freerdp" SDL-FreeRDP. Open source, so if it does not suppress output the
+    #             freeze disappears as a category rather than as a bug.
+    [ValidateSet('mstsc','freerdp')]
+    [string]$Client = 'mstsc',
+    [string]$FreeRdpPath = 'C:\msys64\mingw64\bin\sdl-freerdp.exe',
+    [string]$FreeRdpUser = 'teacher',
+    [string]$FreeRdpSize = '1920x1080',
+    # Extra FreeRDP options, passed straight through. Useful ones:
+    #   +smart-sizing        scale the session to the window (resizable, stretched)
+    #   /smart-sizing:WxH    scale to a specific size
+    #   +dynamic-resolution  resize the SESSION to match the window instead
+    #                        (crisper, but capture cost follows the window size)
+    #   /f                   fullscreen on one monitor
+    #   /monitors:N          pick which monitor -- known to be awkward
+    #   /gdi:hw              hardware rendering
+    # e.g.  .\hydra-start.ps1 -Client freerdp -FreeRdpArgs '+smart-sizing','/gdi:hw'
+    [string[]]$FreeRdpArgs = @(),
+
+    # How the client window is placed:
+    #   "thumbnail" (default) 320x200, TOPMOST, top-right corner. It cannot be
+    #               covered, so the panel cannot freeze, and mirror's view window
+    #               can be maximized underneath it.
+    #   "maximized" fill the screen in a normal frame you can Alt-Tab out of.
+    #               Pair with -FreeRdpArgs '+smart-sizing' so the session scales
+    #               to the window. WARNING: whatever you Alt-Tab to will COVER
+    #               it, and a covered client stops requesting updates -- the
+    #               seat's desktop stops being composed and the panel freezes.
+    #   "none"      leave the window exactly where the client puts it.
+    [ValidateSet('thumbnail','maximized','none')]
+    [string]$ClientWindow = 'thumbnail',
     [string]$TeacherUser = 'teacher',
     [int]$TimeoutSec = 90
 )
@@ -85,9 +124,24 @@ if (Test-Path $audioPin) {
 # in before anything else is worth starting. Launch the client if it isn't
 # already up. NOTE: this can only log in unattended if the .rdp has saved
 # credentials -- otherwise mstsc shows its prompt and waits for you.
-$mstsc = Get-Process mstsc -ErrorAction SilentlyContinue
+$clientProc = if ($Client -eq 'freerdp') { 'sdl-freerdp' } else { 'mstsc' }
+$mstsc = Get-Process $clientProc -ErrorAction SilentlyContinue
 if (-not $mstsc) {
-    if (Test-Path $RdpFile) {
+    if ($Client -eq 'freerdp') {
+        if (-not (Test-Path $FreeRdpPath)) {
+            Say "FreeRDP not found at $FreeRdpPath" 'Red'
+            Say "  winget install MSYS2.MSYS2" 'Yellow'
+            Say "  then in MSYS2 MINGW64:  pacman -S mingw-w64-x86_64-freerdp" 'Yellow'
+            return
+        }
+        Say "launching FreeRDP: $FreeRdpPath"
+        # No /p: on the command line -- it would be readable by every process on
+        # the machine. FreeRDP prompts for the password instead.
+        $fa = @("/v:127.0.0.2", "/u:$FreeRdpUser", "/size:$FreeRdpSize",
+                "/cert:ignore", "/sound", "+auto-reconnect") + $FreeRdpArgs
+        Say "  args: $($fa -join ' ')" 'DarkGray'
+        Start-Process $FreeRdpPath -ArgumentList $fa
+    } elseif (Test-Path $RdpFile) {
         Say "launching RDP client: $RdpFile"
         Start-Process mstsc.exe -ArgumentList "`"$RdpFile`""
 
@@ -113,7 +167,7 @@ if (-not $mstsc) {
 
         $deadlineFg = (Get-Date).AddSeconds(20)
         while ((Get-Date) -lt $deadlineFg) {
-            $mw = Get-Process mstsc -ErrorAction SilentlyContinue |
+            $mw = Get-Process $clientProc -ErrorAction SilentlyContinue |
                   Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
             if ($mw) {
                 try {
@@ -270,7 +324,32 @@ if (Test-Path $minify) {
     # WM_SYSCOMMAND/SC_MAXIMIZE return success and do nothing), and its saved
     # winposstr is overridden by this call anyway, so sizing it explicitly is the
     # only thing that actually decides where the window ends up.
-    try { & $minify -Fill -Margin 0 | Out-Null } catch { Say "  minify failed: $_" 'Yellow' }
+    # SMALL AND TOPMOST, whichever client it is.
+    #
+    # The client only has to hold the session open -- you interact through
+    # mirror's view window. But it must never be COVERED: a covered client stops
+    # requesting updates, the seat's desktop stops being composed, and the panel
+    # freezes. Windows still reports such a window as visible, so nothing detects
+    # it. Measured with both mstsc and SDL-FreeRDP.
+    #
+    # Topmost thumbnail solves it: it cannot be covered, so the view window can
+    # be maximized underneath without freezing anything.
+    # A FULLSCREEN client needs no placement -- it cannot be covered, so the
+    # freeze cannot occur, and moving it would only fight the client. Detect it
+    # and leave well alone.
+    $fullscreen = @($FreeRdpArgs) -contains '/f' -or @($FreeRdpArgs) -contains '+f'
+    if ($fullscreen -or $ClientWindow -eq 'none') {
+        Say "  (client placement skipped)" 'DarkGray'
+    } elseif ($ClientWindow -eq 'maximized') {
+        try { & $minify -Process $clientProc -Fill -Margin 0 | Out-Null }
+        catch { Say "  window placement failed: $_" 'Yellow' }
+        Say "  client is maximized but COVERABLE -- if you Alt-Tab over it the" 'Yellow'
+        Say "  panel will freeze. Use -ClientWindow thumbnail to avoid that." 'Yellow'
+    } else {
+        try {
+            & $minify -Process $clientProc -TopMost -Width 320 -Height 200 -Corner TopRight | Out-Null
+        } catch { Say "  window placement failed: $_" 'Yellow' }
+    }
 } else {
     Say "minify-mstsc.ps1 not found; leaving the RDP window as-is" 'Yellow'
 }
@@ -278,7 +357,7 @@ if (Test-Path $minify) {
 if ($Desktop -gt 0) {
     try {
         Import-Module VirtualDesktop -ErrorAction Stop
-        $mp = Get-Process mstsc -ErrorAction SilentlyContinue |
+        $mp = Get-Process $clientProc -ErrorAction SilentlyContinue |
               Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
         if ($mp) {
             Pin-Window -Hwnd $mp.MainWindowHandle | Out-Null

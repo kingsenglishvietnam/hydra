@@ -132,10 +132,17 @@ struct SharedTarget {
         meta->luidHigh  = (int32_t)luid.HighPart;
         meta->frame     = 0;
         meta->generation= meta->generation + 1;  /* force mirror to (re)open */
-        meta->_pad      = 0;
+        meta->stalled   = 0;   /* we have a display again */
         MemoryBarrier();
         meta->ready     = 1;
         return true;
+    }
+
+    /* Publish "attached but no display" so hydractl can report it. Safe to call
+     * before the surface exists -- the metadata section is created by hydrad. */
+    void mark_stalled(uint32_t retries)
+    {
+        if (meta) meta->stalled = retries;
     }
 
     void publish() {                 /* bump frame counter (consumer dedups) */
@@ -470,6 +477,19 @@ static bool acquire_rig(CaptureRig& r, const char* seat, UINT outIndex, bool ver
      * so re-attach every time rather than only at startup. */
     attach_input_desktop(seat);
 
+    /* Record which session we are actually in. If the seat's RDP session is
+     * reconnected, hydrad launches a NEW agent for the new session -- but an old
+     * agent can linger against the dead one, attaching to a desktop that will
+     * never have a display again. Logging the id makes that visible instead of
+     * looking like an unexplained permanent stall. */
+    if (verbose) {
+        DWORD sid = 0xFFFFFFFF;
+        ProcessIdToSessionId(GetCurrentProcessId(), &sid);
+        char sb[96];
+        snprintf(sb, sizeof(sb), "acquiring in session %lu", sid);
+        logline(seat, sb);
+    }
+
     HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&r.factory));
     if (FAILED(hr)) { if (verbose) logline(seat, "CreateDXGIFactory1 failed", hr); return false; }
 
@@ -483,9 +503,35 @@ static bool acquire_rig(CaptureRig& r, const char* seat, UINT outIndex, bool ver
     if (FAILED(hr)) { if (verbose) logline(seat, "D3D11CreateDevice failed", hr); return false; }
     if (FAILED(r.dev.As(&r.dev1))) { if (verbose) logline(seat, "ID3D11Device1 QI failed", E_NOINTERFACE); return false; }
 
+    /* Diagnostic: how many outputs does the adapter report at all?
+     *
+     * "No display in session" has several possible causes and they need
+     * different fixes:
+     *   0 outputs        -- the session has no display object. The RDP client
+     *                       stopped presenting one, or the session was
+     *                       reconnected under a different display topology.
+     *   >0 but ours gone -- the display list changed and outIndex now points
+     *                       past the end, e.g. a resolution or monitor change.
+     * Logging the count distinguishes them, and previously we could not tell. */
+    UINT nOut = 0;
+    for (;; ++nOut) {
+        ComPtr<IDXGIOutput> probe;
+        if (FAILED(r.adapter->EnumOutputs(nOut, &probe))) break;
+        if (nOut > 16) break;
+    }
+
     ComPtr<IDXGIOutput> output;
     hr = r.adapter->EnumOutputs(outIndex, &output);
     if (FAILED(hr)) {
+        if (verbose) {
+            char ob[160];
+            snprintf(ob, sizeof(ob),
+                     "adapter reports %u output(s); wanted index %u -- %s",
+                     nOut, outIndex,
+                     nOut == 0 ? "the SESSION HAS NO DISPLAY at all"
+                               : "the display list changed under us");
+            logline(seat, ob);
+        }
         /* 0x887A0002 here = no display in the session. Almost always "RDP is
          * disconnected"; we simply wait for it to come back. */
         if (verbose) logline(seat, "no display in session yet (RDP disconnected?)", hr);
@@ -522,6 +568,7 @@ int main(int argc, char** argv) {
     /* Cursor diagnostics: prove whether DDA is actually handing us pointer data
      * before blaming the blend code. */
     UINT64 shapeUpdates = 0, posUpdates = 0, composites = 0, frames = 0, timeouts = 0;
+    UINT   timeoutRun = 0;    /* consecutive timeouts; a long run means a frozen panel */
     DWORD  lastCurLog = 0;
     bool  haveTarget = false;
     int   downCycles = 0;       /* consecutive failed acquires (for quiet logging) */
@@ -536,15 +583,34 @@ int main(int argc, char** argv) {
             /* Log the first failure of a run, then go quiet so a long disconnect
              * doesn't fill the log with one line per second; log again on the
              * ~60s mark so there's a heartbeat. */
-            bool verbose = (downCycles == 0) || (downCycles % 60 == 0);
+            /* SAY SO, REPEATEDLY.
+             *
+             * This used to log once and then retry in silence. A PERMANENT
+             * failure therefore looked exactly like a healthy quiet log: the
+             * process was alive, hydractl said "running", and the last lines
+             * were the reassuring "attached to interactive input desktop" --
+             * while EnumOutputs had been returning no display for hours. That
+             * cost most of an evening chasing window sizes for a problem that
+             * was upstream of any window.
+             *
+             * Now it reports every 10 s with a running count, and publishes the
+             * stall to the shared metadata so hydractl can show it. */
+            bool verbose = (downCycles % 10 == 0);
             if (!acquire_rig(rig, seat, outIndex, verbose)) {
-                if (downCycles == 0)
-                    logline(seat, "waiting for a display in this session; will retry until it returns");
+                char sb[200];
+                snprintf(sb, sizeof(sb),
+                         "NO DISPLAY IN SESSION -- attached to the desktop, but "
+                         "EnumOutputs returns nothing (retry %d, %ds). The session "
+                         "has lost its duplicatable output; only a full reconnect "
+                         "restores it.", downCycles, downCycles);
+                if (verbose) logline(seat, sb);
+                tgt.mark_stalled(downCycles);
                 ++downCycles;
                 Sleep(1000);
                 continue;
             }
             downCycles = 0;
+            tgt.mark_stalled(0);
 
             char buf[160];
             snprintf(buf, sizeof(buf),
@@ -571,7 +637,28 @@ int main(int argc, char** argv) {
         DXGI_OUTDUPL_FRAME_INFO fi{};
         HRESULT hr = rig.dupl->AcquireNextFrame(250, &fi, &deskRes);
 
-        if (hr == DXGI_ERROR_WAIT_TIMEOUT) { ++timeouts; continue; }  /* no change */
+        if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
+            /* Nothing changed on the desktop. Normal for a still screen -- but a
+             * LONG unbroken run of timeouts means the desktop has stopped being
+             * composed at all, which is what happens when the RDP client stops
+             * requesting updates (minimized, occluded, or on an inactive virtual
+             * desktop). The panel then holds its last frame forever while every
+             * process involved looks perfectly healthy.
+             *
+             * Rebuilding the duplication is cheap and sometimes recovers it; if
+             * the real cause is the client, this at least says so in the log
+             * instead of leaving a silent freeze. */
+            ++timeouts;
+            if (++timeoutRun >= 300) {          /* ~75 s at the 250 ms timeout */
+                timeoutRun = 0;
+                logline(seat, "no desktop updates for ~75s -- is the RDP client "
+                              "minimized, covered, or on another virtual desktop? "
+                              "rebuilding capture");
+                rig.reset();
+            }
+            continue;
+        }
+        timeoutRun = 0;
         if (SUCCEEDED(hr)) ++frames;
 
         if (hr == DXGI_ERROR_ACCESS_LOST) {

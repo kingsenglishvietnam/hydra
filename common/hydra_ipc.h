@@ -57,7 +57,16 @@ typedef struct HydraSeatMeta {
     int32_t  luidHigh;
     volatile uint64_t frame; /* increments each published frame; consumer dedups  */
     uint32_t generation;   /* increments each swapchain (re)assign; forces reopen */
-    uint32_t _pad;
+    /* Non-zero when the producer is attached to the seat's desktop but cannot
+     * get a duplicatable display out of it -- EnumOutputs returns nothing. The
+     * value is the retry count, so a consumer can distinguish "just started" from
+     * "stuck for ten minutes".
+     *
+     * Exists because a silent retry loop made a permanent failure look identical
+     * to a healthy idle one: the process alive, the log quiet and reassuring, and
+     * hydractl reporting "running". Publishing the stall makes it visible where
+     * anyone would actually look. */
+    volatile uint32_t stalled;
 } HydraSeatMeta;
 
 /* ---------------------------------------------------------------------------
