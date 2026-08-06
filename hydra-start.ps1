@@ -157,8 +157,19 @@ if (-not $mstsc) {
         Say "launching FreeRDP: $FreeRdpPath"
         # No /p: on the command line -- it would be readable by every process on
         # the machine. FreeRDP prompts for the password instead.
+        # NO /sound, deliberately.
+        #
+        # audio_bridge already carries the seat's audio over shared memory, which
+        # is what puts it in sync with the video. Letting the client redirect
+        # audio as well means the same sound plays TWICE, a few tens of ms apart
+        # -- an echo. With mstsc this was avoided by pinning mstsc.exe's output
+        # with audio-pin, but that pins mstsc by name and does not cover FreeRDP.
+        #
+        # Simpler to just not ask for audio: the client only needs to hold the
+        # session open. Add "/sound" via -FreeRdpArgs if you ever disable the
+        # bridge.
         $fa = @("/v:127.0.0.2", "/u:$FreeRdpUser", "/size:$FreeRdpSize",
-                "/cert:ignore", "/sound", "+auto-reconnect") + $FreeRdpArgs
+                "/cert:ignore", "+auto-reconnect") + $FreeRdpArgs
         Say "  args: $($fa -join ' ')" 'DarkGray'
         Start-Process $FreeRdpPath -ArgumentList $fa
     } elseif (Test-Path $RdpFile) {
