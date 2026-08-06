@@ -704,12 +704,20 @@ static bool present_pixels(Gfx& g, const char* seat)
         static bool     reported = false;
         if (g_pix.lastSeq != stallSeq) {
             stallSeq = g_pix.lastSeq; stallSince = nowMs; reported = false;
-        } else if (!reported && stallSince && (nowMs - stallSince) > 20000) {
+        } else if (!reported && stallSince && (nowMs - stallSince) > 120000) {
+            /* 2 MINUTES, not 20 seconds.
+             *
+             * Desktop Duplication publishes only on CHANGE, so an idle desktop
+             * legitimately produces no frames. At 20s this fired constantly on a
+             * perfectly healthy system -- every time nobody was touching the seat
+             * -- and those false alarms sent us chasing window sizes for hours.
+             * Two minutes of complete stillness is unusual enough to be worth
+             * saying, and the wording no longer asserts a cause it cannot know. */
             reported = true;
-            fwprintf(stderr, L"[mirror] PANEL FROZEN: no new frames for 20s "
-                             L"(seq stuck at %llu). The seat's desktop has stopped "
-                             L"being composed -- check the RDP client is on-screen, "
-                             L"not minimized and not on an inactive virtual desktop.\n",
+            fwprintf(stderr, L"[mirror] no new frames for 2 min (seq stuck at %llu). "
+                             L"Either the seat's desktop is genuinely idle -- which is "
+                             L"normal -- or it has stopped being composed. Check with: "
+                             L"mirror.exe <seat> --probe 15 <port>\n",
                      (unsigned long long)stallSeq);
             fflush(stderr);
         }
@@ -829,22 +837,73 @@ int wmain(int argc, wchar_t** argv)
      * read as frozen. */
     if (_wcsicmp(dev, L"--probe") == 0) {
         int secs = 10;
-        if (argc >= 4) { int v = _wtoi(argv[3]); if (v > 0 && v < 3600) secs = v; }
+        int port = 0;
+        for (int i = 3; i < argc; ++i) {
+            int v = _wtoi(argv[i]);
+            if (v > 0 && v < 3600 && secs == 10 && v < 1024) secs = v;
+            else if (v >= 1024 && v < 65536) port = v;
+        }
 
         if (!g_pix.open(seat)) {
             fwprintf(stderr, L"[probe] no pixel transport for seat %s -- is capture running?\n", seatW);
             return 2;
         }
+        /* GENERATE ACTIVITY, or the measurement is meaningless.
+         *
+         * Desktop Duplication publishes ONLY on change. A probe run while the
+         * seat's desktop happens to be idle therefore reports zero frames and
+         * looks exactly like a hard freeze -- which is precisely the false alarm
+         * this tool was built to eliminate. The giveaway was seq advancing
+         * BETWEEN probe runs while each run measured nothing.
+         *
+         * Given the router's inject port, nudge the seat's cursor once a second
+         * so there is guaranteed to be something to capture. Without a port we
+         * can only warn. */
+        if (port) {
+            WSADATA wsa{}; WSAStartup(MAKEWORD(2,2), &wsa);
+            /* +1000: the router's INJECT listener, not the agent port.
+             *
+             * The agent port is where seatB_agent connects TO the router, and
+             * that accept loop is "newest connection wins" -- connecting there
+             * DISPLACES the real agent and kills the seat's input. The view-mode
+             * path already added this thousand; the probe path did not, so a
+             * diagnostic tool was breaking the thing it was measuring. */
+            g_inPort = port + 1000;
+            input_connect();
+            if (g_inSock == INVALID_SOCKET)
+                fwprintf(stderr, L"[probe] could not reach the inject port %d -- "
+                                 L"measuring without generated activity\n", port);
+        } else {
+            fwprintf(stderr, L"[probe] no inject port given: this measures nothing if the "
+                             L"seat's desktop is IDLE. Pass the seat port (e.g. 56789) to "
+                             L"have the probe move the cursor itself.\n");
+        }
+
         uint64_t a = g_pix.hdr->seq;
         fwprintf(stderr, L"[probe] seat %s: sampling %d s (seq starts at %llu)\n",
                  seatW, secs, (unsigned long long)a);
         fflush(stderr);
-        Sleep((DWORD)secs * 1000);
+
+        for (int t = 0; t < secs; ++t) {
+            if (g_inSock != INVALID_SOCKET) {
+                /* Two positions, alternating -- a move to the SAME place would
+                 * change no pixels and defeat the point. */
+                WireEvent e{};
+                e.kind = 'M';
+                e.a    = WIRE_M_ABS;
+                e.dx   = (short)(unsigned short)((t & 1) ? 20000 : 40000);
+                e.dy   = (short)(unsigned short)((t & 1) ? 20000 : 40000);
+                wire_send(e);
+            }
+            Sleep(1000);
+        }
+
         uint64_t b = g_pix.hdr->seq;
         double fps = (double)(b - a) / (double)secs;
         fwprintf(stderr, L"[probe] seat %s: %llu frames in %d s (%.1f fps) -- %ls\n",
                  seatW, (unsigned long long)(b - a), secs, fps,
-                 (b - a) < 3 ? L"FROZEN" : L"alive");
+                 (b - a) < 3 ? (port ? L"FROZEN" : L"no frames (idle desktop, or frozen)")
+                             : L"alive");
         fflush(stderr);
         return ((b - a) < 3) ? 1 : 0;    /* exit code: 0 alive, 1 frozen */
     }

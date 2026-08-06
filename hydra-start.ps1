@@ -37,9 +37,23 @@ param(
     #             decision we cannot influence.
     #   "freerdp" SDL-FreeRDP. Open source, so if it does not suppress output the
     #             freeze disappears as a category rather than as a bug.
+    # FREERDP IS THE DEFAULT, and this is the fix for the panel freeze rather
+    # than a preference.
+    #
+    # Measured with a probe that generates its own activity (mirror --probe,
+    # which nudges the seat's cursor so an IDLE desktop is not mistaken for a
+    # frozen one): mstsc stops the seat's desktop being composed as soon as its
+    # window is minimized or covered -- it sends a Suppress Output PDU -- while
+    # SDL-FreeRDP keeps streaming in both cases. Everything built to work around
+    # that (topmost thumbnails, the client watchdog, the window-size hunt) exists
+    # only for mstsc.
+    #
+    # "mstsc" is kept as a fallback for machines without FreeRDP installed.
     [ValidateSet('mstsc','freerdp')]
-    [string]$Client = 'mstsc',
-    [string]$FreeRdpPath = 'C:\msys64\mingw64\bin\sdl-freerdp.exe',
+    [string]$Client = 'freerdp',
+    # Prefer the copy vendored into the tree (see vendor-freerdp.ps1); fall back
+    # to an MSYS2 install if that has not been done.
+    [string]$FreeRdpPath = '',
     [string]$FreeRdpUser = 'teacher',
     [string]$FreeRdpSize = '1920x1080',
     # Extra FreeRDP options, passed straight through. Useful ones:
@@ -128,7 +142,13 @@ $clientProc = if ($Client -eq 'freerdp') { 'sdl-freerdp' } else { 'mstsc' }
 $mstsc = Get-Process $clientProc -ErrorAction SilentlyContinue
 if (-not $mstsc) {
     if ($Client -eq 'freerdp') {
-        if (-not (Test-Path $FreeRdpPath)) {
+        if (-not $FreeRdpPath) {
+            foreach ($cand in @("$PSScriptRoot\dist\freerdp\sdl-freerdp.exe",
+                                'C:\msys64\mingw64\bin\sdl-freerdp.exe')) {
+                if (Test-Path $cand) { $FreeRdpPath = $cand; break }
+            }
+        }
+        if (-not $FreeRdpPath -or -not (Test-Path $FreeRdpPath)) {
             Say "FreeRDP not found at $FreeRdpPath" 'Red'
             Say "  winget install MSYS2.MSYS2" 'Yellow'
             Say "  then in MSYS2 MINGW64:  pacman -S mingw-w64-x86_64-freerdp" 'Yellow'
