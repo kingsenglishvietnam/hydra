@@ -65,6 +65,8 @@
 #include <freerdp/channels/channels.h>
 #include <freerdp/channels/rdpgfx.h>
 #include <freerdp/gdi/gfx.h>
+#include <freerdp/graphics.h>
+#include <freerdp/codec/color.h>
 #include <freerdp/settings.h>
 #include <winpr/synch.h>
 
@@ -89,6 +91,25 @@ typedef struct HydraContext {
     UINT32      dirtyX0, dirtyY0, dirtyX1, dirtyY1;
     BOOL        dirtyAny;
     BOOL        dirtyAll;
+
+    /* MILESTONE 3 -- the cursor.
+     *
+     * RDP does NOT bake the pointer into the framebuffer; it arrives as its own
+     * PDU. FreeRDP's default handling draws a software pointer into the GDI
+     * buffer and erases it around updates -- so sampling that buffer at
+     * arbitrary moments catches the cursor drawn perhaps half the time, which is
+     * exactly the "blinky cursor" symptom.
+     *
+     * Taking the pointer over means WE decide when it is drawn: never into
+     * FreeRDP's buffer, always into our copy, once, immediately before
+     * publishing. Same conclusion session_capture reached for DDA, which also
+     * excludes the cursor -- different source, identical fix. */
+    BYTE*       curImg;        /* current pointer as BGRA, premultiplied      */
+    UINT32      curW, curH;
+    UINT32      curHotX, curHotY;
+    INT32       curX, curY;    /* position, in desktop pixels                 */
+    BOOL        curVisible;
+    CRITICAL_SECTION curLock;  /* pointer PDUs arrive off the paint thread    */
     DWORD       lastPublish;
     UINT32      lastW, lastH;
     DWORD       lastLog;
@@ -103,12 +124,60 @@ typedef struct HydraContext {
     BOOL              pixWarned;
 } HydraContext;
 
-/* Forward declaration: the paint callback publishes frames, and it sits above
- * the function that opens the ring. */
+/* Forward declarations: the paint callback both publishes frames and composites
+ * the cursor, and sits above both. */
 static BOOL hydra_open_pixels(HydraContext* h);
+static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht);
 
 static volatile BOOL g_run = TRUE;
-static BOOL WINAPI on_ctrl(DWORD t) { (void)t; g_run = FALSE; return TRUE; }
+
+/* DISCONNECT CLEANLY, WHATEVER HAPPENS.
+ *
+ * This is more important than any feature. Measured four times in one evening:
+ * when this client exits ABNORMALLY -- a crash, a killed process, an unhandled
+ * exception -- the RDP wrapper is left holding a session it cannot clean up, and
+ * every subsequent connection dies at ERRCONNECT_ACTIVATION_TIMEOUT. Only a
+ * reboot clears it.
+ *
+ * In a classroom that is the difference between "restart the client" and
+ * "restart the machine mid-lesson", so the client must tear its session down on
+ * every exit path there is: Ctrl+C, console close, logoff, shutdown, and an
+ * unhandled exception.
+ */
+static freerdp* g_inst = NULL;
+
+static void hydra_teardown(const char* why)
+{
+    freerdp* inst = (freerdp*)InterlockedExchangePointer((PVOID*)&g_inst, NULL);
+    if (!inst) return;                 /* someone else got there first */
+    fprintf(stderr, "[hydrardp] disconnecting cleanly (%s)\n", why);
+    fflush(stderr);
+    freerdp_disconnect(inst);
+}
+
+static LONG WINAPI hydra_crash_filter(EXCEPTION_POINTERS* ep)
+{
+    /* A crash that skips the disconnect costs a REBOOT, so pay the small risk of
+     * doing work in an exception filter to avoid it. */
+    fprintf(stderr, "[hydrardp] FATAL: exception 0x%08lX at %p\n",
+            (unsigned long)ep->ExceptionRecord->ExceptionCode,
+            ep->ExceptionRecord->ExceptionAddress);
+    fflush(stderr);
+    hydra_teardown("crash");
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+static BOOL WINAPI on_ctrl(DWORD t)
+{
+    g_run = FALSE;
+    /* CTRL_CLOSE/LOGOFF/SHUTDOWN give us only seconds and then kill us, so tear
+     * down here rather than trusting the main loop to notice in time. */
+    if (t == CTRL_CLOSE_EVENT || t == CTRL_LOGOFF_EVENT || t == CTRL_SHUTDOWN_EVENT) {
+        hydra_teardown("console closing");
+        Sleep(500);
+    }
+    return TRUE;
+}
 
 static void L(const char* fmt, ...)
 {
@@ -255,6 +324,11 @@ static BOOL hydra_end_paint(rdpContext* context)
                        (size_t)rw * 4);
             }
             h->copiedRows += rh;
+
+            /* Cursor last, inside the seqlock, over the whole frame rather than
+             * the damaged rect -- it moves independently of what was repainted,
+             * so restricting it to the damage region would leave it behind. */
+            hydra_composite_pointer(h, w, ht);
             MemoryBarrier();
             h->pixHdr->seq = h->pixHdr->seq + 1;      /* even: snapshot complete */
             h->published++;
@@ -283,6 +357,147 @@ static BOOL hydra_end_paint(rdpContext* context)
 }
 
 static BOOL hydra_begin_paint(rdpContext* context) { (void)context; return TRUE; }
+
+/* ---------------------------------------------------------------------------
+ * POINTER
+ *
+ * Registering our own rdpPointer callbacks replaces FreeRDP's default software
+ * pointer entirely: it stops drawing into the framebuffer, and we get the cursor
+ * images and positions as data instead.
+ * ------------------------------------------------------------------------- */
+typedef struct {
+    rdpPointer pointer;        /* MUST be first */
+    BYTE*      img;            /* BGRA */
+    UINT32     w, h, hotX, hotY;
+} HydraPointer;
+
+static BOOL hydra_pointer_new(rdpContext* context, rdpPointer* p)
+{
+    HydraPointer* hp = (HydraPointer*)p;
+    if (!p->width || !p->height) return TRUE;
+
+    size_t bytes = (size_t)p->width * p->height * 4;
+    hp->img = (BYTE*)calloc(1, bytes);
+    if (!hp->img) return FALSE;
+
+    /* Converts all three pointer encodings -- colour, masked-colour and
+     * monochrome -- into straight BGRA, so the compositing below does not have
+     * to care which arrived. session_capture had to handle those three formats
+     * by hand; here the library does it. */
+    if (!freerdp_image_copy_from_pointer_data(
+            hp->img, PIXEL_FORMAT_BGRA32, 0, 0, 0,
+            p->width, p->height,
+            p->xorMaskData, p->lengthXorMask,
+            p->andMaskData, p->lengthAndMask,
+            p->xorBpp, &context->gdi->palette))
+    {
+        free(hp->img); hp->img = NULL;
+        return FALSE;
+    }
+    hp->w = p->width; hp->h = p->height;
+    hp->hotX = p->xPos; hp->hotY = p->yPos;
+    return TRUE;
+}
+
+static void hydra_pointer_free(rdpContext* context, rdpPointer* p)
+{
+    (void)context;
+    HydraPointer* hp = (HydraPointer*)p;
+    free(hp->img);
+    hp->img = NULL;
+}
+
+static BOOL hydra_pointer_set(rdpContext* context, rdpPointer* p)
+{
+    HydraContext* h  = (HydraContext*)context;
+    HydraPointer* hp = (HydraPointer*)p;
+    EnterCriticalSection(&h->curLock);
+    free(h->curImg);
+    h->curImg = NULL;
+    if (hp->img && hp->w && hp->h) {
+        size_t bytes = (size_t)hp->w * hp->h * 4;
+        h->curImg = (BYTE*)malloc(bytes);
+        if (h->curImg) memcpy(h->curImg, hp->img, bytes);
+        h->curW = hp->w; h->curH = hp->h;
+        h->curHotX = hp->hotX; h->curHotY = hp->hotY;
+        h->curVisible = TRUE;
+    }
+    LeaveCriticalSection(&h->curLock);
+    return TRUE;
+}
+
+static BOOL hydra_pointer_set_null(rdpContext* context)
+{
+    HydraContext* h = (HydraContext*)context;
+    EnterCriticalSection(&h->curLock);
+    h->curVisible = FALSE;     /* app hid the cursor -- honour that */
+    LeaveCriticalSection(&h->curLock);
+    return TRUE;
+}
+
+static BOOL hydra_pointer_set_default(rdpContext* context)
+{
+    (void)context;
+    return TRUE;               /* keep whatever we last had */
+}
+
+static BOOL hydra_pointer_set_position(rdpContext* context, UINT32 x, UINT32 y)
+{
+    HydraContext* h = (HydraContext*)context;
+    EnterCriticalSection(&h->curLock);
+    h->curX = (INT32)x; h->curY = (INT32)y;
+    LeaveCriticalSection(&h->curLock);
+    return TRUE;
+}
+
+static void hydra_register_pointer(rdpContext* context)
+{
+    rdpPointer p;
+    memset(&p, 0, sizeof(p));
+    p.size        = sizeof(HydraPointer);
+    p.New         = hydra_pointer_new;
+    p.Free        = hydra_pointer_free;
+    p.Set         = hydra_pointer_set;
+    p.SetNull     = hydra_pointer_set_null;
+    p.SetDefault  = hydra_pointer_set_default;
+    p.SetPosition = hydra_pointer_set_position;
+    graphics_register_pointer(context->graphics, &p);
+}
+
+/* Alpha-blend the current pointer into the ring, clipped to the frame.
+ * Called immediately before the seqlock closes, so a reader never sees a frame
+ * with the cursor half-drawn. */
+static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
+{
+    EnterCriticalSection(&h->curLock);
+    if (!h->curVisible || !h->curImg || !h->curW || !h->curH) {
+        LeaveCriticalSection(&h->curLock);
+        return;
+    }
+
+    INT32 ox = h->curX - (INT32)h->curHotX;
+    INT32 oy = h->curY - (INT32)h->curHotY;
+
+    for (UINT32 cy = 0; cy < h->curH; ++cy) {
+        INT32 dy = oy + (INT32)cy;
+        if (dy < 0 || dy >= (INT32)ht) continue;
+        const BYTE* srow = h->curImg + (size_t)cy * h->curW * 4;
+        BYTE*       drow = h->pixData + (size_t)dy * w * 4;
+        for (UINT32 cx = 0; cx < h->curW; ++cx) {
+            INT32 dx = ox + (INT32)cx;
+            if (dx < 0 || dx >= (INT32)w) continue;
+            const BYTE* sp = srow + (size_t)cx * 4;
+            BYTE*       dp = drow + (size_t)dx * 4;
+            BYTE a = sp[3];
+            if (!a) continue;                       /* fully transparent */
+            if (a == 255) { memcpy(dp, sp, 4); continue; }
+            dp[0] = (BYTE)((sp[0] * a + dp[0] * (255 - a)) / 255);
+            dp[1] = (BYTE)((sp[1] * a + dp[1] * (255 - a)) / 255);
+            dp[2] = (BYTE)((sp[2] * a + dp[2] * (255 - a)) / 255);
+        }
+    }
+    LeaveCriticalSection(&h->curLock);
+}
 
 /* Wire the RDP8 graphics pipeline into GDI when its channel comes up.
  *
@@ -364,7 +579,8 @@ static BOOL hydra_post_connect(freerdp* instance)
     }
     instance->context->update->BeginPaint = hydra_begin_paint;
     instance->context->update->EndPaint   = hydra_end_paint;
-    L("connected; GDI ready");
+    hydra_register_pointer(instance->context);
+    L("connected; GDI ready (pointer handled by us, not drawn into the buffer)");
     return TRUE;
 }
 
@@ -461,6 +677,10 @@ int main(int argc, char** argv)
         return 2;
     }
     SetConsoleCtrlHandler(on_ctrl, TRUE);
+    /* The one that matters: a crash which skips the disconnect leaves the RDP
+     * wrapper holding a session it cannot clean up, and every later connection
+     * fails until the machine is REBOOTED. */
+    SetUnhandledExceptionFilter(hydra_crash_filter);
 
     const char* seat = argv[1];
     const char* user = argv[2];
@@ -493,9 +713,11 @@ int main(int argc, char** argv)
     rdpContext* ctx = freerdp_client_context_new(&ep);
     if (!ctx) { L("freerdp_client_context_new failed"); return 1; }
     freerdp* inst = ctx->instance;
+    g_inst = inst;                     /* teardown paths need it from here on */
 
     HydraContext* h = (HydraContext*)ctx;
     strncpy(h->seat, seat, sizeof(h->seat) - 1);
+    InitializeCriticalSection(&h->curLock);
 
     /* LET FREERDP PARSE ITS OWN COMMAND LINE.
      *
@@ -596,7 +818,7 @@ int main(int argc, char** argv)
       seat, (unsigned long long)h->paints, (unsigned long long)h->published);
     if (h->pixHdr) { UnmapViewOfFile(h->pixHdr); h->pixHdr = NULL; }
     if (h->pixMap) { CloseHandle(h->pixMap);     h->pixMap = NULL; }
-    freerdp_disconnect(inst);
+    hydra_teardown("normal exit");
     freerdp_client_context_free(ctx);
     return 0;
 }
