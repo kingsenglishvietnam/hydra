@@ -61,6 +61,10 @@
 #include <freerdp/gdi/gdi.h>
 #include <freerdp/client/cmdline.h>
 #include <freerdp/client.h>
+#include <freerdp/client/channels.h>
+#include <freerdp/channels/channels.h>
+#include <freerdp/channels/rdpgfx.h>
+#include <freerdp/gdi/gfx.h>
 #include <freerdp/settings.h>
 #include <winpr/synch.h>
 
@@ -77,6 +81,14 @@ typedef struct HydraContext {
     UINT64      paints;
     UINT64      published;
     UINT64      skipped;
+    UINT64      copiedRows;
+    /* Union of damaged rectangles since the last publish. Coalescing a paint
+     * must NOT discard where it changed, or those pixels are never copied and
+     * the ring keeps stale patches -- which looks like torn or smeared painting.
+     * dirtyAll forces a full copy when the region is unknown. */
+    UINT32      dirtyX0, dirtyY0, dirtyX1, dirtyY1;
+    BOOL        dirtyAny;
+    BOOL        dirtyAll;
     DWORD       lastPublish;
     UINT32      lastW, lastH;
     DWORD       lastLog;
@@ -124,6 +136,23 @@ static BOOL hydra_end_paint(rdpContext* context)
     rdpGdi* gdi = context->gdi;
     if (!gdi) return TRUE;
 
+    /* GUARD THE BUFFER.
+     *
+     * With the graphics pipeline attached, gdi->primary_buffer is not guaranteed
+     * to be present or stable the way it is on the plain bitmap path -- surfaces
+     * are managed by the gfx channel and can be reallocated or absent between
+     * frames. Copying from it unchecked crashed the process immediately after
+     * "graphics pipeline attached", with no error of its own: the exit looked
+     * like a clean stop rather than a fault. */
+    if (!gdi->primary_buffer || gdi->width <= 0 || gdi->height <= 0 || gdi->stride == 0) {
+        if (!h->pixWarned) {
+            h->pixWarned = TRUE;
+            L("no usable GDI buffer yet (buf=%p %dx%d stride=%u) -- waiting",
+              (void*)gdi->primary_buffer, gdi->width, gdi->height, gdi->stride);
+        }
+        return TRUE;
+    }
+
     h->paints++;
     if (gdi->width != (INT32)h->lastW || gdi->height != (INT32)h->lastH) {
         h->lastW = (UINT32)gdi->width;
@@ -135,6 +164,30 @@ static BOOL hydra_end_paint(rdpContext* context)
         L("desktop is %ux%u, format 0x%08X (%u bytes/px), stride %u",
           h->lastW, h->lastH, gdi->dstFormat,
           FreeRDPGetBytesPerPixel(gdi->dstFormat), gdi->stride);
+    }
+
+    /* Accumulate the damaged region on EVERY paint, published or not. */
+    {
+        HGDI_RGN inv = (gdi->primary && gdi->primary->hdc && gdi->primary->hdc->hwnd)
+                     ? gdi->primary->hdc->hwnd->invalid : NULL;
+        if (inv && !inv->null && inv->w > 0 && inv->h > 0) {
+            UINT32 x0 = (UINT32)(inv->x < 0 ? 0 : inv->x);
+            UINT32 y0 = (UINT32)(inv->y < 0 ? 0 : inv->y);
+            UINT32 x1 = x0 + (UINT32)inv->w;
+            UINT32 y1 = y0 + (UINT32)inv->h;
+            if (!h->dirtyAny) {
+                h->dirtyX0 = x0; h->dirtyY0 = y0;
+                h->dirtyX1 = x1; h->dirtyY1 = y1;
+                h->dirtyAny = TRUE;
+            } else {
+                if (x0 < h->dirtyX0) h->dirtyX0 = x0;
+                if (y0 < h->dirtyY0) h->dirtyY0 = y0;
+                if (x1 > h->dirtyX1) h->dirtyX1 = x1;
+                if (y1 > h->dirtyY1) h->dirtyY1 = y1;
+            }
+        } else {
+            h->dirtyAll = TRUE;      /* unknown region -- copy everything */
+        }
     }
 
     /* THROTTLE. EndPaint fires once per DAMAGED REGION, not once per frame --
@@ -162,17 +215,46 @@ static BOOL hydra_end_paint(rdpContext* context)
             h->pixHdr->height = ht;
             h->pixHdr->pitch  = w * 4;
 
-            /* Both sides are BGRA32 -- the client negotiated PIXEL_FORMAT_BGRA32
-             * and the ring is BGRA32 -- so this is a straight copy with no
-             * conversion. Row by row because the GDI buffer's stride need not
-             * equal width*4. */
+            /* COPY ONLY THE DAMAGED REGION.
+             *
+             * Copying the whole 1920x1080 frame is 8 MB per publish regardless
+             * of whether one pixel changed or all of them -- 480 MB/s at 60
+             * publishes a second, which is enough to be felt as lag on this
+             * machine. FreeRDP already tells us which rectangle changed.
+             *
+             * This is safe because the ring is PERSISTENT: readers copy the whole
+             * buffer every time, so untouched rows still hold the last good
+             * pixels. It is a delta into a full-frame buffer, not a partial
+             * frame.
+             *
+             * When the invalid region is missing or marked null we fall back to a
+             * full copy -- on a resize or a fresh surface there is no meaningful
+             * delta and the whole thing genuinely has changed. */
             const BYTE* src = gdi->primary_buffer;
             BYTE*       dst = h->pixData;
-            for (UINT32 y = 0; y < ht; ++y) {
-                memcpy(dst, src, (size_t)w * 4);
-                src += gdi->stride;
-                dst += (size_t)w * 4;
+
+            UINT32 rx = 0, ry = 0, rw = w, rh = ht;
+            if (h->dirtyAny && !h->dirtyAll) {
+                rx = h->dirtyX0; ry = h->dirtyY0;
+                rw = (h->dirtyX1 > rx) ? (h->dirtyX1 - rx) : 0;
+                rh = (h->dirtyY1 > ry) ? (h->dirtyY1 - ry) : 0;
+                if (rx >= w || ry >= ht || rw == 0 || rh == 0) {
+                    rx = ry = 0; rw = w; rh = ht;
+                } else {
+                    if (rx + rw > w)  rw = w  - rx;
+                    if (ry + rh > ht) rh = ht - ry;
+                }
             }
+            /* Consumed: start a fresh union for the next publish. */
+            h->dirtyAny = FALSE;
+            h->dirtyAll = FALSE;
+
+            for (UINT32 y = 0; y < rh; ++y) {
+                memcpy(dst + (size_t)(ry + y) * w * 4 + (size_t)rx * 4,
+                       src + (size_t)(ry + y) * gdi->stride + (size_t)rx * 4,
+                       (size_t)rw * 4);
+            }
+            h->copiedRows += rh;
             MemoryBarrier();
             h->pixHdr->seq = h->pixHdr->seq + 1;      /* even: snapshot complete */
             h->published++;
@@ -191,15 +273,46 @@ static BOOL hydra_end_paint(rdpContext* context)
 
     if (nowTick - h->lastLog >= 5000) {
         h->lastLog = nowTick;
-        L("seat %s: %llu paints, %llu published, %llu coalesced%s", h->seat,
+        L("seat %s: %llu paints, %llu published, %llu coalesced, %llu rows copied%s",
+          h->seat,
           (unsigned long long)h->paints, (unsigned long long)h->published,
-          (unsigned long long)h->skipped,
+          (unsigned long long)h->skipped, (unsigned long long)h->copiedRows,
           h->pixHdr ? "" : "  (no pixel ring -- is the Hydra service running?)");
     }
     return TRUE;
 }
 
 static BOOL hydra_begin_paint(rdpContext* context) { (void)context; return TRUE; }
+
+/* Wire the RDP8 graphics pipeline into GDI when its channel comes up.
+ *
+ * Without this the session falls back to plain bitmap updates -- no RemoteFX, no
+ * H.264 -- and video looks blocky and smeared, because every changed region is
+ * sent as raw or RLE-compressed bitmap rather than as a video codec. The flag
+ * alone is not enough: the gfx channel has to be handed to gdi_graphics_pipeline
+ * _init or the decoded output never reaches the framebuffer we publish from.
+ *
+ * Every stock client does this in its channel-connected handler; it is not
+ * optional plumbing. */
+static void hydra_on_channel_connected(void* context, const ChannelConnectedEventArgs* e)
+{
+    rdpContext* ctx = (rdpContext*)context;
+    if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0) {
+        gdi_graphics_pipeline_init(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
+        L("graphics pipeline attached -- video should decode properly now");
+    } else {
+        freerdp_client_OnChannelConnectedEventHandler(context, e);
+    }
+}
+
+static void hydra_on_channel_disconnected(void* context, const ChannelDisconnectedEventArgs* e)
+{
+    rdpContext* ctx = (rdpContext*)context;
+    if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
+        gdi_graphics_pipeline_uninit(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
+    else
+        freerdp_client_OnChannelDisconnectedEventHandler(context, e);
+}
 
 /* Called BEFORE the connection is negotiated.
  *
@@ -211,6 +324,10 @@ static BOOL hydra_begin_paint(rdpContext* context) { (void)context; return TRUE;
 static BOOL hydra_pre_connect(freerdp* instance)
 {
     rdpContext* c = instance->context;
+
+    PubSub_SubscribeChannelConnected(c->pubSub, hydra_on_channel_connected);
+    PubSub_SubscribeChannelDisconnected(c->pubSub, hydra_on_channel_disconnected);
+
     if (!freerdp_client_load_addins(c->channels, c->settings)) {
         L("load_addins failed");
         return FALSE;
@@ -392,6 +509,7 @@ int main(int argc, char** argv)
      *
      * Guessing which of those defaults matters is a poor use of time when we can
      * simply take the same path. Build an argv and hand it over. */
+    int prc = 0;
     char vArg[64], uArg[128], pArg[280], wArg[32], hArg[32];
     snprintf(vArg, sizeof(vArg), "/v:%s", host);
     snprintf(uArg, sizeof(uArg), "/u:%s", user);
@@ -407,10 +525,34 @@ int main(int argc, char** argv)
         (char*)"/bpp:32",
         (char*)"+auto-reconnect",
         (char*)"/gdi:sw",          /* software GDI: pixels in a buffer we can read */
+        /* RDP8 graphics pipeline. Without it the server sends plain bitmap
+         * updates and video is visibly blocky -- viewers described it as
+         * "glitchy", which is exactly what uncompressed region updates of a
+         * moving image look like. */
+        (char*)"/network:lan",     /* don't let autodetect throttle quality */
     };
     int fargc = (int)(sizeof(fargv) / sizeof(fargv[0]));
 
-    int prc = freerdp_client_settings_parse_command_line(ctx->settings, fargc, fargv, FALSE);
+    /* RDP8 graphics pipeline: opt-in via HYDRA_GFX=1.
+     *
+     * It is the difference between video arriving as a codec stream and arriving
+     * as raw region updates -- the latter is what onlookers described as
+     * "glitchy". But it also changes how the framebuffer is managed, so keep it
+     * switchable rather than making a quality improvement able to take the whole
+     * client down. */
+    char* fargvGfx[32];
+    char gfxEnv[8] = {0};
+    DWORD gl = GetEnvironmentVariableA("HYDRA_GFX", gfxEnv, sizeof(gfxEnv));
+    if (gl > 0 && gfxEnv[0] == '1') {
+        int n = 0;
+        for (; n < fargc; ++n) fargvGfx[n] = fargv[n];
+        fargvGfx[n++] = (char*)"/gfx";
+        L("graphics pipeline requested (HYDRA_GFX=1)");
+        prc = freerdp_client_settings_parse_command_line(ctx->settings, n, fargvGfx, FALSE);
+    } else {
+        prc = freerdp_client_settings_parse_command_line(ctx->settings, fargc, fargv, FALSE);
+    }
+
     if (prc != 0) {
         L("parse_command_line failed: %d", prc);
         return 1;
