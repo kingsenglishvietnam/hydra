@@ -76,6 +76,8 @@ typedef struct HydraContext {
     char        seat[64];
     UINT64      paints;
     UINT64      published;
+    UINT64      skipped;
+    DWORD       lastPublish;
     UINT32      lastW, lastH;
     DWORD       lastLog;
 
@@ -135,10 +137,21 @@ static BOOL hydra_end_paint(rdpContext* context)
           FreeRDPGetBytesPerPixel(gdi->dstFormat), gdi->stride);
     }
 
-    /* PUBLISH. Under a seqlock: odd while writing, even when the snapshot is
-     * complete, so a reader either gets a whole frame or notices and retries.
-     * Identical protocol to session_capture, because mirror is unchanged. */
-    if (hydra_open_pixels(h)) {
+    /* THROTTLE. EndPaint fires once per DAMAGED REGION, not once per frame --
+     * measured at ~280/second on an active desktop. Publishing a full 1920x1080
+     * copy each time is 8 MB per publish, so about 2 GB/s of memcpy: enough to
+     * saturate memory bandwidth on this machine and starve everything else. The
+     * symptom was a cursor that jumped and a keyboard that stopped responding,
+     * which looks like an input bug and is not.
+     *
+     * The panel cannot show more than the display refresh anyway, so cap at
+     * ~60/s. Intermediate regions are not lost -- they have already been drawn
+     * into the GDI buffer, so the next publish carries them. */
+    DWORD nowTick = GetTickCount();
+    BOOL  due = (nowTick - h->lastPublish) >= 16;
+
+    if (due && hydra_open_pixels(h)) {
+        h->lastPublish = nowTick;
         const UINT32 w = (UINT32)gdi->width, ht = (UINT32)gdi->height;
         if (w <= HYDRA_PIX_MAX_W && ht <= HYDRA_PIX_MAX_H &&
             FreeRDPGetBytesPerPixel(gdi->dstFormat) == 4)
@@ -172,11 +185,15 @@ static BOOL hydra_end_paint(rdpContext* context)
         }
     }
 
-    DWORD now = GetTickCount();
-    if (now - h->lastLog >= 5000) {
-        h->lastLog = now;
-        L("seat %s: %llu paints, %llu published%s", h->seat,
+    else if (!due) {
+        h->skipped++;
+    }
+
+    if (nowTick - h->lastLog >= 5000) {
+        h->lastLog = nowTick;
+        L("seat %s: %llu paints, %llu published, %llu coalesced%s", h->seat,
           (unsigned long long)h->paints, (unsigned long long)h->published,
+          (unsigned long long)h->skipped,
           h->pixHdr ? "" : "  (no pixel ring -- is the Hydra service running?)");
     }
     return TRUE;

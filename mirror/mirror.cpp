@@ -899,10 +899,16 @@ int wmain(int argc, wchar_t** argv)
         }
 
         uint64_t b = g_pix.hdr->seq;
-        double fps = (double)(b - a) / (double)secs;
+        /* seq advances TWICE per frame -- odd entering the write, even leaving
+         * it, which is what makes the seqlock work. Reporting the raw delta as a
+         * frame count therefore doubled every figure this tool has ever printed:
+         * a 60fps throttle read as 134fps, which looked like the throttle was
+         * not working when it was exactly right. */
+        uint64_t frames = (b - a) / 2;
+        double fps = (double)frames / (double)secs;
         fwprintf(stderr, L"[probe] seat %s: %llu frames in %d s (%.1f fps) -- %ls\n",
-                 seatW, (unsigned long long)(b - a), secs, fps,
-                 (b - a) < 3 ? (port ? L"FROZEN" : L"no frames (idle desktop, or frozen)")
+                 seatW, (unsigned long long)frames, secs, fps,
+                 frames < 2 ? (port ? L"FROZEN" : L"no frames (idle desktop, or frozen)")
                              : L"alive");
         fflush(stderr);
         return ((b - a) < 3) ? 1 : 0;    /* exit code: 0 alive, 1 frozen */
