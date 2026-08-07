@@ -43,35 +43,6 @@ On `audiomode:i:0` teacher's session has **no real audio hardware** — it ships
 
 No cable, no loopback agent, no extra process. Per-app assignment doesn't disturb the shared default, which is exactly what made `audiomode:i:1` fail.
 
-**Windows resets that assignment on every reboot**, and accumulates a new registry entry each time you change it without removing the old ones — so a stale entry pointing at a removed device can win, and the UI still looks correct while nothing plays. `audio-pin.ps1` captures the working state and `hydra-start.ps1` restores it before mstsc launches (the timing matters: a per-app change doesn't take on a stream that's already open).
-
-### The first-app-gets-silence problem
-
-The seat's Remote Audio endpoint goes bad when it has been idle. **The first application to open it hears nothing.** Open a second app and *that* works — and then the first one starts working too. Browsers lose this race reliably; media players often win it, which disguised it as a Chrome bug for hours.
-
-`chrome://media-internals` settled where the audio was going: Chrome reported `kPlaying`, `BUFFERING_HAVE_ENOUGH`, a cleanly selected decoder and no errors. It was decoding and handing off PCM the whole time. Nothing was wrong above the render path.
-
-**The fix is to make something harmless the first opener.** `audio_prime` in `seats.toml`:
-
-| Value | What it does |
-|---|---|
-| `"chime"` (default) | Plays one short sound in the seat's session at startup. No extra process. **Verified working.** |
-| `"keepalive"` | Runs `audio_keepalive.exe` for the whole session, holding a silent stream open so the endpoint can never go idle. Use if the chime wears off mid-lesson. |
-| `"off"` | Nothing. |
-
-Mid-lesson recovery, if audio ever goes quiet:
-```
-.\dist\hydractl.exe chime B
-```
-`install-audiofix.ps1` puts that on the seat user's desktop as **Fix Audio** — no elevation needed, since hydractl only messages the service.
-
-> **Do not try restarting Audiosrv.** It was tested from four contexts — the console session, a SYSTEM scheduled task in session 0, a SYSTEM token inside the seat's session, and the console admin's *elevated* token inside the seat's session (the exact combination that appears to work when typed by hand). **None of them fix it.** A restart leaves the endpoint idle, which just hands the problem to whoever opens it next; the manual successes had another app already holding the endpoint open. `hydractl audiofix <seat>` still exists but should not be needed.
-
-```
-.\audio-pin.ps1 -Save      # once, while the audio is working
-.\audio-pin.ps1 -Show      # compare saved vs live
-```
-
 ---
 
 # PART 1 — WIPE
@@ -172,7 +143,6 @@ Put **`teacher.rdp`** in `C:\Programs\hydra` (the startup script looks for it th
 ```
 screen mode id:i:1
 audiomode:i:0
-audioqualitymode:i:0
 smart sizing:i:1
 username:s:teacher
 ```
@@ -180,7 +150,6 @@ username:s:teacher
 - `screen mode id:i:1` — windowed. Fullscreen puts mstsc on the panel, covering mirror.
 - `audiomode:i:0` — the lag-free mode, and the one the audio design depends on.
 - `smart sizing:i:1` — scales the whole desktop to the window instead of cropping.
-- `audioqualitymode:i:0` — dynamic. Fixes the first-app-has-no-sound race; `:2` (uncompressed) exhibited it.
 
 Connect once manually with **Allow me to save credentials** ticked, so startup doesn't stop at a password prompt.
 
@@ -241,9 +210,6 @@ Get-Process mirror
 | No audio after a reboot or device change | Volume mixer → `mstsc.exe` → **2770 (Intel Display Audio)**. Reconnect the session afterwards; per-app changes don't take on a stream that's already open. |
 | Audio ignores every device you pick | Stale per-app entries, usually after removing an audio device. Settings → Sound → Volume mixer → **Reset**, or clear them in the registry (see below). |
 | `LNK1104` on mirror.exe | mirror is running. `Get-Process mirror | Stop-Process -Force` first. |
-| First app opened in the seat's session has no sound; a second app works, then the first works too | The endpoint went idle. `hydra-start.ps1` primes it automatically; to fix mid-lesson run `.\dist\hydractl.exe chime B` or click **Fix Audio** on the seat desktop. If it recurs within a session, set `audio_prime = "keepalive"` in `seats.toml`. **Do not restart Audiosrv** — see the audio section for the four contexts that were tried and don't work. |
-| RDP window goes fullscreen and grabs input | A window sized at or beyond the screen tips mstsc into fullscreen. `minify-mstsc.ps1` now clamps every size to the work area minus a margin. Escape with **Ctrl+Alt+Break**. |
-| Teacher's session killed / `ConnQ` stuck in `query session` | Killing mstsc takes the session with it and can wedge the RDP stack. `reset session N`, then `Restart-Service TermService -Force`; if it survives both, reboot. Don't kill mstsc. |
 | `capture:B: waiting` | Teacher's session isn't up or isn't logged in. |
 
 **Per-app audio assignments** accumulate and are never cleaned up — including entries for devices that no longer exist, which resolve to nothing while the UI looks correct:
@@ -272,59 +238,14 @@ Get-ChildItem 'HKCU:\Software\Microsoft\Internet Explorer\LowRegistry\Audio\Poli
 - Hiding mstsc — minimizing, off-screen, and inactive virtual desktops all freeze the panel.
 - Closing mstsc — destroys the session's display entirely.
 
-**RDP-Wrapper / TermWrap**
-- A Windows update replacing `termsrv.dll` breaks concurrent sessions: the listener still answers (`127.0.0.2 Established`) while session creation fails (`ConnQ`, no session). Happened on KB5120102. Fix is updating the wrapper, not anything in Hydra.
-- This machine runs **llccd/TermWrap** (`TermWrap.dll` + `Zydis.dll`), which finds its patch points by disassembly rather than a version `.ini`. Update: stop `TermService`, replace the DLLs, merge `Install_termwrap_only.reg`, reboot.
-- Use **`Install_termwrap_only.reg`** — `UmWrap` and `EndpWrap` are only needed on Server and Home editions. Confirm `AudioEnumeratorDll` under `HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp` reads `rdpendp.dll`, not `EndpWrap.dll`.
-- Killing mstsc, or sometimes a clean sign-out, can leave a session wedged: `ConnQ` in `query session` that `reset session` can't clear. Try `Restart-Service TermService -Force`; if the stale `127.0.0.2 Established` connection survives, reboot.
-
 **Platform**
 - Windows Server / RDS — no upgrade path from Pro; clean install, CALs, and poor Surface driver support.
 - ASTER, BeTwin, SoftXpand — ASTER is the only surviving commercial option; the rest are discontinued. MouseMux and similar are shared-desktop multi-cursor tools, not multiseat.
 
 ---
 
-# LOCKING DOWN TEACHER
-
-Hide shutdown/restart, leaving Sign out — run **inside teacher's session**:
-
-```
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" /v NoClose /t REG_DWORD /d 1 /f
-```
-```
-taskkill /f /im explorer.exe & start explorer.exe
-```
-
-`NoClose` only hides UI, and Windows 11 doesn't always honour it. To actually remove the capability — including `shutdown /s` from a terminal — use `secpol.msc` → Local Policies → User Rights Assignment → **Shut down the system**, and leave only Administrators.
-
-UAC prompts render slowly and freeze the panel, because the secure desktop can't be duplicated. To make them prompt on the normal desktop instead:
-
-```
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f
-```
-
-That is a real reduction in UAC's protection against spoofed prompts — a deliberate trade for a classroom machine, not a free win.
-
----
-
 # STILL OPEN
 
-- **A full cold boot end to end.** Every piece has been verified, but not in one run from power-on since the TermWrap update.
-- **A third seat.** `seats.toml` takes multiple `[[seat]]` blocks and `plan_procs` loops over them, so this is validation rather than new code — needs a monitor, an HDMI cable, a device pair and a port. Untested at >2 seats.
-- Seat B logging the seat user in from the lock screen — the SYSTEM-token agent should allow it; untested.
-- Whether `audio_prime = "chime"` holds for a whole lesson, or the endpoint goes idle again after a long silence. If it does, switch to `"keepalive"`.
-- `teacher.rdp` is not in this package — it holds saved credentials. Keep your own copy in `C:\Programs\hydra`.
-
----
-
-# BEYOND ASTER
-
-Feature parity is close. What Aster does that this doesn't: per-seat USB (webcams, headsets, drives), native display latency (this costs a GPU→CPU→GPU round trip, ~8 MB/frame at 1080p), and coming up at boot without seat 1 logging in first.
-
-The more interesting direction is that this is a *teaching* machine and Aster doesn't know that. The pieces already exist — cross-session input injection, per-seat framebuffers in shared memory, a supervisor with a control channel:
-
-- **Broadcast** — push the teacher's frame to every seat's panel. The transport is already there.
-- **Lock a seat** — freeze input to one seat from `hydractl`. Trivial with `agent:<seat>` in place.
-- **Watch a seat** — teacher views a student's panel. Same transport, reversed.
-
-That's classroom-management software, a category above what Aster does, and mostly plumbing that already works.
+- Seat B logging teacher in from the lock screen — the SYSTEM agent should allow it; untested.
+- Whether the mstsc audio assignment survives reboots now the registry is clean.
+- `smart sizing:i:1` in `teacher.rdp` — added, not yet confirmed.
