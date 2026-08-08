@@ -635,7 +635,7 @@ static std::vector<Proc> plan_procs(const HydraCfg& cfg)
          * launch context, mirror runs as a logon scheduled task in the console
          * session (see install-mirror-task.ps1); hydrad keeps only the genuinely
          * background work -- capture and the audio router. */
-        const bool mirrorIsExternal = (s.displayMode == "capture");
+        const bool mirrorIsExternal = (s.displayMode == "capture" || s.displayMode == "client");   /* both start mirror by hand */
 
         if (!displayOff && !mirrorIsExternal) {
             Proc m; m.tag = L"mirror:" + seatW; m.exe = helper_path(L"mirror.exe");
@@ -696,8 +696,12 @@ static std::vector<Proc> plan_procs(const HydraCfg& cfg)
          * the iddseat virtual-monitor producer. NOTE: DDA must run on the session's
          * interactive input desktop or it fails E_ACCESSDENIED -- this is the
          * untested risk; the log will show which. */
-        if (!displayOff && s.displayMode == "capture") {
-            /* Must exist BEFORE the agent starts -- it can open but not create it. */
+	/* "client": hydrardp publishes the ring, so create the shared sections
+         * but launch NO capture agent. Two producers writing the same ring
+         * alternate frames and the panel appears to seize. */
+        if (s.displayMode == "client") {
+            ensure_meta_section(s.name);
+        } else if (!displayOff && s.displayMode == "capture") {
             ensure_meta_section(s.name);
             Proc c; c.tag = L"capture:" + seatW; c.exe = helper_path(L"session_capture.exe");
             c.args = seatW; c.sessionSpec = s.session;
@@ -1431,3 +1435,5 @@ int wmain(int argc, wchar_t** argv)
     }
     return 0;
 }
+
+
