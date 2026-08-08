@@ -109,6 +109,7 @@ typedef struct HydraContext {
     UINT32      curHotX, curHotY;
     INT32       curX, curY;    /* position, in desktop pixels                 */
     BOOL        curVisible;
+    BOOL        curHavePos;
     CRITICAL_SECTION curLock;  /* pointer PDUs arrive off the paint thread    */
     DWORD       lastPublish;
     UINT32      lastW, lastH;
@@ -270,7 +271,7 @@ static BOOL hydra_end_paint(rdpContext* context)
      * ~60/s. Intermediate regions are not lost -- they have already been drawn
      * into the GDI buffer, so the next publish carries them. */
     DWORD nowTick = GetTickCount();
-    BOOL  due = (nowTick - h->lastPublish) >= 16;
+    BOOL  due = (nowTick - h->lastPublish) >= 33;   /* ~30fps: 60 was 480 MB/s of memcpy and showed as flicker */
 
     if (due && hydra_open_pixels(h)) {
         h->lastPublish = nowTick;
@@ -303,7 +304,7 @@ static BOOL hydra_end_paint(rdpContext* context)
             BYTE*       dst = h->pixData;
 
             UINT32 rx = 0, ry = 0, rw = w, rh = ht;
-            if (h->dirtyAny && !h->dirtyAll) {
+            if (0) {   /* damage-rect copy disabled: it fights the cursor compositing */
                 rx = h->dirtyX0; ry = h->dirtyY0;
                 rw = (h->dirtyX1 > rx) ? (h->dirtyX1 - rx) : 0;
                 rh = (h->dirtyY1 > ry) ? (h->dirtyY1 - ry) : 0;
@@ -446,6 +447,7 @@ static BOOL hydra_pointer_set_position(rdpContext* context, UINT32 x, UINT32 y)
     HydraContext* h = (HydraContext*)context;
     EnterCriticalSection(&h->curLock);
     h->curX = (INT32)x; h->curY = (INT32)y;
+    h->curHavePos = TRUE;   /* never draw at (0,0) before a real position */
     LeaveCriticalSection(&h->curLock);
     return TRUE;
 }
@@ -470,7 +472,7 @@ static void hydra_register_pointer(rdpContext* context)
 static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
 {
     EnterCriticalSection(&h->curLock);
-    if (!h->curVisible || !h->curImg || !h->curW || !h->curH) {
+    if (!h->curVisible || !h->curHavePos || !h->curImg || !h->curW || !h->curH) {
         LeaveCriticalSection(&h->curLock);
         return;
     }
@@ -822,3 +824,8 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
+
+
+
