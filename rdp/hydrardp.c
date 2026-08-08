@@ -109,7 +109,14 @@ typedef struct HydraContext {
     UINT32      curHotX, curHotY;
     INT32       curX, curY;    /* position, in desktop pixels                 */
     BOOL        curVisible;
-    BOOL        curHavePos;
+    BOOL        curHavePos;    /* no position yet == do not draw at (0,0)      */
+    /* Where the cursor was painted LAST time. The ring is persistent and we
+     * copy only the damaged rectangle, so pixels the cursor covered are never
+     * restored unless that old rectangle is copied too -- which is what left
+     * cursor trails smeared across the frame. */
+    INT32       prevCurX, prevCurY;
+    UINT32      prevCurW, prevCurH;
+    BOOL        prevCurDrawn;
     CRITICAL_SECTION curLock;  /* pointer PDUs arrive off the paint thread    */
     DWORD       lastPublish;
     UINT32      lastW, lastH;
@@ -271,7 +278,7 @@ static BOOL hydra_end_paint(rdpContext* context)
      * ~60/s. Intermediate regions are not lost -- they have already been drawn
      * into the GDI buffer, so the next publish carries them. */
     DWORD nowTick = GetTickCount();
-    BOOL  due = (nowTick - h->lastPublish) >= 33;   /* ~30fps: 60 was 480 MB/s of memcpy and showed as flicker */
+    BOOL  due = (nowTick - h->lastPublish) >= 16;
 
     if (due && hydra_open_pixels(h)) {
         h->lastPublish = nowTick;
@@ -285,45 +292,30 @@ static BOOL hydra_end_paint(rdpContext* context)
             h->pixHdr->height = ht;
             h->pixHdr->pitch  = w * 4;
 
-            /* COPY ONLY THE DAMAGED REGION.
+            /* FULL-FRAME COPY.
              *
-             * Copying the whole 1920x1080 frame is 8 MB per publish regardless
-             * of whether one pixel changed or all of them -- 480 MB/s at 60
-             * publishes a second, which is enough to be felt as lag on this
-             * machine. FreeRDP already tells us which rectangle changed.
+             * A damaged-rectangle copy was tried and removed. Two optimisations
+             * that were each defensible alone were wrong together: the ring is
+             * persistent, so pixels the composited cursor painted were never
+             * restored unless the old cursor rectangle was copied too, and every
+             * refinement to keep them in step made the code harder to reason
+             * about while the picture stayed visibly wrong.
              *
-             * This is safe because the ring is PERSISTENT: readers copy the whole
-             * buffer every time, so untouched rows still hold the last good
-             * pixels. It is a delta into a full-frame buffer, not a partial
-             * frame.
+             * The 60fps throttle already removed two thirds of the bandwidth,
+             * which was the actual problem. Copying 8 MB sixty times a second is
+             * affordable; copying the wrong 8 MB is not.
              *
-             * When the invalid region is missing or marked null we fall back to a
-             * full copy -- on a resize or a fresh surface there is no meaningful
-             * delta and the whole thing genuinely has changed. */
+             * Both sides are BGRA32, so this is a straight copy with no
+             * conversion. Row by row because the GDI stride need not equal
+             * width*4. */
             const BYTE* src = gdi->primary_buffer;
             BYTE*       dst = h->pixData;
-
-            UINT32 rx = 0, ry = 0, rw = w, rh = ht;
-            if (0) {   /* damage-rect copy disabled: it fights the cursor compositing */
-                rx = h->dirtyX0; ry = h->dirtyY0;
-                rw = (h->dirtyX1 > rx) ? (h->dirtyX1 - rx) : 0;
-                rh = (h->dirtyY1 > ry) ? (h->dirtyY1 - ry) : 0;
-                if (rx >= w || ry >= ht || rw == 0 || rh == 0) {
-                    rx = ry = 0; rw = w; rh = ht;
-                } else {
-                    if (rx + rw > w)  rw = w  - rx;
-                    if (ry + rh > ht) rh = ht - ry;
-                }
+            for (UINT32 y = 0; y < ht; ++y) {
+                memcpy(dst + (size_t)y * w * 4,
+                       src + (size_t)y * gdi->stride,
+                       (size_t)w * 4);
             }
-            /* Consumed: start a fresh union for the next publish. */
-            h->dirtyAny = FALSE;
-            h->dirtyAll = FALSE;
-
-            for (UINT32 y = 0; y < rh; ++y) {
-                memcpy(dst + (size_t)(ry + y) * w * 4 + (size_t)rx * 4,
-                       src + (size_t)(ry + y) * gdi->stride + (size_t)rx * 4,
-                       (size_t)rw * 4);
-            }
+            UINT32 rh = ht;
             h->copiedRows += rh;
 
             /* Cursor last, inside the seqlock, over the whole frame rather than
@@ -348,6 +340,9 @@ static BOOL hydra_end_paint(rdpContext* context)
 
     if (nowTick - h->lastLog >= 5000) {
         h->lastLog = nowTick;
+        if (h->curImg && !h->curHavePos)
+            L("cursor: image but no position yet -- waiting for agent:%s to publish "
+              "one (is the Hydra service running with the agent up?)", h->seat);
         L("seat %s: %llu paints, %llu published, %llu coalesced, %llu rows copied%s",
           h->seat,
           (unsigned long long)h->paints, (unsigned long long)h->published,
@@ -422,6 +417,12 @@ static BOOL hydra_pointer_set(rdpContext* context, rdpPointer* p)
         h->curW = hp->w; h->curH = hp->h;
         h->curHotX = hp->hotX; h->curHotY = hp->hotY;
         h->curVisible = TRUE;
+        {
+            static BOOL saidSet = FALSE;
+            if (!saidSet) { saidSet = TRUE;
+                L("pointer IMAGE received (%ux%u, hotspot %u,%u)",
+                  hp->w, hp->h, hp->hotX, hp->hotY); }
+        }
     }
     LeaveCriticalSection(&h->curLock);
     return TRUE;
@@ -447,8 +448,15 @@ static BOOL hydra_pointer_set_position(rdpContext* context, UINT32 x, UINT32 y)
     HydraContext* h = (HydraContext*)context;
     EnterCriticalSection(&h->curLock);
     h->curX = (INT32)x; h->curY = (INT32)y;
-    h->curHavePos = TRUE;   /* never draw at (0,0) before a real position */
+    /* Without this the cursor is never drawn at all -- hydra_composite_pointer
+     * refuses to paint until a real position has arrived, precisely so it does
+     * not appear at (0,0) before the first update. */
+    h->curHavePos = TRUE;
     LeaveCriticalSection(&h->curLock);
+    {
+        static BOOL saidPos = FALSE;
+        if (!saidPos) { saidPos = TRUE; L("pointer POSITION updates arriving (%u,%u)", x, y); }
+    }
     return TRUE;
 }
 
@@ -471,11 +479,14 @@ static void hydra_register_pointer(rdpContext* context)
  * with the cursor half-drawn. */
 static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
 {
-    /* Position comes from agent:<seat>, not from RDP -- see hydra_ipc.h. */
+    /* Take the position from the shared header, published by agent:<seat> from
+     * inside the session. RDP will not tell us -- see hydra_ipc.h. */
     if (h->pixHdr && h->pixHdr->curSeq) {
+        EnterCriticalSection(&h->curLock);
         h->curX = h->pixHdr->curX;
         h->curY = h->pixHdr->curY;
         h->curHavePos = TRUE;
+        LeaveCriticalSection(&h->curLock);
     }
 
     EnterCriticalSection(&h->curLock);
@@ -505,6 +516,10 @@ static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
             dp[2] = (BYTE)((sp[2] * a + dp[2] * (255 - a)) / 255);
         }
     }
+    h->prevCurX = ox; h->prevCurY = oy;
+    h->prevCurW = h->curW; h->prevCurH = h->curH;
+    h->prevCurDrawn = TRUE;
+
     LeaveCriticalSection(&h->curLock);
 }
 
@@ -518,15 +533,69 @@ static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
  *
  * Every stock client does this in its channel-connected handler; it is not
  * optional plumbing. */
+/* ---------------------------------------------------------------------------
+ * GFX WINDOW-MAPPING STUBS -- the reason gfx crashed.
+ *
+ * gdi_graphics_pipeline_init() is a one-line wrapper:
+ *
+ *     return gdi_graphics_pipeline_init_ex(gdi, gfx, nullptr, nullptr, nullptr);
+ *
+ * It passes NULL for MapWindowForSurface, UnmapWindowForSurface and
+ * UpdateSurfaceArea. Init itself is defensive and succeeds, so the log shows the
+ * pipeline attaching happily -- and then the first surface operation calls one
+ * of those null pointers. That is exactly the crash we kept getting:
+ *
+ *     FATAL: exception 0xC0000005 at 0000000000000000
+ *
+ * A call to address zero. It was never the codec: RemoteFX failed identically to
+ * AVC, which is what finally ruled the H.264 theory out.
+ *
+ * The stock clients call init_ex with real callbacks because they have windows
+ * to map surfaces onto. We have none -- that is the whole point of a headless
+ * client -- so the callbacks need only EXIST and succeed. Doing nothing is the
+ * correct behaviour here, not a shortcut.
+ * ------------------------------------------------------------------------- */
+static UINT hydra_gfx_map_window(RdpgfxClientContext* context, UINT16 surfaceID,
+                                 UINT64 windowID)
+{
+    (void)context; (void)surfaceID; (void)windowID;
+    return CHANNEL_RC_OK;      /* headless: no window to map a surface onto */
+}
+
+static UINT hydra_gfx_unmap_window(RdpgfxClientContext* context, UINT64 windowID)
+{
+    (void)context; (void)windowID;
+    return CHANNEL_RC_OK;
+}
+
+static UINT hydra_gfx_update_surface_area(RdpgfxClientContext* context, UINT16 surfaceId,
+                                          UINT32 nrRects, const RECTANGLE_16* rects)
+{
+    /* The decoded pixels are already in gdi->primary_buffer by the time this is
+     * called; our EndPaint publishes the whole frame from there. Nothing to do
+     * per-rectangle. */
+    (void)context; (void)surfaceId; (void)nrRects; (void)rects;
+    return CHANNEL_RC_OK;
+}
+
 static void hydra_on_channel_connected(void* context, const ChannelConnectedEventArgs* e)
 {
     rdpContext* ctx = (rdpContext*)context;
     if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0) {
-        if (!freerdp_settings_get_bool(ctx->settings, FreeRDP_SoftwareGdi)) { L("gfx needs /gdi:sw -- not attaching"); return; } gdi_graphics_pipeline_init(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
+        if (!gdi_graphics_pipeline_init_ex(ctx->gdi, (RdpgfxClientContext*)e->pInterface,
+                                           hydra_gfx_map_window,
+                                           hydra_gfx_unmap_window,
+                                           hydra_gfx_update_surface_area))
+        {
+            L("gdi_graphics_pipeline_init_ex failed");
+            return;
+        }
         L("graphics pipeline attached -- video should decode properly now");
-    } else {
-        /* nothing: freerdp_client_context_new already subscribed the default handler */
     }
+    /* NOTE: do NOT call freerdp_client_OnChannelConnectedEventHandler here.
+     * client-common subscribes it separately, so calling it as well runs it
+     * TWICE for every non-gfx channel -- rdpsnd, disp, ainput all get
+     * double-initialised, which is what crashed the client on /gfx. */
 }
 
 static void hydra_on_channel_disconnected(void* context, const ChannelDisconnectedEventArgs* e)
@@ -534,8 +603,7 @@ static void hydra_on_channel_disconnected(void* context, const ChannelDisconnect
     rdpContext* ctx = (rdpContext*)context;
     if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
         gdi_graphics_pipeline_uninit(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
-    else
-        ; /* default handler already subscribed */
+    /* likewise: client-common handles the rest */
 }
 
 /* Called BEFORE the connection is negotiated.
@@ -772,13 +840,31 @@ int main(int argc, char** argv)
      * switchable rather than making a quality improvement able to take the whole
      * client down. */
     char* fargvGfx[32];
-    char gfxEnv[8] = {0};
+    char gfxEnv[24] = {0};
     DWORD gl = GetEnvironmentVariableA("HYDRA_GFX", gfxEnv, sizeof(gfxEnv));
-    if (gl > 0 && gfxEnv[0] == '1') {
+    if (gl > 0 && gfxEnv[0] != 0) {
         int n = 0;
         for (; n < fargc; ++n) fargvGfx[n] = fargv[n];
-        fargvGfx[n++] = (char*)"/gfx";
-        L("graphics pipeline requested (HYDRA_GFX=1)");
+        /* HYDRA_GFX selects the CODEC, not just on/off:
+         *   1            -> /gfx            (server picks; usually AVC/H.264)
+         *   RFX          -> /gfx:RFX        (RemoteFX -- no H.264)
+         *   progressive  -> /gfx:progressive
+         *   AVC420 etc.  -> passed through
+         *
+         * This matters because libfreerdp here is built with
+         * WITH_VAAPI_H264_ENCODING=ON, which it warns is EXPERIMENTAL and "might
+         * crash the application" -- and the crash we get is a call through a null
+         * pointer immediately after the pipeline attaches, which is what a
+         * half-initialised codec looks like. FreeRDP issue 12221 is the same
+         * shape: gfx plus an experimental VAAPI build, crashing shortly after
+         * connect. Avoiding H.264 avoids that path entirely. */
+        static char gfxArg[32];
+        if (gfxEnv[0] == '1' && gfxEnv[1] == 0)
+            strcpy(gfxArg, "/gfx");
+        else
+            snprintf(gfxArg, sizeof(gfxArg), "/gfx:%s", gfxEnv);
+        fargvGfx[n++] = gfxArg;
+        L("graphics pipeline requested: %s", gfxArg);
         prc = freerdp_client_settings_parse_command_line(ctx->settings, n, fargvGfx, FALSE);
     } else {
         prc = freerdp_client_settings_parse_command_line(ctx->settings, fargc, fargv, FALSE);
@@ -831,14 +917,5 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
-
-
-
-
-
-
-
-
-
 
 
