@@ -522,10 +522,10 @@ static void hydra_on_channel_connected(void* context, const ChannelConnectedEven
 {
     rdpContext* ctx = (rdpContext*)context;
     if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0) {
-        gdi_graphics_pipeline_init(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
+        if (!freerdp_settings_get_bool(ctx->settings, FreeRDP_SoftwareGdi)) { L("gfx needs /gdi:sw -- not attaching"); return; } gdi_graphics_pipeline_init(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
         L("graphics pipeline attached -- video should decode properly now");
     } else {
-        freerdp_client_OnChannelConnectedEventHandler(context, e);
+        /* nothing: freerdp_client_context_new already subscribed the default handler */
     }
 }
 
@@ -535,7 +535,7 @@ static void hydra_on_channel_disconnected(void* context, const ChannelDisconnect
     if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
         gdi_graphics_pipeline_uninit(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
     else
-        freerdp_client_OnChannelDisconnectedEventHandler(context, e);
+        ; /* default handler already subscribed */
 }
 
 /* Called BEFORE the connection is negotiated.
@@ -831,6 +831,11 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
+
+
+
 
 
 

@@ -549,7 +549,25 @@ struct PixelReader {
     UINT                    w = 0, h = 0;
     uint64_t                lastSeq = 0;
 
+    /* Drop the current mapping so the next open() attaches to a NEW section. */
+    void reopen() {
+        if (hdr) { UnmapViewOfFile((void*)hdr); hdr = nullptr; px = nullptr; }
+        if (map) { CloseHandle(map); map = nullptr; }
+        lastSeq = 0;
+    }
+
     bool open(const char* seat) {
+        /* NOT just "already open, done".
+         *
+         * When the Hydra service restarts, hydrad creates a BRAND NEW section
+         * with the same name. A mirror holding the old handle keeps reading a
+         * section nobody writes to any more -- it never errors, never notices,
+         * and sits frozen at a few MB of working set forever. That is what made
+         * start-up order appear to matter: it was not the order, it was a stale
+         * mapping that could only be cleared by restarting mirror.
+         *
+         * The caller detects staleness (no new frames for a while) and calls
+         * reopen(); this then attaches to whatever is there now. */
         if (hdr) return true;
         wchar_t name[128]; hydra_pixels_name(name, 128, seat);
         map = OpenFileMappingW(FILE_MAP_READ, FALSE, name);
@@ -704,7 +722,27 @@ static bool present_pixels(Gfx& g, const char* seat)
         static bool     reported = false;
         if (g_pix.lastSeq != stallSeq) {
             stallSeq = g_pix.lastSeq; stallSince = nowMs; reported = false;
-        } else if (!reported && stallSince && (nowMs - stallSince) > 120000) {
+        } else if (stallSince && (nowMs - stallSince) > 10000) {
+            /* Ten seconds with no new frame: the producer may simply be idle, or
+             * our mapping may be stale because the service was restarted and the
+             * section replaced. Re-opening costs almost nothing and is the only
+             * way to tell the two apart, so just do it -- if the section is the
+             * same one, we attach straight back to it.
+             *
+             * This is what makes start-up ORDER stop mattering: a mirror started
+             * before the producer, or left behind by a service restart, now finds
+             * its way back on its own instead of sitting dead until someone
+             * notices and restarts it by hand. */
+            static DWORD lastReopen = 0;
+            if (nowMs - lastReopen > 10000) {
+                lastReopen = nowMs;
+                g_pix.reopen();
+                fwprintf(stderr, L"[mirror] no frames for 10s -- re-attaching to the "
+                                 L"pixel transport in case the service restarted\n");
+                fflush(stderr);
+            }
+        }
+        if (!reported && stallSince && (nowMs - stallSince) > 120000) {
             /* 2 MINUTES, not 20 seconds.
              *
              * Desktop Duplication publishes only on CHANGE, so an idle desktop
