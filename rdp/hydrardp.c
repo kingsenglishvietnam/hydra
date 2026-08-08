@@ -471,6 +471,13 @@ static void hydra_register_pointer(rdpContext* context)
  * with the cursor half-drawn. */
 static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht)
 {
+    /* Position comes from agent:<seat>, not from RDP -- see hydra_ipc.h. */
+    if (h->pixHdr && h->pixHdr->curSeq) {
+        h->curX = h->pixHdr->curX;
+        h->curY = h->pixHdr->curY;
+        h->curHavePos = TRUE;
+    }
+
     EnterCriticalSection(&h->curLock);
     if (!h->curVisible || !h->curHavePos || !h->curImg || !h->curW || !h->curH) {
         LeaveCriticalSection(&h->curLock);
@@ -824,6 +831,7 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
 
 
 

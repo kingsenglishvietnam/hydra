@@ -59,6 +59,7 @@
 #include <winsock2.h>   /* must precede windows.h */
 #include <ws2tcpip.h>
 #include <windows.h>
+#include "../common/hydra_ipc.h"
 #include <mmsystem.h>   /* timeBeginPeriod / timeEndPeriod */
 #include <stdio.h>
 #include <stdlib.h>
@@ -481,6 +482,38 @@ static void disable_quickedit(void) {
         SetConsoleMode(in, (mode | ENABLE_EXTENDED_FLAGS) & ~ENABLE_QUICK_EDIT_MODE);
 }
 
+/* Publish the cursor position for hydrardp. RDP does not send positions to a
+ * client that generates no input -- see hydra_ipc.h. This agent is already
+ * SYSTEM inside the seat's session with the desktop attached, so GetCursorPos
+ * here is simply correct. 60 Hz, matching the client's publish rate. */
+static DWORD WINAPI cursor_pos_thread(LPVOID arg) {
+    const char *seat = (const char *)arg;
+    wchar_t name[128];
+    hydra_pixels_name(name, 128, seat);
+    HANDLE map = NULL;
+    HydraSeatPixels *hdr = NULL;
+    for (;;) {
+        if (!hdr) {
+            map = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, name);
+            if (map) {
+                void *v = MapViewOfFile(map, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(HydraSeatPixels));
+                if (v) hdr = (HydraSeatPixels *)v; else { CloseHandle(map); map = NULL; }
+            }
+            if (!hdr) { Sleep(2000); continue; }
+            fprintf(stderr, "[agent] publishing cursor position for hydrardp\\n"); fflush(stderr);
+        }
+        POINT pt;
+        if (GetCursorPos(&pt)) {
+            hdr->curX = (int32_t)pt.x;
+            hdr->curY = (int32_t)pt.y;
+            MemoryBarrier();
+            hdr->curSeq = hdr->curSeq + 1;
+        }
+        Sleep(16);
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
     const char *port = (argc > 2) ? argv[2] : "56789";
@@ -499,6 +532,9 @@ int main(int argc, char **argv) {
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
     timeBeginPeriod(1);
+
+    /* Cursor position publisher for hydrardp -- harmless when nothing reads it. */
+    { static char seatName[8] = "B"; CreateThread(NULL, 0, cursor_pos_thread, seatName, 0, NULL); }
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
@@ -568,3 +604,6 @@ int main(int argc, char **argv) {
 
     /* not reached */
 }
+
+
+

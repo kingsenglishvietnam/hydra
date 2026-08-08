@@ -102,6 +102,16 @@ typedef struct HydraSeatPixels {
     uint32_t height;
     uint32_t pitch;            /* bytes per row as written here (== width*4)    */
     uint32_t _pad;
+    /* Cursor position inside the seat's session, published by the input agent.
+     * RDP does NOT tell a headless client where the pointer is: the client
+     * normally knows because the client is the thing moving the mouse, so the
+     * server sends a position only when an application warps the cursor.
+     * hydrardp gets the pointer IMAGE and never a position -- a cursor to draw
+     * and nowhere to draw it. agent:<seat> runs as SYSTEM inside that session
+     * with the desktop attached, so GetCursorPos there is simply the answer. */
+    volatile int32_t  curX;
+    volatile int32_t  curY;
+    volatile uint32_t curSeq;   /* 0 = never published */
     /* width*height*4 bytes of BGRA follow immediately */
 } HydraSeatPixels;
 
@@ -218,3 +228,6 @@ static inline void hydra_surface_name(wchar_t* out, size_t cch, const char* seat
 #define HYDRA_ACQUIRE_TIMEOUT_MS 8
 
 #endif /* HYDRA_IPC_H */
+
+
+
