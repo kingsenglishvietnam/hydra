@@ -603,7 +603,7 @@ static UINT hydra_gfx_update_surface_area(RdpgfxClientContext* context, UINT16 s
 static void hydra_on_channel_connected(void* context, const ChannelConnectedEventArgs* e)
 {
     rdpContext* ctx = (rdpContext*)context;
-    if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0) {
+    if (0) {   /* gfx must go to the COMMON handler -- the SDL client never intercepts it */
         if (!gdi_graphics_pipeline_init_ex(ctx->gdi, (RdpgfxClientContext*)e->pInterface,
                                            hydra_gfx_map_window,
                                            hydra_gfx_unmap_window,
@@ -621,7 +621,7 @@ static void hydra_on_channel_connected(void* context, const ChannelConnectedEven
 static void hydra_on_channel_disconnected(void* context, const ChannelDisconnectedEventArgs* e)
 {
     rdpContext* ctx = (rdpContext*)context;
-    if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
+    if (0)
         gdi_graphics_pipeline_uninit(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
     else
         freerdp_client_OnChannelDisconnectedEventHandler(context, e);
@@ -972,6 +972,8 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
 
 
 

@@ -127,3 +127,7 @@ Ruled out: the codec (RFX and AVC fail identically); null map-window callbacks (
 KEY FACT: sdl-freerdp.exe /v:127.0.0.2 /u:teacher /cert:ignore /gfx:RFX WORKS on this machine with this library. So it is our initialisation, and the difference is findable by DIFFING against client/SDL/sdl_freerdp.cpp and client/common/client.c from the FreeRDP source -- not by more hypotheses. mingw-w64-x86_64-freerdp-debug does not exist, so gdb cannot name the function.
 
 NEXT: read the source, diff the init path end to end. Do not patch on a hunch -- six have failed.
+
+## gfx: the actual cause
+
+FreeRDP 3.30 client/SDL/SDL2/sdl_channels.cpp handles RAIL, CLIPRDR and DISP, and passes EVERYTHING ELSE to freerdp_client_OnChannelConnectedEventHandler. It never mentions RDPGFX_DVC_CHANNEL_NAME and never calls gdi_graphics_pipeline_init. Our special case for gfx was the bug: intercepting the channel skipped the common handler's setup, and something later called through the pointer it never set -- libfreerdp-client3 -> libfreerdp3 -> null on a channel thread. Fixed by letting gfx fall through to the common handler (if (0) on both the connect and disconnect special cases). UNTESTED: the run after the fix hit a wedged stack.
