@@ -137,6 +137,20 @@ typedef struct HydraContext {
 static BOOL hydra_open_pixels(HydraContext* h);
 static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht);
 
+/* GDI's own paint handlers, saved and CHAINED rather than replaced.
+ * The graphics pipeline depends on gdi_end_paint to move surface data into the
+ * framebuffer; discarding it left a null call and crashed at address 0 the
+ * moment gfx attached. The bitmap path did not care, which is why this only
+ * showed up with /gfx. */
+static pBeginPaint g_gdiBeginPaint = NULL;
+static pEndPaint   g_gdiEndPaint   = NULL;
+
+/* Set when the pointer moves. Taking the pointer over means cursor motion no
+ * longer dirties the framebuffer, so nothing triggers a paint and the cursor
+ * appears to lag badly on an otherwise idle desktop. The main loop watches this
+ * and republishes. */
+static volatile BOOL g_curMoved = FALSE;
+
 static volatile BOOL g_run = TRUE;
 
 /* DISCONNECT CLEANLY, WHATEVER HAPPENS.
@@ -212,6 +226,9 @@ static BOOL hydra_end_paint(rdpContext* context)
     HydraContext* h = (HydraContext*)context;
     rdpGdi* gdi = context->gdi;
     if (!gdi) return TRUE;
+    /* GDI first: with the graphics pipeline this is what puts surface data into
+     * primary_buffer, so copying before it runs would publish a stale frame. */
+    if (g_gdiEndPaint && !g_gdiEndPaint(context)) return FALSE;
 
     /* GUARD THE BUFFER.
      *
@@ -352,7 +369,11 @@ static BOOL hydra_end_paint(rdpContext* context)
     return TRUE;
 }
 
-static BOOL hydra_begin_paint(rdpContext* context) { (void)context; return TRUE; }
+static BOOL hydra_begin_paint(rdpContext* context)
+{
+    if (g_gdiBeginPaint && !g_gdiBeginPaint(context)) return FALSE;
+    return TRUE;
+}
 
 /* ---------------------------------------------------------------------------
  * POINTER
@@ -654,9 +675,15 @@ static BOOL hydra_post_connect(freerdp* instance)
         L("gdi_init failed");
         return FALSE;
     }
+    g_gdiBeginPaint = instance->context->update->BeginPaint;
+    g_gdiEndPaint   = instance->context->update->EndPaint;
     instance->context->update->BeginPaint = hydra_begin_paint;
     instance->context->update->EndPaint   = hydra_end_paint;
-    hydra_register_pointer(instance->context);
+    /* BISECT: skip our pointer registration when gfx is on -- gdi_graphics_pipeline_init
+     * installs its own graphics module and may not tolerate a replaced pointer. */
+    { char gv[8] = {0}; DWORD n = GetEnvironmentVariableA("HYDRA_GFX", gv, sizeof(gv));
+      if (!(n > 0 && gv[0] == '1')) hydra_register_pointer(instance->context);
+      else L("pointer registration SKIPPED (gfx bisect)"); }
     L("connected; GDI ready (pointer handled by us, not drawn into the buffer)");
     return TRUE;
 }
@@ -899,9 +926,13 @@ int main(int argc, char** argv)
                                             sizeof(handles) / sizeof(handles[0]));
         if (n == 0) { L("get_event_handles failed"); break; }
 
-        if (WaitForMultipleObjects(n, handles, FALSE, 250) == WAIT_FAILED) {
+        if (WaitForMultipleObjects(n, handles, FALSE, 16) == WAIT_FAILED) {
             L("wait failed"); break;
         }
+        /* Cursor moved but nothing repainted: republish so the composited
+         * pointer actually moves. The 16ms throttle inside still applies. */
+        if (g_curMoved) { g_curMoved = FALSE; hydra_end_paint(inst->context); }
+
         if (!freerdp_check_event_handles(inst->context)) {
             if (freerdp_get_last_error(inst->context) == FREERDP_ERROR_SUCCESS)
                 L("check_event_handles failed");
@@ -917,5 +948,14 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
+
+
+
+
+
+
+
 
 
