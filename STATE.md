@@ -160,3 +160,11 @@ Inconclusive: skipping the EndPaint override still produced 107 paints / 66 publ
 UNTESTED and structural: we call freerdp_connect on the main thread; SDL calls freerdp_client_start, which connects on its own thread via ClientStart. Our ClientStart is a stub. The crash is on a channel thread, so this is the strongest remaining candidate -- and testing it means restructuring the client, not a one-line patch.
 
 DO NOT patch further. Mode 3 works without gfx. Mode 2 is pixel-perfect for teaching.
+
+## gfx: STOPPED at ten eliminated candidates
+
+Thread affinity ruled out -- crashes identically on a spawned connect thread (visible as a different thread id in the log). Also ruled out: codec, map-window callbacks, double channel init, pointer registration, intercepting the gfx channel, context layout, SoftwareGdi, chaining EndPaint, not overriding EndPaint.
+
+Remaining territory: the SURFACE path. gfx delivers content as surfaces blitted on its own schedule, not into primary_buffer via EndPaint. Even without the crash the publish path needs rework for that. Read libfreerdp/gdi/gfx.c before touching anything.
+
+PRIORITY IS NOW MODE 2 LOCKUPS -- that is what teaching depends on. Use ON-LOCKUP.md before restarting.

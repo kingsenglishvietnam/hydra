@@ -785,6 +785,14 @@ static int hydra_entry(RDP_CLIENT_ENTRY_POINTS* p)
     return 0;
 }
 
+/* Forward declarations for the connect thread, which is defined after main.
+ * The connection runs on its OWN thread because every stock client does --
+ * SDL via ClientStart -- and the gfx crash is on a channel thread. */
+static DWORD WINAPI hydra_conn_thread(LPVOID arg);
+static const char* g_seatName;
+static const char* g_hostName;
+static const char* g_userName;
+
 int main(int argc, char** argv)
 {
     if (argc < 3) {
@@ -933,6 +941,62 @@ int main(int argc, char** argv)
       freerdp_settings_get_uint32(ctx->settings, FreeRDP_ServerPort),
       freerdp_settings_get_string(ctx->settings, FreeRDP_Username));
 
+    /* BISECT: connect and run the event loop on a SPAWNED thread, as every
+     * stock client does via ClientStart -- not on main. Thread affinity is the
+     * last structural difference after nine other candidates were ruled out. */
+    g_seatName = seat; g_hostName = host; g_userName = user;
+    { HANDLE ct = CreateThread(NULL, 0, hydra_conn_thread, inst, 0, NULL);
+      if (!ct) { L("CreateThread failed"); return 1; }
+      WaitForSingleObject(ct, INFINITE);
+      CloseHandle(ct); }
+
+    L("seat %s: %llu paints, %llu published",
+      seat, (unsigned long long)h->paints, (unsigned long long)h->published);
+    if (h->pixHdr) { UnmapViewOfFile(h->pixHdr); h->pixHdr = NULL; }
+    if (h->pixMap) { CloseHandle(h->pixMap);     h->pixMap = NULL; }
+    hydra_teardown("normal exit");
+    freerdp_client_context_free(ctx);
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static DWORD WINAPI hydra_conn_thread(LPVOID arg)
+{
+    freerdp* inst = (freerdp*)arg;
+    rdpContext* ctx = inst->context;
+    HydraContext* h = (HydraContext*)ctx;
+    const char* seat = g_seatName;
+    const char* host = g_hostName;
+    const char* user = g_userName;
+    (void)ctx;
     if (!freerdp_connect(inst)) {
         L("connect failed: 0x%08X", freerdp_get_last_error(inst->context));
         return 1;
@@ -975,39 +1039,7 @@ int main(int argc, char** argv)
             break;
         }
     }
-
-    L("seat %s: %llu paints, %llu published",
-      seat, (unsigned long long)h->paints, (unsigned long long)h->published);
-    if (h->pixHdr) { UnmapViewOfFile(h->pixHdr); h->pixHdr = NULL; }
-    if (h->pixMap) { CloseHandle(h->pixMap);     h->pixMap = NULL; }
-    hydra_teardown("normal exit");
-    freerdp_client_context_free(ctx);
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
