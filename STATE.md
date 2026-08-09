@@ -143,3 +143,20 @@ Ruled out: codec (RFX==AVC), map-window callbacks (init with NULLs is what every
 UNTESTED, both structural: (1) we call freerdp_connect directly, SDL calls freerdp_client_start which connects on its own thread -- our crash is on a channel thread. (2) we replace update->EndPaint in PostConnect, and gdi_graphics_pipeline_init installs its own EndPaint later; no stock client overrides EndPaint at all.
 
 DO NOT patch further without testing one of those two properly.
+
+## NEXT (after reboot, first thing)
+
+```powershell
+cd C:\Programs\hydra; Start-Service Hydra; Stop-Process -Name session_capture -Force -ErrorAction SilentlyContinue; $env:HYDRA_GFX='RFX'; .\dist\hydrardp.exe B teacher
+```n
+Built but untested: EndPaint is no longer overridden under gfx. Look for 'EndPaint NOT overridden (gfx)'. ZERO publishes is expected and correct. The only question is whether it still crashes. No crash = EndPaint was the cause. Crash = it is the freerdp_connect vs freerdp_client_start thread difference.
+
+## gfx: STOPPED at ten attempts
+
+Ruled out: codec (RFX==AVC identical), map-window callbacks (init with NULLs is what every stock client uses), double channel init, our pointer registration, intercepting the gfx channel, context layout (rdpContext -> rdpClientContext, a real bug, fixed, not the cause), SoftwareGdi (=1, gdi non-null).
+
+Inconclusive: skipping the EndPaint override still produced 107 paints / 66 published, so BeginPaint or something else still drives our publish path. The isolation was not clean.
+
+UNTESTED and structural: we call freerdp_connect on the main thread; SDL calls freerdp_client_start, which connects on its own thread via ClientStart. Our ClientStart is a stub. The crash is on a channel thread, so this is the strongest remaining candidate -- and testing it means restructuring the client, not a one-line patch.
+
+DO NOT patch further. Mode 3 works without gfx. Mode 2 is pixel-perfect for teaching.

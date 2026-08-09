@@ -684,7 +684,11 @@ static BOOL hydra_post_connect(freerdp* instance)
     g_gdiBeginPaint = instance->context->update->BeginPaint;
     g_gdiEndPaint   = instance->context->update->EndPaint;
     instance->context->update->BeginPaint = hydra_begin_paint;
-    instance->context->update->EndPaint   = hydra_end_paint;
+    { char gv3[8] = {0}; DWORD n3 = GetEnvironmentVariableA("HYDRA_GFX", gv3, sizeof(gv3));
+      if (!(n3 > 0 && gv3[0] != 0))
+          instance->context->update->EndPaint = hydra_end_paint;
+      else
+          L("EndPaint NOT overridden (gfx) -- gdi installs its own when the channel connects"); }
     /* BISECT: skip our pointer registration when gfx is on -- gdi_graphics_pipeline_init
      * installs its own graphics module and may not tolerate a replaced pointer. */
     { char gv[8] = {0}; DWORD n = GetEnvironmentVariableA("HYDRA_GFX", gv, sizeof(gv));
@@ -980,6 +984,7 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
 
 
 
