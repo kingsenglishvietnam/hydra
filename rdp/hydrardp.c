@@ -685,6 +685,8 @@ static BOOL hydra_post_connect(freerdp* instance)
       if (!(n > 0 && gv[0] == '1')) hydra_register_pointer(instance->context);
       else L("pointer registration SKIPPED (gfx bisect)"); }
     L("connected; GDI ready (pointer handled by us, not drawn into the buffer)");
+    /* ASK FOR THE WHOLE DESKTOP. After connecting the server sends only CHANGES; on an idle desktop that is nothing, so our framebuffer stays black. Connecting a second client made the picture appear because its arrival forced the full refresh we never asked for. */
+    { RECTANGLE_16 r; r.left = 0; r.top = 0; r.right = (UINT16)freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopWidth); r.bottom = (UINT16)freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopHeight); if (instance->context->update->RefreshRect) { instance->context->update->RefreshRect(instance->context, 1, &r); L("requested a full refresh (%ux%u)", r.right, r.bottom); } }
     return TRUE;
 }
 
@@ -948,6 +950,7 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
 
 
 

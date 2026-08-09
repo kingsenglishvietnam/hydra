@@ -1,106 +1,157 @@
-# hydra-view.ps1 -- bring up the whole seat, view window included, in one command.
+# hydra-view.ps1 -- start mode 3 (headless client) in one command.
 #
 # WHY THIS EXISTS
-#   hydra-start.ps1 does the service, the client and the panel, but the view
-#   window was left as a manual step -- and it MUST be last. Started before the
-#   pixel ring has frames, a mirror comes up at ~14 MB and shows nothing: a black
-#   or garbled window that looks like a rendering bug and is really a startup
-#   ordering mistake. That has now cost several restarts, so the ordering belongs
-#   in code rather than in a list of instructions.
+#   Mode 2 is one command. Mode 3 was two shells, a manual wait, and a rule about
+#   ordering -- and getting the order wrong silently produced mirrors that showed
+#   nothing, or two clients on one session, which wedges the RDP stack and costs
+#   a reboot. None of that needed to be the user's problem.
 #
-#   Order is: service -> capture publishing -> panel -> view window. Each step is
-#   verified before the next begins.
+#   The ordering is real, so this enforces it: stop anything conflicting, start
+#   the service, start the client, WAIT until frames actually exist, then start
+#   the mirrors.
 #
 # USAGE:
-#   .\hydra-view.ps1                       # everything
-#   .\hydra-view.ps1 -NoView               # panel only
-#   .\hydra-view.ps1 -Client mstsc         # fall back to the Microsoft client
+#   .\hydra-view.ps1
+#   .\hydra-view.ps1 -NoWindow          # panel only, no view window
+#   .\hydra-view.ps1 -Seat B -User teacher
 #
-# The view window opens BORDERLESS FULLSCREEN. F11 toggles to a resizable
-# window and back; Alt-Tab works either way.
+# The client runs in ITS OWN WINDOW so its log stays readable -- that log is the
+# only direct measure of whether frames are flowing.
 
 param(
-    [ValidateSet('mstsc','freerdp')]
-    [string]$Client   = 'freerdp',
-    [string]$Seat     = 'B',
-    [string]$Monitor  = '\\.\DISPLAY2',
-    [int]$Port        = 56789,
+    [string]$Seat    = 'B',
+    [string]$User    = 'teacher',
+    [string]$Monitor = '\\.\DISPLAY2',
     [string]$ViewSize = '1600x900',
-    [switch]$NoView,
-    [int]$TimeoutSec  = 90
+    [int]$Port       = 56789,
+    [switch]$NoWindow,
+    # Windows virtual desktop for the fullscreen view (0 = leave it here).
+    #
+    # Safe in THIS mode specifically: hydrardp has no window, so nothing can be
+    # starved of compositing by sitting on an inactive desktop. That is not true
+    # of mode 2, where parking the RDP client on another virtual desktop stops it
+    # requesting updates and freezes the panel.
+    [int]$Desktop = 0,
+    [int]$TimeoutSec = 90
 )
 
 $ErrorActionPreference = 'Stop'
 $root   = $PSScriptRoot
+$client = Join-Path $root 'dist\hydrardp.exe'
 $mirror = Join-Path $root 'dist\mirror.exe'
-$ctl    = Join-Path $root 'dist\hydractl.exe'
-$start  = Join-Path $root 'hydra-start.ps1'
+foreach ($f in @($client, $mirror)) { if (-not (Test-Path $f)) { throw "missing: $f" } }
 
 function Say($m, $c = 'Gray') { Write-Host $m -ForegroundColor $c }
 
-foreach ($f in @($mirror, $ctl, $start)) {
-    if (-not (Test-Path $f)) { throw "missing: $f  (run .\build.ps1)" }
+# --- 1. clear anything that would conflict --------------------------------
+# Two clients on one session, or two producers on one pixel ring, wedges the
+# stack. Cheaper to always clear than to explain the rule.
+$stale = Get-Process mirror, hydrardp, sdl-freerdp, mstsc -ErrorAction SilentlyContinue
+if ($stale) {
+    Say "stopping $($stale.Count) conflicting process(es)" 'Yellow'
+    $stale | Stop-Process -Force
+    Start-Sleep -Milliseconds 500
 }
 
-# --- 1. everything except the view window ---------------------------------
-Say "=== starting the seat ===" 'Cyan'
-& $start -Client $Client
-if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { Say "hydra-start reported a problem" 'Yellow' }
+# --- 2. service (it owns the shared rings) ---------------------------------
+$svc = Get-Service Hydra -ErrorAction SilentlyContinue
+if (-not $svc) { throw "Hydra service not installed -- run .\setup.ps1" }
+if ($svc.Status -ne 'Running') { Say "starting Hydra service..."; Start-Service Hydra }
+else                           { Say "Hydra service already running" }
 
-# --- 2. is the panel actually alive? --------------------------------------
-# A mirror that never received a frame sits around 14 MB; a presenting one is
-# 70-98 MB because it has allocated D3D resources. That number is the most
-# reliable signal we have, and it is worth checking rather than assuming.
+# session_capture would write the SAME ring as the client. Only one producer.
+Start-Sleep -Seconds 2
+Stop-Process -Name session_capture -Force -ErrorAction SilentlyContinue
+
+# gfx crashes before the first frame -- never inherit it from the parent shell.
+Remove-Item Env:HYDRA_GFX -ErrorAction SilentlyContinue
+
+# --- 3. client, in its own window ------------------------------------------
 Say ""
-Say "verifying the panel before opening the view window..." 'Cyan'
+Say "A window will open and ask for $User's password." 'Cyan'
+Say "Type it there -- echo is off, so a typo shows as ERRCONNECT_LOGON_FAILURE." 'Cyan'
+Say ""
 
-$deadline = (Get-Date).AddSeconds(30)
-$panelOk  = $false
+Start-Process powershell -ArgumentList @(
+    '-NoExit', '-Command',
+    "cd '$root'; .\dist\hydrardp.exe $Seat $User"
+)
+
+# --- 4. WAIT for frames, rather than telling the user to watch for them ----
+# The mirrors must not start against an empty ring: they come up at ~7 MB and
+# display nothing, which looks exactly like a broken pipeline.
+Say "waiting for the client to publish frames ..."
+$deadline = (Get-Date).AddSeconds($TimeoutSec)
+$ready = $false
 while ((Get-Date) -lt $deadline) {
-    $m = @(Get-Process mirror -ErrorAction SilentlyContinue |
-           Where-Object { $_.WorkingSet64 -gt 40MB })
-    if ($m.Count -ge 1) { $panelOk = $true; break }
     Start-Sleep -Seconds 2
+    $probe = & $mirror $Seat --probe 2 2>&1 | Out-String
+    if ($probe -match 'seq starts at (\d+)') {
+        if ([int]$Matches[1] -gt 0) { $ready = $true; break }
+    }
 }
 
-if (-not $panelOk) {
-    Say "the panel is not presenting -- NOT opening the view window." 'Red'
-    Say "Opening it now would just produce a black window and hide the real" 'Red'
-    Say "problem. Check:" 'Red'
-    & $ctl status
-    Say ""
-    Say "  capture:$Seat missing or waiting -> the seat's session is not up" 'Yellow'
-    Say "  service not reachable            -> Start-Service Hydra" 'Yellow'
+if (-not $ready) {
+    Say "no frames after $TimeoutSec s." 'Red'
+    Say "Check the client window: a wrong password, or ERRCONNECT_ACTIVATION_TIMEOUT" 'Red'
+    Say "which means the RDP stack is wedged and needs a reboot." 'Red'
     return
 }
-Say "panel is live" 'Green'
+Say "frames are flowing" 'Green'
 
-# --- 3. the view window, last ---------------------------------------------
-if ($NoView) { Say "view window skipped (-NoView)" 'DarkGray'; return }
+# --- 5. mirrors -------------------------------------------------------------
+Say "starting the panel on $Monitor ..."
+Start-Process $mirror -ArgumentList $Seat, $Monitor -WindowStyle Minimized
 
-# Replace any earlier view window rather than stacking them: two readers are
-# harmless, but a stale one from a previous run is usually the ~14 MB corpse
-# that caused the confusion in the first place.
-Get-Process mirror -ErrorAction SilentlyContinue |
-    Where-Object { $_.MainWindowTitle -eq 'Hydra - seat view' -or $_.WorkingSet64 -lt 40MB } |
-    Stop-Process -Force -ErrorAction SilentlyContinue
+if (-not $NoWindow) {
+    Say "starting the view window ($ViewSize, input forwarding on) ..."
+    Start-Process $mirror -ArgumentList $Seat, '--window', $ViewSize, "$Port"
 
-Say "opening the view window..." 'Cyan'
-Start-Process $mirror -ArgumentList $Seat, '--window', $ViewSize, "$Port"
-Start-Sleep -Seconds 3
+    if ($Desktop -gt 0) {
+        try {
+            if (-not (Get-Module -ListAvailable -Name VirtualDesktop)) {
+                throw "module not installed"
+            }
+            Import-Module VirtualDesktop -ErrorAction Stop
 
-$all = @(Get-Process mirror -ErrorAction SilentlyContinue)
-$good = @($all | Where-Object { $_.WorkingSet64 -gt 40MB })
+            while ((Get-DesktopCount) -lt $Desktop) { New-Desktop | Out-Null }
 
-Write-Host ""
-if ($good.Count -ge 2) {
-    Say "READY -- panel and view window both presenting" 'Green'
-} else {
-    Say "view window came up but is not presenting ($($good.Count) of $($all.Count) healthy)" 'Yellow'
-    Say "re-run this script; it is almost always a startup race." 'Yellow'
+            # Wait for the window: mirror opens borderless fullscreen a moment
+            # after the process starts, and moving a handle that does not exist
+            # yet silently does nothing.
+            $hwnd = 0
+            $deadlineW = (Get-Date).AddSeconds(10)
+            while ((Get-Date) -lt $deadlineW) {
+                $vp = Get-Process mirror -ErrorAction SilentlyContinue |
+                      Where-Object { $_.MainWindowTitle -eq 'Hydra - seat view' } |
+                      Select-Object -First 1
+                if ($vp -and $vp.MainWindowHandle -ne 0) { $hwnd = $vp.MainWindowHandle; break }
+                Start-Sleep -Milliseconds 300
+            }
+
+            if ($hwnd -ne 0) {
+                Move-Window -Desktop (Get-Desktop ($Desktop - 1)) -Hwnd $hwnd | Out-Null
+                Say "view window moved to virtual desktop $Desktop" 'Green'
+                Say "  switch with Win+Ctrl+Left / Win+Ctrl+Right" 'DarkGray'
+            } else {
+                Say "  view window did not appear in time; left on this desktop" 'Yellow'
+            }
+        } catch {
+            Say "virtual desktop $Desktop unavailable -- run:" 'Yellow'
+            Say "  Install-Module VirtualDesktop -Scope CurrentUser -Force" 'Yellow'
+        }
+    }
 }
 
-$all | Select-Object Id, MainWindowTitle, @{n='MB';e={[int]($_.WorkingSet64/1MB)}} | Format-Table -AutoSize
-
-Say "View window: F11 toggles fullscreen <-> window. Alt-Tab works either way." 'Cyan'
-Say "Leave the RDP client thumbnail alone -- it only holds the session open." 'Cyan'
+Start-Sleep -Seconds 3
+$m = @(Get-Process mirror -ErrorAction SilentlyContinue)
+foreach ($p in $m) {
+    $mb = [math]::Round($p.WorkingSet64 / 1MB, 1)
+    $what = if ($p.MainWindowTitle) { $p.MainWindowTitle } else { 'panel' }
+    $col = if ($mb -gt 40) { 'Green' } else { 'Yellow' }
+    Say ("  {0,-18} {1,6} MB" -f $what, $mb) $col
+}
+Say ""
+Say "Under 40 MB means a mirror started before frames existed -- rerun this script." 'DarkGray'
+Say "Known in this mode: video is glitchy (no codec), and the cursor renders but" 'DarkGray'
+Say "does not track (RDP sends no pointer position to a client that sends no input)." 'DarkGray'
