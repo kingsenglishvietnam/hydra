@@ -228,7 +228,8 @@ static BOOL hydra_end_paint(rdpContext* context)
     if (!gdi) return TRUE;
     /* GDI first: with the graphics pipeline this is what puts surface data into
      * primary_buffer, so copying before it runs would publish a stale frame. */
-    if (g_gdiEndPaint && !g_gdiEndPaint(context)) return FALSE;
+    { char gv2[8] = {0}; DWORD n2 = GetEnvironmentVariableA("HYDRA_GFX", gv2, sizeof(gv2));
+      if (!(n2 > 0 && gv2[0] != 0) && g_gdiEndPaint && !g_gdiEndPaint(context)) return FALSE; }   /* BISECT 2: do not chain under gfx */
 
     /* GUARD THE BUFFER.
      *
@@ -613,10 +614,8 @@ static void hydra_on_channel_connected(void* context, const ChannelConnectedEven
         }
         L("graphics pipeline attached -- video should decode properly now");
     }
-    /* NOTE: do NOT call freerdp_client_OnChannelConnectedEventHandler here.
-     * client-common subscribes it separately, so calling it as well runs it
-     * TWICE for every non-gfx channel -- rdpsnd, disp, ainput all get
-     * double-initialised, which is what crashed the client on /gfx. */
+    else
+        freerdp_client_OnChannelConnectedEventHandler(context, e);   /* required: stock clients do exactly this */
 }
 
 static void hydra_on_channel_disconnected(void* context, const ChannelDisconnectedEventArgs* e)
@@ -624,7 +623,8 @@ static void hydra_on_channel_disconnected(void* context, const ChannelDisconnect
     rdpContext* ctx = (rdpContext*)context;
     if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0)
         gdi_graphics_pipeline_uninit(ctx->gdi, (RdpgfxClientContext*)e->pInterface);
-    /* likewise: client-common handles the rest */
+    else
+        freerdp_client_OnChannelDisconnectedEventHandler(context, e);
 }
 
 /* Called BEFORE the connection is negotiated.
@@ -682,7 +682,7 @@ static BOOL hydra_post_connect(freerdp* instance)
     /* BISECT: skip our pointer registration when gfx is on -- gdi_graphics_pipeline_init
      * installs its own graphics module and may not tolerate a replaced pointer. */
     { char gv[8] = {0}; DWORD n = GetEnvironmentVariableA("HYDRA_GFX", gv, sizeof(gv));
-      if (!(n > 0 && gv[0] == '1')) hydra_register_pointer(instance->context);
+      if (!(n > 0 && gv[0] != 0)) hydra_register_pointer(instance->context);   /* skip for ANY gfx value, not just '1' */
       else L("pointer registration SKIPPED (gfx bisect)"); }
     L("connected; GDI ready (pointer handled by us, not drawn into the buffer)");
     /* ASK FOR THE WHOLE DESKTOP. After connecting the server sends only CHANGES; on an idle desktop that is nothing, so our framebuffer stays black. Connecting a second client made the picture appear because its arrival forced the full refresh we never asked for. */
@@ -972,6 +972,13 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
+
+
+
+
+
 
 
 

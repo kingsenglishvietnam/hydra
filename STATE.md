@@ -117,3 +117,13 @@ then `query session` and `logoff <teacher's ID>`.
 1. gfx with `RFX` / `progressive` -- untested on a clean stack.
 2. Video quality without a codec -- expected to be poor.
 3. Milestone 4 (audio into the client's own stream), milestone 5 (input).
+
+## gfx: six hypotheses eliminated
+
+Crash is ALWAYS: exception 0xC0000005 at address 0, on a channel thread, immediately after 'graphics pipeline attached'. gdb backtrace shows libfreerdp-client3 -> libfreerdp3 -> null, with NO hydra_* frames.
+
+Ruled out: the codec (RFX and AVC fail identically); null map-window callbacks (init_ex with stubs is in place); double channel init; our pointer registration (bisect confirmed skipped, still crashes); chaining GDI's EndPaint; not chaining it.
+
+KEY FACT: sdl-freerdp.exe /v:127.0.0.2 /u:teacher /cert:ignore /gfx:RFX WORKS on this machine with this library. So it is our initialisation, and the difference is findable by DIFFING against client/SDL/sdl_freerdp.cpp and client/common/client.c from the FreeRDP source -- not by more hypotheses. mingw-w64-x86_64-freerdp-debug does not exist, so gdb cannot name the function.
+
+NEXT: read the source, diff the init path end to end. Do not patch on a hunch -- six have failed.
