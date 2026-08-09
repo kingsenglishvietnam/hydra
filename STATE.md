@@ -135,3 +135,11 @@ FreeRDP 3.30 client/SDL/SDL2/sdl_channels.cpp handles RAIL, CLIPRDR and DISP, an
 ## gfx: source-derived fix ALSO failed
 
 Removed our RDPGFX special case so the channel falls through to freerdp_client_OnChannelConnectedEventHandler, matching client/SDL/SDL2/sdl_channels.cpp exactly. Confirmed applied ('graphics pipeline attached' no longer prints). STILL crashes identically. Seven attempts. The difference from the stock client is elsewhere in the init path -- diff settings, PreConnect and context setup against client/common/client.c. Do not test another candidate.
+
+## gfx: STOPPED after nine attempts
+
+Ruled out: codec (RFX==AVC), map-window callbacks (init with NULLs is what every client uses), double channel init, our pointer registration, chaining EndPaint, not chaining it, intercepting the gfx channel, context layout (fixed rdpContext -> rdpClientContext, correct but not the cause), SoftwareGdi (=1, gdi non-null).
+
+UNTESTED, both structural: (1) we call freerdp_connect directly, SDL calls freerdp_client_start which connects on its own thread -- our crash is on a channel thread. (2) we replace update->EndPaint in PostConnect, and gdi_graphics_pipeline_init installs its own EndPaint later; no stock client overrides EndPaint at all.
+
+DO NOT patch further without testing one of those two properly.

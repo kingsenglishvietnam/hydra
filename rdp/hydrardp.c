@@ -77,7 +77,13 @@
 #include "../common/hydra_ipc.h"
 
 typedef struct HydraContext {
-    rdpContext  common;      /* MUST be first -- FreeRDP casts between them */
+    /* rdpClientContext, NOT rdpContext. freerdp_client_context_new and everything
+     * in client-common treat this memory as rdpClientContext -- which is
+     * rdpContext PLUS client-common's own fields. Declaring only rdpContext
+     * meant client-common wrote the gfx channel state into OUR members and then
+     * called through what it read back: 0xC0000005 at address 0, inside
+     * libfreerdp-client3, on a channel thread, only with gfx. */
+    rdpClientContext  common;      /* MUST be first -- FreeRDP casts between them */
 
     char        seat[64];
     UINT64      paints;
@@ -684,7 +690,9 @@ static BOOL hydra_post_connect(freerdp* instance)
     { char gv[8] = {0}; DWORD n = GetEnvironmentVariableA("HYDRA_GFX", gv, sizeof(gv));
       if (!(n > 0 && gv[0] != 0)) hydra_register_pointer(instance->context);   /* skip for ANY gfx value, not just '1' */
       else L("pointer registration SKIPPED (gfx bisect)"); }
-    L("connected; GDI ready (pointer handled by us, not drawn into the buffer)");
+    L("connected; GDI ready. SoftwareGdi=%d gdi=%p",
+      freerdp_settings_get_bool(instance->context->settings, FreeRDP_SoftwareGdi),
+      (void*)instance->context->gdi);
     /* ASK FOR THE WHOLE DESKTOP. After connecting the server sends only CHANGES; on an idle desktop that is nothing, so our framebuffer stays black. Connecting a second client made the picture appear because its arrival forced the full refresh we never asked for. */
     { RECTANGLE_16 r; r.left = 0; r.top = 0; r.right = (UINT16)freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopWidth); r.bottom = (UINT16)freerdp_settings_get_uint32(instance->context->settings, FreeRDP_DesktopHeight); if (instance->context->update->RefreshRect) { instance->context->update->RefreshRect(instance->context, 1, &r); L("requested a full refresh (%ux%u)", r.right, r.bottom); } }
     return TRUE;
@@ -972,6 +980,8 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
 
 
 
