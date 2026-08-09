@@ -857,6 +857,15 @@ int main(int argc, char** argv)
          * updates and video is visibly blocky -- viewers described it as
          * "glitchy", which is exactly what uncompressed region updates of a
          * moving image look like. */
+        /* Decline multitransport (the side UDP channel).
+         *
+         * The trace showed the connection reaching
+         * CONNECTION_STATE_MULTITRANSPORT_BOOTSTRAPPING_REQUEST, answering
+         * SEC_TRANSPORT_REQ with SEC_TRANSPORT_RSP, and then stalling for eight
+         * seconds until ACTIVATION_TIMEOUT. The server was waiting on a transport we
+         * never bring up. Nothing to do with gfx -- which is why four hypotheses
+         * about the graphics pipeline all missed. */
+        (char*)"-multitransport",
         (char*)"/network:lan",     /* don't let autodetect throttle quality */
     };
     int fargc = (int)(sizeof(fargv) / sizeof(fargv[0]));
@@ -935,6 +944,19 @@ int main(int argc, char** argv)
          * pointer actually moves. The 16ms throttle inside still applies. */
         if (g_curMoved) { g_curMoved = FALSE; hydra_end_paint(inst->context); }
 
+        /* Publish on a TIMER, not on paint callbacks. With the graphics pipeline,
+
+         * content arrives as SURFACES that gfx blits to the output on its own
+
+         * schedule -- EndPaint is not the signal. Sampling only on EndPaint gave a
+
+         * mostly-empty frame with one white box where a surface happened to land.
+
+         * The 60fps throttle inside makes this cheap regardless of how often we ask. */
+
+        hydra_end_paint(inst->context);
+
+
         if (!freerdp_check_event_handles(inst->context)) {
             if (freerdp_get_last_error(inst->context) == FREERDP_ERROR_SUCCESS)
                 L("check_event_handles failed");
@@ -950,6 +972,9 @@ int main(int argc, char** argv)
     freerdp_client_context_free(ctx);
     return 0;
 }
+
+
+
 
 
 
