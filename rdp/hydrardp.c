@@ -149,6 +149,31 @@ static void hydra_composite_pointer(HydraContext* h, UINT32 w, UINT32 ht);
  * moment gfx attached. The bitmap path did not care, which is why this only
  * showed up with /gfx. */
 static pBeginPaint g_gdiBeginPaint = NULL;
+
+/* ENDFRAME IS THE SIGNAL.
+ *
+ * RDPGFX_END_FRAME_PDU is what the server sends to mark a frame complete.
+ * gdi_graphics_pipeline_init_ex installs its own handler for it; we capture
+ * that, chain to it so gdi still does its bookkeeping, and publish after.
+ *
+ * The main loop used to sample primary_buffer on a blind 16ms timer, which
+ * can land mid-blit and publish a frame that is part new and part old --
+ * the glitching that survived the codec change, the CPU fix and the
+ * throttle move, because none of them touched WHEN the sample was taken. */
+static pcRdpgfxEndFrame g_gfxEndFrame = NULL;
+static BOOL hydra_end_paint(rdpContext* context);
+
+static UINT hydra_gfx_end_frame(RdpgfxClientContext* gfx,
+                                const RDPGFX_END_FRAME_PDU* endFrame)
+{
+    UINT rc = CHANNEL_RC_OK;
+    if (g_gfxEndFrame) rc = g_gfxEndFrame(gfx, endFrame);   /* gdi first */
+    if (gfx && gfx->custom) {
+        rdpGdi* g = (rdpGdi*)gfx->custom;
+        if (g && g->context) hydra_end_paint(g->context);
+    }
+    return rc;
+}
 static pEndPaint   g_gdiEndPaint   = NULL;
 
 /* Set when the pointer moves. Taking the pointer over means cursor motion no
@@ -232,10 +257,31 @@ static BOOL hydra_end_paint(rdpContext* context)
     HydraContext* h = (HydraContext*)context;
     rdpGdi* gdi = context->gdi;
     if (!gdi) return TRUE;
+
+    /* EARLY THROTTLE.
+     *
+     * The main loop calls this every iteration on purpose (publish on a
+     * timer, not on paint callbacks). Under /gfx the socket nearly always
+     * has data pending, so the 16ms WaitForMultipleObjects returns at once
+     * and the loop runs ~4,100x/second instead of ~60. Measured 2026-08-11:
+     * paints climbed from 774 to 11,162 per interval while published stayed
+     * flat at ~160, and the process sat at roughly 200% CPU.
+     *
+     * Testing the clock BEFORE the region bookkeeping turns 98% of those
+     * calls into a tick compare. Nothing above the old throttle position
+     * had side effects that needed to happen per call. */
+    {
+        DWORD tick = GetTickCount();
+        if ((tick - h->lastPublish) < 16) return TRUE;
+    }
     /* GDI first: with the graphics pipeline this is what puts surface data into
      * primary_buffer, so copying before it runs would publish a stale frame. */
-    { char gv2[8] = {0}; DWORD n2 = GetEnvironmentVariableA("HYDRA_GFX", gv2, sizeof(gv2));
-      if (!(n2 > 0 && gv2[0] != 0) && g_gdiEndPaint && !g_gdiEndPaint(context)) return FALSE; }   /* BISECT 2: do not chain under gfx */
+    /* Always chain. Under gfx this is gdi's own EndPaint, captured when the
+     * channel attached; it is what moves surface data into primary_buffer, so
+     * copying before it runs would publish a stale frame. The HYDRA_GFX guard
+     * that used to sit here was bisect scaffolding for a crash that turned out
+     * to be update->DesktopResize. */
+    if (g_gdiEndPaint && !g_gdiEndPaint(context)) return FALSE;   /* BISECT 2: do not chain under gfx */
 
     /* GUARD THE BUFFER.
      *
@@ -301,8 +347,11 @@ static BOOL hydra_end_paint(rdpContext* context)
      * The panel cannot show more than the display refresh anyway, so cap at
      * ~60/s. Intermediate regions are not lost -- they have already been drawn
      * into the GDI buffer, so the next publish carries them. */
+    /* The early return at the top of this function already established that
+     * we are due. Recompute the tick so lastPublish records when the publish
+     * actually started rather than when the call arrived. */
     DWORD nowTick = GetTickCount();
-    BOOL  due = (nowTick - h->lastPublish) >= 16;
+    BOOL  due = TRUE;
 
     if (due && hydra_open_pixels(h)) {
         h->lastPublish = nowTick;
@@ -609,7 +658,7 @@ static UINT hydra_gfx_update_surface_area(RdpgfxClientContext* context, UINT16 s
 static void hydra_on_channel_connected(void* context, const ChannelConnectedEventArgs* e)
 {
     rdpContext* ctx = (rdpContext*)context;
-    if (0) {   /* gfx must go to the COMMON handler -- the SDL client never intercepts it */
+    if (strcmp(e->name, RDPGFX_DVC_CHANNEL_NAME) == 0) {   /* init_ex with real stubs: the common handler uses plain init, which passes NULL map/unmap/update -- and gdi_MapSurfaceToWindow calls them */
         if (!gdi_graphics_pipeline_init_ex(ctx->gdi, (RdpgfxClientContext*)e->pInterface,
                                            hydra_gfx_map_window,
                                            hydra_gfx_unmap_window,
@@ -619,6 +668,28 @@ static void hydra_on_channel_connected(void* context, const ChannelConnectedEven
             return;
         }
         L("graphics pipeline attached -- video should decode properly now");
+
+        /* INSTALL OUR EndPaint HERE, NOT IN post_connect.
+         *
+         * gdi_graphics_pipeline_init_ex has just replaced update->EndPaint with
+         * its own. post_connect runs BEFORE the channel connects, so anything
+         * assigned there is overwritten a moment later -- which is why the old
+         * code did not bother and simply logged that fact. Capture gdi's and
+         * chain to it. */
+        g_gdiEndPaint = ctx->update->EndPaint;
+        ctx->update->EndPaint = hydra_end_paint;
+        L("EndPaint installed after gfx attach (chaining to gdi %p)", (void*)g_gdiEndPaint);
+
+        /* Publish on completed FRAMES rather than on a timer. See
+         * hydra_gfx_end_frame for why. */
+        {
+            RdpgfxClientContext* gfx = (RdpgfxClientContext*)e->pInterface;
+            if (gfx) {
+                g_gfxEndFrame  = gfx->EndFrame;
+                gfx->EndFrame  = hydra_gfx_end_frame;
+                L("gfx EndFrame installed (chaining to gdi %p)", (void*)g_gfxEndFrame);
+            }
+        }
     }
     else
         freerdp_client_OnChannelConnectedEventHandler(context, e);   /* required: stock clients do exactly this */
@@ -675,12 +746,39 @@ static BOOL hydra_open_pixels(HydraContext* h)
     return TRUE;
 }
 
+/* PROBLEM 2, root cause found 2026-08-11.
+ *
+ * The /gfx crash was update->DesktopResize being NULL.
+ * gdi_graphics_pipeline_init sends ResetGraphics on attach, the server answers
+ * with a desktop-size notification, and libfreerdp calls
+ * update->DesktopResize(gdi->context) having checked only that `update` itself
+ * is non-NULL -- `call *0x68(%r14)`, one argument, offsetof confirmed 0x068.
+ *
+ * Without gfx that path never runs, which is why every non-gfx run was clean.
+ * Eleven hypotheses -- codec, double channel init, pointer registration,
+ * EndPaint chaining, channel interception, context layout, SoftwareGdi, thread
+ * affinity, pipeline init stubs -- all missed it because none of them looked at
+ * rdpUpdate. The VEH return address named the caller in one run. */
+static BOOL hydra_desktop_resize(rdpContext* context)
+{
+    UINT32 w = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopWidth);
+    UINT32 h = freerdp_settings_get_uint32(context->settings, FreeRDP_DesktopHeight);
+    L("desktop resize -> %ux%u", w, h);
+    if (!gdi_resize(context->gdi, w, h)) {
+        L("gdi_resize failed");
+        return FALSE;
+    }
+    return TRUE;
+}
+
 static BOOL hydra_post_connect(freerdp* instance)
 {
     if (!gdi_init(instance, PIXEL_FORMAT_BGRA32)) {
         L("gdi_init failed");
         return FALSE;
     }
+    /* must be set BEFORE the gfx channel attaches -- see hydra_desktop_resize */
+    instance->context->update->DesktopResize = hydra_desktop_resize;
     g_gdiBeginPaint = instance->context->update->BeginPaint;
     g_gdiEndPaint   = instance->context->update->EndPaint;
     instance->context->update->BeginPaint = hydra_begin_paint;
@@ -691,9 +789,10 @@ static BOOL hydra_post_connect(freerdp* instance)
           L("EndPaint NOT overridden (gfx) -- gdi installs its own when the channel connects"); }
     /* BISECT: skip our pointer registration when gfx is on -- gdi_graphics_pipeline_init
      * installs its own graphics module and may not tolerate a replaced pointer. */
-    { char gv[8] = {0}; DWORD n = GetEnvironmentVariableA("HYDRA_GFX", gv, sizeof(gv));
-      if (!(n > 0 && gv[0] != 0)) hydra_register_pointer(instance->context);   /* skip for ANY gfx value, not just '1' */
-      else L("pointer registration SKIPPED (gfx bisect)"); }
+    /* The gfx guard that used to sit here was bisect scaffolding for the /gfx
+     * crash. That crash was update->DesktopResize being NULL, fixed 2026-08-11,
+     * so the pointer no longer needs disabling when gfx is on. */
+    hydra_register_pointer(instance->context);
     L("connected; GDI ready. SoftwareGdi=%d gdi=%p",
       freerdp_settings_get_bool(instance->context->settings, FreeRDP_SoftwareGdi),
       (void*)instance->context->gdi);
@@ -793,6 +892,8 @@ static const char* g_seatName;
 static const char* g_hostName;
 static const char* g_userName;
 
+#include "hydra_veh.c"
+
 int main(int argc, char** argv)
 {
     if (argc < 3) {
@@ -807,6 +908,7 @@ int main(int argc, char** argv)
      * wrapper holding a session it cannot clean up, and every later connection
      * fails until the machine is REBOOTED. */
     SetUnhandledExceptionFilter(hydra_crash_filter);
+    hydra_install_veh();
 
     const char* seat = argv[1];
     const char* user = argv[2];
@@ -1041,5 +1143,6 @@ static DWORD WINAPI hydra_conn_thread(LPVOID arg)
     }
     return 0;
 }
+
 
 

@@ -53,3 +53,8 @@ desktop.ini
 # --- logs ------------------------------------------------------------------
 *.log
 logs/
+
+# patch-script backups; git is the history
+*.bak-*
+*.GOOD-*
+
