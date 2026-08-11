@@ -71,7 +71,7 @@ foreach ($l in $libs) {
 $libs = $resolved
 Write-Host "kit paths OK (SDK $sdkVer, IddCx $iddcx, UMDF $umdf); $($libs.Count) libs" -ForegroundColor Green
 
-$incArgs = $inc | ForEach-Object { "/I`"$_`"" }
+$incArgs = $inc | ForEach-Object { "/I$_" }
 
 # UMDF driver: user-mode DLL, but compiled with driver defines. _WIN32_WINNT 0x0A00,
 # UMDF_USING_NTSTATUS + WIN32_NO_STATUS avoid NTSTATUS dup-def between ntstatus & windows.
@@ -92,7 +92,7 @@ $obj = Join-Path $outdir 'iddseat.obj'
 $dll = Join-Path $outdir 'iddseat.dll'
 
 Write-Host "compiling iddseat.cpp ..." -ForegroundColor Cyan
-$compile = @('/nologo','/c','/EHsc','/std:c++17','/W3','/MD') + $cldefs + $incArgs + @("`"$src`"","/Fo:`"$obj`"")
+$compile = @('/nologo','/c','/EHsc','/std:c++17','/W3','/MD') + $cldefs + $incArgs + @($src,"/Fo:$obj")
 $out = & cl.exe @compile 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "COMPILE FAILED:" -ForegroundColor Red
@@ -104,12 +104,12 @@ Write-Host "  compiled OK" -ForegroundColor Green
 
 Write-Host "linking iddseat.dll ..." -ForegroundColor Cyan
 # /DLL, no default libs pulled that clash with UMDF; entry is the WDF stub.
-$link = @('/nologo','/DLL',"/OUT:`"$dll`"","`"$obj`"") + ($libs | ForEach-Object { "`"$_`"" }) +
+$link = @('/nologo','/DLL',"/OUT:$dll",$obj) + $libs +
         @('/NODEFAULTLIB:kernel32.lib') # UMDF stub provides its own; re-add via our explicit list
 $out = & link.exe @link 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "LINK FAILED:" -ForegroundColor Red
-    $out | Where-Object { $_ -match ': (error|warning|unresolved) ' } | Select-Object -First 25 |
+    $out | Select-Object -First 40 |
            ForEach-Object { Write-Host "  $_" -ForegroundColor DarkRed }
     Write-Error "link stage failed"
 }

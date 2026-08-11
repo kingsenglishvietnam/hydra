@@ -540,7 +540,74 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     /* IddCxMonitorArrival takes only (monitor, out-args) -- there is no input
      * struct. The OS returns the adapter LUID / target id for companion apps. */
     IDARG_OUT_MONITORARRIVAL arrivalOut{};
-    return IddCxMonitorArrival(createOut.MonitorObject, &arrivalOut);
+    NTSTATUS arrivalStatus = IddCxMonitorArrival(createOut.MonitorObject, &arrivalOut);
+    if (!NT_SUCCESS(arrivalStatus)) return arrivalStatus;
+
+#ifdef HYDRA_REMOTE_IDD
+    /* ACTIVATE THE PATH. Remote IDDs only.
+     *
+     * A console IDD is finished once the monitor has arrived. A remote IDD
+     * is not: the OS keeps one stored desktop configuration per remote
+     * session, it starts EMPTY, and every path stays inactive until the
+     * driver supplies a configuration. Arrival alone shows nothing, and
+     * reports success while doing so.
+     *
+     * IddCxAdapterDisplayConfigUpdate2 supersedes the original call and
+     * returns HRESULT rather than NTSTATUS -- unlike everything else here.
+     *
+     * Only MODE_VALID is set. Scale factor, physical size, colorimetry and
+     * SDR white level are flag-gated and left to the OS defaults, which is
+     * what a fixed-resolution seat monitor wants. */
+    {
+        IDDCX_DISPLAYCONFIGPATH2 path{};
+        path.Size          = sizeof(path);
+        path.Flags         = IDDCX_DISPLAYCONFIGPATH2_FLAGS_MODE_VALID;
+        path.MonitorObject = createOut.MonitorObject;
+
+        /* Single seat monitor, so the desktop origin is 0,0. */
+        path.Mode.Position.x = 0;
+        path.Mode.Position.y = 0;
+
+        /* From the seat's own mode, so it necessarily matches something we
+         * advertise. A mismatch returns STATUS_INVALID_PARAMETER and the
+         * reason is only visible in WPP. */
+        path.Mode.Resolution.cx = actx->Mode.width;
+        path.Mode.Resolution.cy = actx->Mode.height;
+
+        path.Mode.Rotation = DISPLAYCONFIG_ROTATION_IDENTITY;
+
+        /* Progressive only for remote IDDs, so this is a plain vertical
+         * rate with a denominator of one. */
+        path.Mode.RefreshRate.Numerator   = actx->Mode.vsync;
+        path.Mode.RefreshRate.Denominator = 1;
+        path.Mode.VSyncFreqDivider        = 1;
+
+        path.Mode.MonitorColorMode = IDDCX_DISPLAYCONFIG_MONITOR_COLORMODE_SDR;
+
+        IDARG_IN_ADAPTERDISPLAYCONFIGUPDATE2 cfgIn{};
+        cfgIn.PathCount = 1;
+        cfgIn.pPaths    = &path;
+
+        HRESULT hr = IddCxAdapterDisplayConfigUpdate2(adapter, &cfgIn);
+        if (FAILED(hr))
+        {
+            /* DEVICE_STOPPED is expected when the session is disconnecting
+             * or the adapter is being torn down. The docs are explicit that
+             * IddCxReportCriticalError must NOT be called for it.
+             *
+             * Anything else is logged and swallowed: a failed configuration
+             * update should not take the monitor down with it. */
+            if (hr != HRESULT_FROM_NT(STATUS_GRAPHICS_INDIRECT_DISPLAY_DEVICE_STOPPED))
+            {
+                /* HYDRA-TODO: route this somewhere visible once remote
+                 * builds can actually run. WPP is the only channel a UMDF
+                 * driver has, and nothing is reading it yet. */
+            }
+        }
+    }
+#endif
+
+    return arrivalStatus;
 }
 
 _Use_decl_annotations_
