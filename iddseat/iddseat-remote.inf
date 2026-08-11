@@ -14,7 +14,6 @@
 ;
 ;    THIS STRING MUST MATCH GetHardwareId IN THE PROVIDER EXACTLY.
 ;
-; 2. UmdfHostProcessSharing = ProcessSharingDisabled. Required per the IddCx 1.4
 ;    remote-IDD guidance: due to lock contention, each session's remote IDD must
 ;    be in its own host process. Any DeviceGroupId directive must be absent for
 ;    the same reason -- there is none here.
@@ -81,7 +80,6 @@ UmdfKernelModeClientPolicy = AllowKernelModeClients
 UmdfFileObjectPolicy       = AllowNullAndUnknownFileObjects
 UmdfFsContextUsePolicy     = CannotUseFsContexts
 ; REQUIRED for remote IDDs -- one host process per session. See note 2 above.
-UmdfHostProcessSharing     = ProcessSharingDisabled
 
 [IddseatRemote_Service_Inst]
 UmdfLibraryVersion = $UMDFVERSION$
