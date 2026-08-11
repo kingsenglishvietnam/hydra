@@ -203,3 +203,113 @@ written. The weight is in `GetInputHandles`, the driver rework, and signing.
 Not a weekend. But every piece is documented, the sample builds, and the parts
 Hydra already has — the pixel ring, `mirror`, the input wire format — are the
 parts that would be reused.
+
+---
+
+# PROVEN 2026-08-11 17:21 — the provider created a Windows session
+
+Registered, triggered, session created, cleanly torn down, fully reverted.
+Every claim above this line was theory until this run.
+
+```
+ SESSIONNAME               USERNAME                 ID  STATE   TYPE   DEVICE
+ services                                            0  Disc
+>console                   user                      1  Active
+ hydraproto#0                                        3  Conn
+ hydraproto                                      65536  Listen
+ rdp-tcp                                         65537  Listen
+```
+
+`hydraproto#0` is a Windows session created by our own protocol provider. No
+RDP, no network, no client. A file appeared on disk and Windows built a session
+for it.
+
+It settled from `Conn` back to nothing after ~30s, which is correct: the
+sample's credentials are hardcoded `testuser` / `DontUseThis1`, so logon fails
+and the session disposes itself. No errors in the System event log — Windows
+did not fault anything, it just could not log the user in.
+
+## The chain that ran
+
+registry key → `CoCreateInstance` on the manager CLSID → `Initialize` →
+`CreateListener` → `StartListen` → sample thread polls for
+`C:\TestProtocol\createconnection.txt` → `OnConnected` → `OnReady` → session.
+
+## Notes from the run
+
+**Listener renumbering.** While `hydraproto` was registered, `rdp-tcp` moved
+from 65536 to 65537. It returned to 65536 after unregistering. Harmless, but
+worth knowing seat B's listener shifts underneath it while a second provider
+is present.
+
+**`UmRdpService` breaks naive restarts.** `Restart-Service TermService -Force`
+stops and restarts dependents, and `UmRdpService` is Manual/Stopped by design
+here (`hydra-start.ps1` stops it). It refuses to come back, the restart throws,
+and an `-ErrorAction Stop` turns that into a false failure. The first `-Apply`
+attempt rolled back for exactly this reason with nothing actually wrong.
+
+`rdsprov-register.ps1` now stops and starts `TermService` on its own and treats
+`Running` as success regardless of dependents. The `-Unregister` path still uses
+`Restart-Service -Force`, which is harmless because the key is already gone by
+then, but it should get the same treatment.
+
+**Rollback works.** The automatic rollback fired on that false failure and left
+the machine in exactly the pre-experiment state. The emergency card and the
+`reg export` of the WinStations subtree were both written before any change.
+
+**Recovery is cheap because the COM registration is inert.** Nothing loads the
+DLL unless a WinStations key names its CLSID. Deleting the key is a complete
+undo; unregistering the COM class is optional tidying.
+
+---
+
+# NEXT STEP — log a real user in
+
+The sample's credentials are three `swprintf_s` calls at the top of
+`WaitToConnect` in `TestProtocolAPI.cpp`:
+
+```c
+swprintf_s(newConnectionConfig.UserName, MAX_STR_SIZE, L"testuser");
+swprintf_s(newConnectionConfig.Password, MAX_STR_SIZE, L"DontUseThis1");
+swprintf_s(newConnectionConfig.Domain,   MAX_STR_SIZE, L"");
+```
+
+Point them at `teacher` and its real password, rebuild, register, trigger. A
+session that reaches `Active` and stays there would be a Windows session created
+AND logged in by our own code, with no RDP anywhere in the path.
+
+**Do not commit a real password.** `rdsprov` is a clone of a public Microsoft
+repo sitting in `C:\Programs`, and hydra's own repo is pushed to GitHub. Options,
+roughly in order of sanity:
+
+1. read the credentials from a file outside the tree, e.g.
+   `C:\ProgramData\Hydra\provider-creds.txt`, ACLed to SYSTEM and Administrators
+2. read them from a registry value under the listener key, which is where
+   `RDP-Tcp` keeps `Username` / `Password` / `Domain` fields anyway — see the
+   value list in the section above
+3. `CredRead` against a stored Windows credential
+
+Option 2 is the most idiomatic: the existing `RDP-Tcp` listener already has
+`Username`, `Password` and `Domain` value entries, so termsrv's own protocol
+uses that pattern.
+
+The sample's own comment says it plainly: relying on plaintext credentials here
+is a bad idea and Kerberos or another modern mechanism is preferred. For a
+single local `teacher` account on a teaching machine that is likely acceptable,
+but it should be a deliberate decision rather than a default.
+
+## After that, in order
+
+1. **`GetInputHandles`** — keyboard, mouse and beep handles. The one method with
+   no sample implementation. This is what would replace Interception,
+   `seat_router` and `seatB_agent`.
+2. **`iddseat` as a remote adapter** — set
+   `IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER`, have `GetHardwareId` return its
+   INF hardware ID, and handle `OnDriverLoad`. Signing required.
+3. **The session-cap question** — whether termsrv's patched policy applies to a
+   custom provider's listener. Now testable empirically: with the provider
+   registered and a real logon working, try to have both seat B's session and a
+   provider session active at once.
+
+Step 3 is worth doing early, because if the cap does bite and RDP-Wrapper's
+patch does not cover this path, the whole approach is limited to one seat.
