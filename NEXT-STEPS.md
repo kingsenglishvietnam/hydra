@@ -182,3 +182,25 @@ Key findings from reading it:
 
 Still unknown: whether termsrv's patched session policy (RDP-Wrapper patches SingleUserOffset, DefPolicyOffset, SLPolicyInternal, SLPolicyOffset) applies to a custom provider's listener. termsrv IS the RCM that loads providers, so it should — inference, not fact.
 
+
+### RDS provider — how a connection is actually made
+
+TestProtocolAPI.cpp, ~15 lines. No socket, no protocol:
+
+1. CComObject<CWRdsProtocolConnection>::CreateInstance
+2. SetCredentials(domain, user, password)
+3. ZeroMemory the WRDS_CONNECTION_SETTINGS, then set WRdsConnectionSettingLevel = LEVEL_1 and WRdsListenerSettingLevel = LEVEL_1 — connections FAIL if these are unset
+4. pListenerCallback->OnConnected(pConnection, &settings, &connCallback)
+5. connCallback->GetConnectionId, pConnection->SetConnectionCallback
+6. connCallback->OnReady()
+
+Windows then creates the session. The sample's trigger is polling for C:\TestProtocol\createconnection.txt every 5s; for Hydra it would be hydrad saying go.
+
+StartListen spawns a thread and holds the callback (must AddRef, Release in StopListen). The .rgs only registers the COM class under HKCR\CLSID with ThreadingModel=Free — the RD service finds providers elsewhere and the sample does not script that part.
+
+Builds under BOTH toolsets:
+  2026 (v145): needs /p:SpectreMitigation=Spectre — only spectre ATL libs installed
+  2022 BuildTools (v143): needs ATL component added, then NO spectre flag — only plain libs
+
+WARNING: registering a provider makes termsrv load the DLL into its svchost at service start. A bad one takes Terminal Services down, which stops seat B. Reboot-and-unregister recovery. Not during teaching hours.
+
