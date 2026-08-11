@@ -13,7 +13,7 @@ param([switch]$Remote)
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$outdir = Join-Path $root 'dist\driver'
+$outdir = Join-Path $root ($(if ($Remote) { 'dist\driver-remote' } else { 'dist\driver' }))
 New-Item -ItemType Directory -Force -Path $outdir | Out-Null
 
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
@@ -115,7 +115,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  linked OK" -ForegroundColor Green
 
-Copy-Item (Join-Path $root 'iddseat\iddseat.inf') $outdir -Force
+Copy-Item (Join-Path $root ($(if ($Remote) { 'iddseat\iddseat-remote.inf' } else { 'iddseat\iddseat.inf' }))) $outdir -Force
 Write-Host ""
 Write-Host "Built: $dll" -ForegroundColor Green
 Get-Item $dll | ForEach-Object { "  {0:N0} bytes" -f $_.Length }

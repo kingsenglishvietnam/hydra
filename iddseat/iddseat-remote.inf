@@ -1,0 +1,99 @@
+; iddseat-remote.inf -- Hydra virtual display, REMOTE-SESSION variant.
+;
+; DIFFERENT FROM iddseat.inf IN THREE WAYS, and they are the whole point:
+;
+; 1. NOT root-enumerated. The console package declares Root\HydraSeat because
+;    hydrad creates that device itself via SwDeviceCreate. A remote IDD must NOT
+;    be created that way -- the OS fails IddCxAdapterInitAsync when
+;    IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER is set on a device the remote
+;    desktop stack did not create. The RD stack creates the devnode instead,
+;    matching the hardware ID that the protocol provider returns from
+;    IWRdsWddmIddProps::GetHardwareId. So the model line below declares a bare
+;    hardware ID with no Root\ prefix, in the shape Microsoft's own sample uses
+;    ("SampleGPU_IndirectDisplay_v14_SimpleAutoRemoteConfig").
+;
+;    THIS STRING MUST MATCH GetHardwareId IN THE PROVIDER EXACTLY.
+;
+; 2. UmdfHostProcessSharing = ProcessSharingDisabled. Required per the IddCx 1.4
+;    remote-IDD guidance: due to lock contention, each session's remote IDD must
+;    be in its own host process. Any DeviceGroupId directive must be absent for
+;    the same reason -- there is none here.
+;
+; 3. Its own CatalogFile, service name and device description, so the remote and
+;    console packages can both sit in the driver store without colliding. They
+;    are mutually exclusive at runtime anyway -- console and remote adapter
+;    flags cannot both be set -- but two packages claiming one service name is
+;    the kind of thing that fails confusingly rather than loudly.
+;
+; The DLL is the SAME FILENAME but a DIFFERENT BUILD: build-driver.ps1 -Remote
+; compiles with /DHYDRA_REMOTE_IDD, which sets REMOTE_SESSION_DRIVER and the
+; mandatory USE_SMALLEST_MODE, and enables the IddCxAdapterDisplayConfigUpdate2
+; call without which a remote session's paths never activate. Keep the two
+; builds in SEPARATE OUTPUT DIRECTORIES or one will silently sign the other --
+; exactly the failure that hid three build bugs until 2026-08-11.
+;
+; Development: test-signing on, self-signed .cat via sign-driver.ps1.
+; There is no unsigned load path for a display-class driver.
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Display
+ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
+Provider    = %ManufacturerName%
+CatalogFile = iddseat-remote.cat
+PnpLockdown = 1
+; stampinf overwrites this with the real date + version at build time.
+DriverVer   = 01/01/2026,1.0.0.0
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299
+
+; IddCx needs Windows 10 1709 (build 16299) or later. Remote IDD support arrived
+; in IddCx 1.4 (19H1), which is comfortably above that floor; the decorated
+; section is kept identical to the console package for consistency.
+[Standard.NT$ARCH$.10.0...16299]
+%DeviceName% = IddseatRemote_Install, HydraSeat_RemoteIDD_v1
+
+[SourceDisksFiles]
+iddseat.dll = 1
+
+[SourceDisksNames]
+1 = %DiskName%
+
+; ---- UMDF / IddCx install ----
+[IddseatRemote_Install.NT]
+CopyFiles = UMDriverCopy
+Include   = WUDFRD.inf
+Needs     = WUDFRD.NT
+
+[IddseatRemote_Install.NT.hw]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.HW
+
+[IddseatRemote_Install.NT.Services]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.Services
+
+[IddseatRemote_Install.NT.Wdf]
+UmdfService                = iddseatremote, IddseatRemote_Service_Inst
+UmdfServiceOrder           = iddseatremote
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfFileObjectPolicy       = AllowNullAndUnknownFileObjects
+UmdfFsContextUsePolicy     = CannotUseFsContexts
+; REQUIRED for remote IDDs -- one host process per session. See note 2 above.
+UmdfHostProcessSharing     = ProcessSharingDisabled
+
+[IddseatRemote_Service_Inst]
+UmdfLibraryVersion = $UMDFVERSION$
+ServiceBinary      = %13%\iddseat.dll
+
+[UMDriverCopy]
+iddseat.dll
+
+[DestinationDirs]
+UMDriverCopy = 13   ; driver store package dir
+
+[Strings]
+ManufacturerName = "Hydra"
+DiskName         = "Hydra Virtual Seat (Remote) Installation Disk"
+DeviceName       = "Hydra Virtual Seat Display (Remote Session)"
