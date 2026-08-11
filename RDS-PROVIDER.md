@@ -313,3 +313,29 @@ but it should be a deliberate decision rather than a default.
 
 Step 3 is worth doing early, because if the cap does bite and RDP-Wrapper's
 patch does not cover this path, the whole approach is limited to one seat.
+
+## 2026-08-11 17:35 — FULL LOGGED-IN SESSION
+
+hydraproto#0, user teacher, state Active, created by our own provider.
+Credentials read from the listener key (Username/Password/Domain), nothing in source.
+
+Session 3 contained a complete desktop: explorer, dwm, winlogon, sihost,
+StartMenuExperienceHost, ctfmon, plus teacher's own environment (OneDrive,
+Edge, KakaoTalk). Not a shell — the real thing.
+
+It went Disc after ~30s with LogonUI present, which is correct: no display is
+attached, because there is no IDD yet. That is exactly the next gap.
+
+ORDERING CONSTRAINT LEARNED: the listener thread reads credentials when the
+trigger fires, and StartListen runs at service start. If the trigger file
+already exists when the service starts, the thread fires immediately and reads
+whatever is in the key at that moment. Set credentials BEFORE restarting
+TermService, and remove a stale trigger file first.
+
+ALSO: Stop-Service TermService -Force fails while the Hydra service is running
+(its session-attached components hold it). Stop Hydra first.
+
+NEXT: rework iddseat as a remote adapter — IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER,
+INF hardware ID returned from GetHardwareId, handle OnDriverLoad. Then the
+session gets a monitor and dwm composes onto it. Signing required.
+
