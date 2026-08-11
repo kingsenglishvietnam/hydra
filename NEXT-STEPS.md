@@ -164,3 +164,21 @@ in a way that capture-path replacement would fix.
 - Never run two RDP clients against one session.
 - Patch anchors must tolerate `\r?\n`, and the source must be read before
   patching — literal-string anchors have failed silently more than once.
+
+## RDS protocol provider — first step done 2026-08-11
+
+Azure/Remote-Desktop-Services-Protocol-Sample cloned to C:\Programs\rdsprov and BUILDS.
+
+    msbuild TestProtocol_Ext.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v145 /p:WindowsTargetPlatformVersion=10.0.28000.0 /p:SpectreMitigation=Spectre
+
+SpectreMitigation is required: only the spectre ATL libs are installed, there is no plain atlmfc\lib\x64\atls.lib.
+
+Key findings from reading it:
+- IWRdsWddmIddProps is implemented on the CONNECTION object. GetHardwareId returns the hardware ID from your IDD's INF; the RD stack then loads that driver INTO the session. That is the junction, and it is why the cross-session D3D11 wall does not arise.
+- GetVideoHandle is documented 'not required if using IDD' — the IDD *is* the display. No capture, no duplication, no client window.
+- GetInputHandles (keyboard/mouse/beep) is a TODO with no sample implementation. That is the one gap without a reference.
+- SessionArbitrationEnumeration takes bSingleSessionPerUserEnabled and E_NOTIMPL gives default arbitration, so the provider participates in that decision. Does not settle the SKU session cap.
+- The whole sample is ~450 lines of which maybe 40 do anything. Skeleton with correct shape.
+
+Still unknown: whether termsrv's patched session policy (RDP-Wrapper patches SingleUserOffset, DefPolicyOffset, SLPolicyInternal, SLPolicyOffset) applies to a custom provider's listener. termsrv IS the RCM that loads providers, so it should — inference, not fact.
+
