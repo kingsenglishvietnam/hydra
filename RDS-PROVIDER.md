@@ -339,3 +339,18 @@ NEXT: rework iddseat as a remote adapter — IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_
 INF hardware ID returned from GetHardwareId, handle OnDriverLoad. Then the
 session gets a monitor and dwm composes onto it. Signing required.
 
+
+## Remote IDD requirements (docs, 2026-08-11)
+
+Beyond IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER:
+
+- IDDCX_ADAPTER_FLAGS_USE_SMALLEST_MODE is REQUIRED; IddCxAdapterInitAsync fails without it. Already in iddseat.cpp under HYDRA_REMOTE_IDD.
+- scanLineOrdering must be DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE or IddCxMonitorArrival fails. Already correct (iddseat.cpp:44).
+- INF: UmdfHostProcessSharing = ProcessSharingDisabled, remove any DeviceGroupId. Not yet done.
+- **IddCxDisplayConfigUpdate is REQUIRED and is MISSING.** Console IDDs never call it. The OS keeps a stored desktop config per remote session that starts EMPTY; monitor arrival alone activates nothing. Without this the driver would init, add a monitor, and silently show nothing.
+  Handle errors: STATUS_GRAPHICS_INDIRECT_DISPLAY_DEVICE_STOPPED is EXPECTED on disconnect and must not trigger IddCxReportCriticalError.
+- Disconnect DESTROYS the devnode; reconnect creates a new one and the driver must run the full startup sequence again. Cold start, not resume.
+- IWRdsProtocolConnectionCallback::StopScreenUpdates / RedrawWindow destroy and recreate the swapchains, firing EVT_IDD_CX_ADAPTER_COMMIT_MODES. This is where the provider and the driver talk to each other.
+
+STILL UNKNOWN: the hardware ID format the RD stack expects in the INF. Not in the IddCx docs. The Azure sample returns 'SampleGPU_IndirectDisplay_v14_SimpleAutoRemoteConfig' from GetHardwareId, which looks like a bare token rather than a Root\ path.
+
