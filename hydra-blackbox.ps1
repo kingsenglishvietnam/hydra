@@ -45,7 +45,6 @@ public static class HydraWin {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)]
     public static extern int GetWindowTextW(IntPtr hWnd, StringBuilder s, int n);
     // Is any part of hWnd actually visible, or is it fully covered?
-    [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(System.Drawing.Point p);
     public static string Title(IntPtr h) {
         StringBuilder sb = new StringBuilder(512);
         GetWindowTextW(h, sb, 512);
@@ -59,7 +58,7 @@ public static class HydraWin {
             h.ToInt64(), IsIconic(h), IsWindowVisible(h), r.Left, r.Top, r.Right, r.Bottom, Title(h));
     }
 }
-'@ -ReferencedAssemblies System.Drawing -ErrorAction Stop
+'@ -ErrorAction Stop
 
 $capLog   = Join-Path $LogDir "capture_$Seat.log"
 $hydractl = Join-Path $HydraRoot 'dist\hydractl.exe'
