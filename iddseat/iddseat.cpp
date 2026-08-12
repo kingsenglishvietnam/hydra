@@ -385,8 +385,42 @@ static void ReadSeatProperties(PWDFDEVICE_INIT init, std::wstring& seatOut,
 /* =========================================================================== *
  * Driver / device lifecycle
  * =========================================================================== */
+/* Which call fails?
+ *
+ * The UMDF host reports "failed to load the driver at level 0, error
+ * 3489660941" == 0xD000000D == STATUS_INVALID_PARAMETER, and problem code
+ * 31 on the devnode. Everything before this point -- match, policy,
+ * signature, install, host start -- succeeds. Three calls in DeviceAdd can
+ * return that status and each returns early, so from outside they cannot be
+ * told apart.
+ *
+ * A file rather than OutputDebugStringW: WUDFHost is a service and nothing
+ * is attached to catch debug strings. Opened and closed per line so a
+ * failing load cannot lose the last one. */
+static void IddSeatLog(const char* fmt, ...)
+{
+    FILE* f = nullptr;
+    if (fopen_s(&f, "C:\\\\Windows\\\\Temp\\\\iddseat.log", "a") != 0 || !f)
+        return;
+
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    fprintf(f, "%02u:%02u:%02u.%03u [pid %5lu] ",
+            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+            GetCurrentProcessId());
+
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(f, fmt, ap);
+    va_end(ap);
+
+    fprintf(f, "\\n");
+    fclose(f);
+}
+
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING pRegistryPath)
 {
+    IddSeatLog("DriverEntry");
     WDF_DRIVER_CONFIG config;
     WDF_DRIVER_CONFIG_INIT(&config, IddSeatDeviceAdd);
     return WdfDriverCreate(pDriverObject, pRegistryPath,
@@ -396,8 +430,10 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING pR
 _Use_decl_annotations_
 extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDeviceInit)
 {
+    IddSeatLog("DeviceAdd: entered");
     std::wstring seat, modeStr;
     ReadSeatProperties(pDeviceInit, seat, modeStr);
+    IddSeatLog("DeviceAdd: seat properties read");
 
     /* Build the IddCx client config FIRST -- IddCxDeviceInitConfig takes it and
      * must run before WdfDeviceCreate (it registers the IddCx callbacks onto the
@@ -413,6 +449,7 @@ extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDevi
     cfg.EvtIddCxMonitorUnassignSwapChain          = IddSeatMonitorUnassignSwapChain;
 
     NTSTATUS status = IddCxDeviceInitConfig(pDeviceInit, &cfg);
+    IddSeatLog("IddCxDeviceInitConfig -> 0x%08X", status);
     if (!NT_SUCCESS(status)) return status;
 
     WDF_PNPPOWER_EVENT_CALLBACKS pnp;
@@ -425,6 +462,7 @@ extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDevi
 
     WDFDEVICE device = nullptr;
     status = WdfDeviceCreate(&pDeviceInit, &attr, &device);
+    IddSeatLog("WdfDeviceCreate -> 0x%08X", status);
     if (!NT_SUCCESS(status)) return status;
 
     auto* ctx = WdfObjectGet_IndirectDeviceContext(device);
@@ -443,7 +481,9 @@ extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDevi
     name[6 + nseat] = '\0';
     hydra_edid_build(ctx->Edid, ctx->Mode.width, ctx->Mode.height, ctx->Mode.vsync, mfr, name);
 
-    return IddCxDeviceInitialize(device);
+    NTSTATUS initStatus = IddCxDeviceInitialize(device);
+    IddSeatLog("IddCxDeviceInitialize -> 0x%08X", initStatus);
+    return initStatus;
 }
 
 _Use_decl_annotations_
@@ -484,7 +524,9 @@ extern "C" NTSTATUS IddSeatDeviceD0Entry(WDFDEVICE device, WDF_POWER_DEVICE_STAT
     init.ObjectAttributes = &adapterAttr;
 
     IDARG_OUT_ADAPTER_INIT out{};
+    IddSeatLog("D0Entry: calling IddCxAdapterInitAsync, caps.Flags=0x%X", (unsigned)caps.Flags);
     NTSTATUS status = IddCxAdapterInitAsync(&init, &out);
+    IddSeatLog("IddCxAdapterInitAsync -> 0x%08X", status);
     if (NT_SUCCESS(status))
     {
         ctx->Adapter = out.AdapterObject;

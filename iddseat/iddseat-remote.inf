@@ -45,12 +45,12 @@ PnpLockdown = 1
 DriverVer   = 01/01/2026,1.0.0.0
 
 [Manufacturer]
-%ManufacturerName% = Standard,NT$ARCH$.10.0...16299
+%ManufacturerName% = Standard,NT$ARCH$.10.0...17134
 
 ; IddCx needs Windows 10 1709 (build 16299) or later. Remote IDD support arrived
 ; in IddCx 1.4 (19H1), which is comfortably above that floor; the decorated
 ; section is kept identical to the console package for consistency.
-[Standard.NT$ARCH$.10.0...16299]
+[Standard.NT$ARCH$.10.0...17134]
 %DeviceName% = IddseatRemote_Install, HydraSeat_RemoteIDD_v1
 
 [SourceDisksFiles]

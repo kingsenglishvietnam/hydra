@@ -26,11 +26,11 @@ PnpLockdown = 1
 DriverVer   = 01/01/2026,1.0.0.0
 
 [Manufacturer]
-%ManufacturerName% = Standard,NT$ARCH$.10.0...16299
+%ManufacturerName% = Standard,NT$ARCH$.10.0...17134
 
 ; IddCx requires Windows 10 1709 (build 16299) or later -- the decorated section
 ; above gates install to that. Earlier builds have no IddCx.
-[Standard.NT$ARCH$.10.0...16299]
+[Standard.NT$ARCH$.10.0...17134]
 %DeviceName% = Iddseat_Install, Root\HydraSeat
 
 [SourceDisksFiles]

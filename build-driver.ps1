@@ -24,7 +24,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 $kitRoot = 'C:\Program Files (x86)\Windows Kits\10'
 $sdkVer  = '10.0.28000.0'                 # headers/libs version present on this box
 $iddcx   = '1.11'                          # newest IddCx headers/stub present
-$umdf    = '2.35'                          # newest UMDF stub present
+$umdf    = '2.33'                          # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2), whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse the driver before DriverEntry runs
 
 $inc = @(
     "$kitRoot\Include\$sdkVer\um",
@@ -92,7 +92,7 @@ $obj = Join-Path $outdir 'iddseat.obj'
 $dll = Join-Path $outdir 'iddseat.dll'
 
 Write-Host "compiling iddseat.cpp ..." -ForegroundColor Cyan
-$compile = @('/nologo','/c','/EHsc','/std:c++17','/W3','/MD') + $cldefs + $incArgs + @($src,"/Fo:$obj")
+$compile = @('/nologo','/c','/EHsc','/std:c++17','/W3','/MT') + $cldefs + $incArgs + @($src,"/Fo:$obj")
 $out = & cl.exe @compile 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "COMPILE FAILED:" -ForegroundColor Red
