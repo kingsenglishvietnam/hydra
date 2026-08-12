@@ -354,3 +354,19 @@ Beyond IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER:
 
 STILL UNKNOWN: the hardware ID format the RD stack expects in the INF. Not in the IddCx docs. The Azure sample returns 'SampleGPU_IndirectDisplay_v14_SimpleAutoRemoteConfig' from GetHardwareId, which looks like a bare token rather than a Root\ path.
 
+
+## 2026-08-12 — the driver staging kills the connection
+
+Controlled A/B, one variable:
+
+  driver STAGED   -> ConnectNotify, then PreDisconnect reason=17 at +14ms, session gone
+  driver UNSTAGED -> ConnectNotify, NotifyCommandProcessCreated, session stays Active
+
+So error 87 is not a side issue blocking the display - it is FATAL to the connection. The stack tries to create the display device, WUDFCoinstaller rejects it at DIF_INSTALLDEVICE with 0x57, and the stack tears the session down rather than continue without a display target.
+
+There is ONE bug, not two. Everything else in the chain works.
+
+Also settled: the device-install policy (DenyUnspecified=1) was a real blocker and is now allow-listed by hardware ID; the UMDF $UMDFVERSION$ token was shipping literal and is now stamped 2.35.0 via stampinf -u. Neither fixed error 87.
+
+Ruled out for error 87: UmdfHostProcessSharing directive, GetInputHandles out-params (were assigning the parameter not the target - fixed anyway), session arbitration reconnect (no teacher session exists to reconnect to), test-signing (active and verified).
+
