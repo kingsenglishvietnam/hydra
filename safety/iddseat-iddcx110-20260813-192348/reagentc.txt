@@ -1,0 +1,15 @@
+Windows Recovery Environment (Windows RE) and system reset configuration
+Information:
+
+    Windows RE status:         Enabled
+    Windows RE location:       \\?\GLOBALROOT\device\harddisk0\partition5\Recovery\WindowsRE
+    Boot Configuration Data (BCD) identifier: 1c932b44-c8b2-11ef-b610-891471ca1806
+    Recovery image location:   
+    Recovery image index:      0
+    Custom image location:     
+    Custom image index:        0
+    Windows RE Version:        10.0.26100.9168
+
+REAGENTC.EXE: Operation Successful.
+    
+

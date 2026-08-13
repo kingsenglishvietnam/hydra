@@ -1,0 +1,2263 @@
+Microsoft PnP Utility
+
+Published Name:     oem148.inf
+Original Name:      appleusb.inf
+Provider Name:      Apple, Inc.
+Class Name:         USBDevice
+Class GUID:         {88bae032-5a81-49f0-bc3d-a4ff138216d6}
+Driver Version:     06/14/2023 538.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem20.inf
+Original Name:      ccdcmbcjsax64.inf
+Provider Name:      Samsung
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/05/2010 7.1.30.51
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem184.inf
+Original Name:      dax3_ext_dolbyatmos.inf
+Provider Name:      Dolby
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {35cbbbb5-85ee-45cc-a281-b19fc3b4ab46}
+Driver Version:     02/23/2020 5.224.132.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem180.inf
+Original Name:      dax3_ext_dolbyatmos.inf
+Provider Name:      Dolby
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {ae4c68d7-f5a7-4c4f-8439-ce81513871eb}
+Driver Version:     02/23/2020 5.224.130.56
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem138.inf
+Original Name:      detectionverificationdrv.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/17/2022 1.0.2283.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem47.inf
+Original Name:      flashusb.inf
+Provider Name:      Intel Mobile Communications
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     02/27/2013 1.0.1.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem217.inf
+Original Name:      gscauxdriver.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     03/03/2021 2110.0.9.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem45.inf
+Original Name:      gscheci.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     03/04/2021 2110.100.0.1057
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem63.inf
+Original Name:      hdbusext.inf
+Provider Name:      Intel Corporation
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {69cb4edd-bafe-4f9a-9135-c1f284d6860d}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem128.inf
+Original Name:      heci.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/03/2021 2102.100.0.1044
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem117.inf
+Original Name:      heci.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/15/2024 2433.6.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem139.inf
+Original Name:      hid_pci.inf
+Provider Name:      Intel
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     07/30/2019 3.1.0.4027
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem181.inf
+Original Name:      hspusb.inf
+Provider Name:      MobileTop
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     08/18/2009 2.1.2.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem83.inf
+Original Name:      iactrllogic64.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem19.inf
+Original Name:      iaisp64.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem13.inf
+Original Name:      ialpss2_gpio2_icl.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/15/2019 30.100.1916.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem201.inf
+Original Name:      ialpss2_i2c_icl.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/15/2019 30.100.1916.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem25.inf
+Original Name:      ialpss2_spi_icl.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/15/2019 30.100.1916.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem162.inf
+Original Name:      ialpss2_uart2_icl.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/08/2019 30.100.1932.6
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem29.inf
+Original Name:      iaprecisetouch.inf
+Provider Name:      Intel Corporation
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     08/25/2020 2.1.0.96
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem189.inf
+Original Name:      icelakepch-lpsystem.inf
+Provider Name:      INTEL
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/18/1968 10.1.12.3
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem173.inf
+Original Name:      icelakepch-lpsystemnorthpeak.inf
+Provider Name:      INTEL
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/18/1968 10.1.12.3
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem220.inf
+Original Name:      icelakesystemthermal.inf
+Provider Name:      INTEL
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/18/1968 10.1.20.3
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem140.inf
+Original Name:      icelakeusbfunctioncontroller.inf
+Provider Name:      INTEL
+Class Name:         USBFunctionController
+Class GUID:         {bbbe8734-08fa-4966-b6a6-4e5ad010cdd7}
+Driver Version:     07/18/1968 10.1.20.3
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem44.inf
+Original Name:      iigd_ext_jz.inf
+Provider Name:      Intel Corporation
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {7833a3f6-4ede-47d6-a341-11cc5e7fd0b7}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem55.inf
+Original Name:      intcaudiobus.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem9.inf
+Original Name:      intcaudiobus.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     03/13/2020 10.24.0.3694
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem42.inf
+Original Name:      intcoed.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/02/2020 10.24.3694.245
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem166.inf
+Original Name:      intcoed.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem51.inf
+Original Name:      intcoed_oemlibpathext.inf
+Provider Name:      Realtek Semiconductor Corp.
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {29d7970c-64a2-4000-a5fb-9a833255539d}
+Driver Version:     01/19/2023 10.24.245.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem107.inf
+Original Name:      ish.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/30/2019 3.1.0.4027
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem17.inf
+Original Name:      ish_busdriver.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/30/2019 3.1.0.4027
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem186.inf
+Original Name:      memcntrl.inf
+Provider Name:      Intel
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/15/2021 27.20.100.9621
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem205.inf
+Original Name:      mvusbews.inf
+Provider Name:      Hewlett-Packard, Inc.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     08/31/2012 14.30.53.595
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem145.inf
+Original Name:      nvppc.inf
+Provider Name:      NVIDIA
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     08/21/2025 1.52.831.832
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem122.inf
+Original Name:      nvppc.inf
+Provider Name:      NVIDIA
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/20/2020 1.46.831.832
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem12.inf
+Original Name:      oemextension.inf
+Provider Name:      Intel
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {babe2782-eb1b-46a7-871a-f043d3200542}
+Driver Version:     12/25/2019 1952.14.0.1470
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem40.inf
+Original Name:      ov5693.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem23.inf
+Original Name:      ov5693_extension.inf
+Provider Name:      Intel Corporation
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {cd1fefdf-a99f-403b-a390-a62eeaa10134}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem74.inf
+Original Name:      ov7251.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem172.inf
+Original Name:      ov7251_extension.inf
+Provider Name:      Intel Corporation
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {6178b3c3-2b1d-422d-bea6-2a75de67d432}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem87.inf
+Original Name:      ov8865.inf
+Provider Name:      Intel Corporation
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem96.inf
+Original Name:      ov8865_extension.inf
+Provider Name:      Intel Corporation
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {366ca3ec-0522-4826-895d-0cf4f91a10c3}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem48.inf
+Original Name:      rtsuersdoms.inf
+Provider Name:      Realtek Semiconductor Corp.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/24/2019 10.0.18362.31255
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem30.inf
+Original Name:      secubus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     06/19/2009 4.52.5.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem49.inf
+Original Name:      ssadbus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem132.inf
+Original Name:      ssadsdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem50.inf
+Original Name:      ssaebus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     02/05/2010 5.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem111.inf
+Original Name:      ssaeunic.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     02/05/2010 5.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem214.inf
+Original Name:      ssbcbus.inf
+Provider Name:      Samsung Electronics Co., LTD
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     07/05/2007 4.40.7.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem52.inf
+Original Name:      sscdbus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem188.inf
+Original Name:      sscdsdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem102.inf
+Original Name:      sscebus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem114.inf
+Original Name:      sscesdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem32.inf
+Original Name:      ssdudfu.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     06/01/2011 5.28.6.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem58.inf
+Original Name:      ssecbus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem97.inf
+Original Name:      ssecobx2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem196.inf
+Original Name:      ssecsdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem98.inf
+Original Name:      ssecunic.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem10.inf
+Original Name:      ssm_bus.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     11/25/2009 5.12.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem167.inf
+Original Name:      ssm_ser2.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/25/2009 5.12.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem76.inf
+Original Name:      sssdbus.inf
+Provider Name:      Samsung Electronic, Co. Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     11/25/2009 5.2.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem99.inf
+Original Name:      sssdobx2.inf
+Provider Name:      Samsung Electronic, Co. Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/25/2009 5.2.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem169.inf
+Original Name:      sssdsdm2.inf
+Provider Name:      Samsung Electronic, Co. Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/25/2009 5.2.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem93.inf
+Original Name:      ssudbus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     04/08/2026 2.21.4.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem112.inf
+Original Name:      ssudbus.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem56.inf
+Original Name:      ssuddmgr.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem78.inf
+Original Name:      ssudmarv.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem215.inf
+Original Name:      ssudncm.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem176.inf
+Original Name:      ssudobex.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem144.inf
+Original Name:      ssudrmnet.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem163.inf
+Original Name:      ssudsdb.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem175.inf
+Original Name:      ssudserd.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem143.inf
+Original Name:      ssusbdownload.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     07/29/2008 1.1.807.29178
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem219.inf
+Original Name:      ss_bbus.inf
+Provider Name:      Samsung Electronics Co., LTD
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/19/2009 5.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem124.inf
+Original Name:      ss_bsdm2.inf
+Provider Name:      Samsung Electronics Co., LTD
+Class Name:         Ports
+Class GUID:         {4d36e978-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/19/2009 5.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem35.inf
+Original Name:      ss_bus.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd. 
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/21/2009 5.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem77.inf
+Original Name:      ss_conn_usb_driver.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem178.inf
+Original Name:      ss_conn_usb_driver2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem129.inf
+Original Name:      surfaceaccessoryfwupdate.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     03/04/2017 1.2.108.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem116.inf
+Original Name:      surfacebattery.inf
+Provider Name:      Surface
+Class Name:         Battery
+Class GUID:         {72631e54-78a4-11d0-bcf7-00aa00b7b32a}
+Driver Version:     02/13/2020 2.26.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem69.inf
+Original Name:      surfacebookbasev3fwupdate.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {bfcde94b-e04b-47ff-9c13-10cda6c202bd}
+Driver Version:     05/08/2024 1.72.4.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem24.inf
+Original Name:      surfacebutton.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/28/2020 4.6.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem103.inf
+Original Name:      surfacecfuoverhid.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     04/07/2022 5.50.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem81.inf
+Original Name:      surfacedock2fwupdate.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {3fdec996-430d-4faa-8ab1-446641826c0e}
+Driver Version:     04/06/2021 6.7.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem177.inf
+Original Name:      surfacedockintegration.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     01/24/2020 2.6.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem105.inf
+Original Name:      surfacedtxdriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/23/2020 3.85.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem216.inf
+Original Name:      surfacehidfriendlynames.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {9000149c-5878-4b1d-9cff-fbe218d311b2}
+Driver Version:     02/13/2020 2.5.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem82.inf
+Original Name:      surfacehidminidriver.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     10/16/2020 3.31.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem197.inf
+Original Name:      surfacehotplug.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/19/2023 3.204.20.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem54.inf
+Original Name:      surfacehpmi.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/12/2020 1.18.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem127.inf
+Original Name:      surfaceihvgpupowercontrollerdriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     12/26/2019 2.43.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem79.inf
+Original Name:      surfaceintegrationdriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/14/2020 22.27.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem66.inf
+Original Name:      surfacelightsensor.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/10/2020 2.11.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem123.inf
+Original Name:      surfaceme.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     10/11/2024 13.0.2436.2
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem149.inf
+Original Name:      surfacepen0953cfuoverblelcextnpackage.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {bd69571b-41d1-426f-8928-3303c2b26419}
+Driver Version:     10/23/2019 1.65.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem101.inf
+Original Name:      surfacepen0953firmwareupdate.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {248dd0fc-1e43-49fa-8f3e-0544d32a81be}
+Driver Version:     10/23/2019 1.155.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem204.inf
+Original Name:      surfacepen217fwupdate.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2019 1.7.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem150.inf
+Original Name:      surfacepen217integration.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     08/02/2019 1.5.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem3.inf
+Original Name:      surfacepenblelcaddradaptationdriver.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     08/02/2019 2.17.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem84.inf
+Original Name:      surfacepencfuoverblelc.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     08/02/2019 1.18.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem187.inf
+Original Name:      surfacepowertrackercore.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/23/2023 2.148.11.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem109.inf
+Original Name:      surfacesam.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     04/29/2024 10.600.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem154.inf
+Original Name:      surfacesarmanager.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/28/2022 3.100.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem26.inf
+Original Name:      surfaceserialhubdriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/22/2021 9.54.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem155.inf
+Original Name:      surfaceservicenulldriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/22/2024 6.214.10.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem73.inf
+Original Name:      surfacesmfbasethermalclient.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/31/2020 8.12.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem5.inf
+Original Name:      surfacesmfdisplayclient.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/09/2020 8.30.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem168.inf
+Original Name:      surfacesmf_13in.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     07/02/2021 39.0.1.5
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem118.inf
+Original Name:      surfacesmf_15in.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     07/27/2022 39.0.1.4
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem209.inf
+Original Name:      surfacestoragefwupdate.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     03/09/2022 6.40.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem8.inf
+Original Name:      surfacesystemtelemetrydriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/22/2024 10.105.10.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem39.inf
+Original Name:      surfacesystemtelemetrydriver.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/09/2020 2.29.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem36.inf
+Original Name:      surfacetcondriver.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     01/30/2020 4.11.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem147.inf
+Original Name:      surfacethermalpolicy.inf
+Provider Name:      Surface
+Class Name:         System
+Class GUID:         {4d36e97d-e325-11ce-bfc1-08002be10318}
+Driver Version:     12/23/2019 8.7.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem174.inf
+Original Name:      surfacetimealarmacpifilter.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {944157a5-7be9-4bcf-929a-68051eef6154}
+Driver Version:     02/04/2020 1.5.137.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem22.inf
+Original Name:      surfacetouchfw.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     05/24/2020 4.0.211.139
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem164.inf
+Original Name:      surfacetouchfw.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     05/24/2020 4.0.211.139
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem200.inf
+Original Name:      surfacetouchpenprocessorupdate.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {7ad54102-2d41-4e18-9433-7970d2bcd69f}
+Driver Version:     05/24/2020 4.212.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem115.inf
+Original Name:      surfacetouchpenprocessorupdate.inf
+Provider Name:      Surface
+Class Name:         Extension
+Class GUID:         {e2f84ce7-8efa-411c-aa69-97454ca4cb57}
+Extension ID:       {adf2c35b-f09b-4c85-a7fc-09b9d5101240}
+Driver Version:     05/24/2020 4.212.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem159.inf
+Original Name:      surfacetpm.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     12/01/2020 7.2.2.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem80.inf
+Original Name:      surfaceucmucsihidclient.inf
+Provider Name:      Surface
+Class Name:         UCM
+Class GUID:         {e6f1aa1c-7f3b-4473-b2e8-c97d8ac71d53}
+Driver Version:     02/11/2020 2.5.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem194.inf
+Original Name:      surfaceuefi.inf
+Provider Name:      Surface
+Class Name:         Firmware
+Class GUID:         {f2e7dd72-6468-4e36-b6f1-6488f42c1b52}
+Driver Version:     10/11/2024 23.101.140.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem135.inf
+Original Name:      surfaceusbhubfwupdatev2.inf
+Provider Name:      Surface
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     02/24/2020 1.27.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem89.inf
+Original Name:      surfacevirtualfunctionenum.inf
+Provider Name:      Surface
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     01/24/2020 2.6.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem183.inf
+Original Name:      unifhid.inf
+Provider Name:      Logitech
+Class Name:         HIDClass
+Class GUID:         {745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Driver Version:     08/24/2021 1.10.80.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem151.inf
+Original Name:      usbaapl64.inf
+Provider Name:      Apple, Inc.
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     05/19/2017 6.0.9999.69
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem190.inf
+Original Name:      via_usb_ets.inf
+Provider Name:      SAMSUNG Inc
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     10/12/2009 1.1.0.9
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem16.inf
+Original Name:      via_usb_hub.inf
+Provider Name:      SAMSUNG Inc
+Class Name:         USB
+Class GUID:         {36fc9e60-c465-11cf-8056-444553540000}
+Driver Version:     12/01/2009 2.2.11.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem60.inf
+Original Name:      adobepdf.inf
+Provider Name:      Adobe
+Class Name:         Printer
+Class GUID:         {4d36e979-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/11/2021 21.3.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem85.inf
+Original Name:      android_winusb.inf
+Provider Name:      Google, Inc.
+Class Name:         AndroidUsbDeviceClass
+Class GUID:         {3f966bd9-fa04-4ec5-991c-d326973b5128}
+Driver Version:     08/28/2014 11.0.0.0
+Signer Name:        Google LLC
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem121.inf
+Original Name:      axusbeth.inf
+Provider Name:      ASIX
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/05/2026 4.22.1.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem221.inf
+Original Name:      c7xxphone.inf
+Provider Name:      Samsung Electronics
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/14/2010 4.2.407.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem152.inf
+Original Name:      ccdcmbsamx64.inf
+Provider Name:      Samsung
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/05/2010 7.1.30.51
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem212.inf
+Original Name:      ccdcmbsaox64.inf
+Provider Name:      Samsung
+Class Name:         Wireless Communication Devices
+Class GUID:         {4f919108-4adf-11d5-882d-00b0d02fe381}
+Driver Version:     02/05/2010 7.1.30.51
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem95.inf
+Original Name:      ccdcmbsax64.inf
+Provider Name:      Samsung
+Class Name:         Wireless Communication Devices
+Class GUID:         {4f919108-4adf-11d5-882d-00b0d02fe381}
+Driver Version:     02/05/2010 7.1.30.51
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem161.inf
+Original Name:      cui_dch.inf
+Provider Name:      Intel Corporation
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     06/15/2021 27.20.100.9621
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem46.inf
+Original Name:      cui_dch.inf
+Provider Name:      Intel Corporation
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem130.inf
+Original Name:      dax3_swc_aposvc.inf
+Provider Name:      Dolby
+Class Name:         AudioProcessingObject
+Class GUID:         {5989fce8-9cd0-467d-8a6a-5419e31529d4}
+Driver Version:     05/17/2023 3.30508.581.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem206.inf
+Original Name:      dax3_swc_hsa.inf
+Provider Name:      Dolby
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     10/14/2021 3.30201.210.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem28.inf
+Original Name:      hdxsstmd3a.inf
+Provider Name:      Realtek Semiconductor Corp.
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/13/2020 6.0.8936.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem182.inf
+Original Name:      hdxsstmd3a.inf
+Provider Name:      Realtek Semiconductor Corp.
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/08/2021 6.0.9249.2
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem1.inf
+Original Name:      helloface.inf
+Provider Name:      Windows Hello Face
+Class Name:         Biometric
+Class GUID:         {53d29ef7-377c-4d14-864b-eb3a85769359}
+Driver Version:     06/01/2018 10.0.19041.3636
+Signer Name:        Microsoft Windows
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem62.inf
+Original Name:      hp1100.inf
+Provider Name:      Marvell
+Class Name:         Printer
+Class GUID:         {4d36e979-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/31/2012 5.0.1.57036
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem160.inf
+Original Name:      iacamera64.inf
+Provider Name:      Intel
+Class Name:         Camera
+Class GUID:         {ca3e7ab9-b4c3-4ae6-8251-579ef933890f}
+Driver Version:     08/05/2024 42.18362.3.16827
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem92.inf
+Original Name:      ibtusb.inf
+Provider Name:      Intel Corporation
+Class Name:         Bluetooth
+Class GUID:         {e0cbf06c-cd8b-4647-bb8a-263b43f0f974}
+Driver Version:     08/13/2024 23.80.0.3
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem65.inf
+Original Name:      iclsclient.inf
+Provider Name:      Intel
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     08/01/2024 1.74.210.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem222.inf
+Original Name:      iddseat-remote.inf
+Provider Name:      Hydra
+Class Name:         Display
+Class GUID:         {4d36e968-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/13/2026 1.0.0.1
+Signer Name:        HydraTest
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem67.inf
+Original Name:      igcc_dch.inf
+Provider Name:      Intel Corporation
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem53.inf
+Original Name:      igcc_dch.inf
+Provider Name:      Intel Corporation
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     06/15/2021 27.20.100.9621
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem21.inf
+Original Name:      iigd_dch.inf
+Provider Name:      Intel Corporation
+Class Name:         Display
+Class GUID:         {4d36e968-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem7.inf
+Original Name:      intcbtau.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem11.inf
+Original Name:      intcdaud.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/21/2021 11.2.0.10
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem119.inf
+Original Name:      intcdaud.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/21/2021 10.27.0.12
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem179.inf
+Original Name:      intcdaud.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/21/2021 11.1.0.20
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem33.inf
+Original Name:      intcdaud.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/16/2021 10.26.0.10
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem193.inf
+Original Name:      intcdmic.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem110.inf
+Original Name:      intcsdw.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem153.inf
+Original Name:      intcsst.inf
+Provider Name:      Intel(R) Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/02/2022 10.24.0.7927
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem198.inf
+Original Name:      kltun.inf
+Provider Name:      Kaspersky VPN Provider
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/21/2026 30.1918.0.9782
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem2.inf
+Original Name:      mbtmdm.inf
+Provider Name:      Schunid
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/06/2011 2.6.5.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem141.inf
+Original Name:      mewmiprov.inf
+Provider Name:      Intel
+Class Name:         SoftwareComponent
+Class GUID:         {5c4c3332-344d-483c-8739-259e934c9cc8}
+Driver Version:     07/22/2021 2130.1.15.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem157.inf
+Original Name:      minictadriver.inf
+Provider Name:      Intel Corporation
+Class Name:         CTA Driver Devices
+Class GUID:         {7bfd0817-dc85-41c5-8a55-bf38b1a1667e}
+Driver Version:     06/15/2021 27.20.100.9621
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem165.inf
+Original Name:      mshdadac.inf
+Provider Name:      Intel Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/21/2022 30.0.101.3118
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem218.inf
+Original Name:      msux64w10.inf
+Provider Name:      Surface
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/30/2019 10.13.1030.2019
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem137.inf
+Original Name:      mt7612us_br.inf
+Provider Name:      Xbox
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/21/2017 1.0.45.4
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem131.inf
+Original Name:      netaapl64.inf
+Provider Name:      Apple
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/15/2013 1.8.5.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem192.inf
+Original Name:      netwtw08.inf
+Provider Name:      Intel
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/21/2024 23.30.0.6
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem104.inf
+Original Name:      netwtw08.inf
+Provider Name:      Intel
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/02/2024 23.80.0.7
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem34.inf
+Original Name:      netwtw08.inf
+Provider Name:      Intel
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/27/2021 22.60.0.6
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem133.inf
+Original Name:      nordlwf.inf
+Provider Name:      NordVPN
+Class Name:         NetService
+Class GUID:         {4d36e974-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/08/2020 9.53.40.426
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem207.inf
+Original Name:      nvhda.inf
+Provider Name:      NVIDIA Corporation
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/31/2024 1.3.40.14
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem27.inf
+Original Name:      nvmsoi.inf
+Provider Name:      NVIDIA
+Class Name:         Display
+Class GUID:         {4d36e968-e325-11ce-bfc1-08002be10318}
+Driver Version:     03/17/2026 32.0.15.9597
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem68.inf
+Original Name:      nvpcf.inf
+Provider Name:      NVIDIA
+Class Name:         SoftwareDevice
+Class GUID:         {62f9c741-b25a-46ce-b54c-9bccce08b6f2}
+Driver Version:     08/31/2024 31.0.15.3808
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem203.inf
+Original Name:      nvvad.inf
+Provider Name:      NVIDIA
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/22/2022 4.49.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem156.inf
+Original Name:      nvvad.inf
+Provider Name:      NVIDIA
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/13/2025 4.65.0.12
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem37.inf
+Original Name:      oemvista.inf
+Provider Name:      TAP-NordVPN Windows Provider V9
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/27/2024 9.27.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem113.inf
+Original Name:      oemvista.inf
+Provider Name:      TAP-NordVPN Windows Provider V9
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/30/2018 9.0.0.23
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem18.inf
+Original Name:      ovpn-dco.inf
+Provider Name:      OpenVPN, Inc
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/13/2025 1.3.1.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem90.inf
+Original Name:      ovpn-dco.inf
+Provider Name:      OpenVPN, Inc
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/30/2025 1.3.2.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem75.inf
+Original Name:      ovpn-dco.inf
+Provider Name:      OpenVPN, Inc
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     08/06/2025 1.3.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem6.inf
+Original Name:      ovpn-dco.inf
+Provider Name:      OpenVPN, Inc
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/22/2024 1.2.1.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem88.inf
+Original Name:      prnhpcl1.inf
+Provider Name:      HP
+Class Name:         Printer
+Class GUID:         {4d36e979-e325-11ce-bfc1-08002be10318}
+Class Version:      4.0
+Driver Version:     04/22/2009 10.0.17119.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem108.inf
+Original Name:      prnms001.inf
+Provider Name:      Microsoft
+Class Name:         Printer
+Class GUID:         {4d36e979-e325-11ce-bfc1-08002be10318}
+Class Version:      4.0
+Driver Version:     06/21/2006 10.0.26100.1
+Signer Name:        Microsoft Windows
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem70.inf
+Original Name:      prnms009.inf
+Provider Name:      Microsoft
+Class Name:         Printer
+Class GUID:         {4d36e979-e325-11ce-bfc1-08002be10318}
+Class Version:      4.0
+Driver Version:     06/21/2006 10.0.26100.4484
+Signer Name:        Microsoft Windows
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem71.inf
+Original Name:      secumdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     06/19/2009 4.52.5.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem91.inf
+Original Name:      ssadadb2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {f72fe0d4-cbcb-407d-8814-9ed673d0dd6b}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem4.inf
+Original Name:      ssadmdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem202.inf
+Original Name:      ssadndis.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     05/13/2011 5.28.2.1
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem41.inf
+Original Name:      ssaeadb2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {f72fe0d4-cbcb-407d-8814-9ed673d0dd6b}
+Driver Version:     02/05/2010 5.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem142.inf
+Original Name:      ssaemdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/05/2010 5.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem171.inf
+Original Name:      ssaendis.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     02/05/2010 5.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem94.inf
+Original Name:      ssbcmdm2.inf
+Provider Name:      Samsung Electronics Co., LTD
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/05/2007 4.40.7.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem106.inf
+Original Name:      sscdw2k.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem158.inf
+Original Name:      sscemdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/30/2012 5.30.14.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem134.inf
+Original Name:      ssecmdm2.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem43.inf
+Original Name:      ssecndis.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     01/15/2009 4.50.3.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem191.inf
+Original Name:      ssm_mdm2.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/25/2009 5.12.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem0.inf
+Original Name:      sssdmdm2.inf
+Provider Name:      Samsung Electronic, Co. Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     11/25/2009 5.2.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem31.inf
+Original Name:      ssudadb.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         AndroidUsbDeviceClass
+Class GUID:         {3f966bd9-fa04-4ec5-991c-d326973b5128}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem72.inf
+Original Name:      ssudadb.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         AndroidUsbDeviceClass
+Class GUID:         {3f966bd9-fa04-4ec5-991c-d326973b5128}
+Driver Version:     04/08/2026 2.21.4.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem199.inf
+Original Name:      ssudaoa.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         AndroidAoADeviceClass
+Class GUID:         {ca000021-5064-48ea-8922-e08580f9955b}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem185.inf
+Original Name:      ssudeadb.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         USB
+Class GUID:         {f72fe0d4-cbcb-407d-8814-9ed673d0dd6b}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem211.inf
+Original Name:      ssudmdm.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem195.inf
+Original Name:      ssudmdm.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     04/08/2026 2.21.4.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem86.inf
+Original Name:      ssudmtp.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         WPD
+Class GUID:         {eec5ad98-8080-425f-922a-dabf3de3f69a}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem136.inf
+Original Name:      ssudnd5.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem14.inf
+Original Name:      ssudnet.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem125.inf
+Original Name:      ssudqcnet.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem57.inf
+Original Name:      ssudrmnetmp.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd.
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem120.inf
+Original Name:      ssudrnds.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem61.inf
+Original Name:      ssuduvc_camera.inf
+Provider Name:      SAMSUNG Electronics Co., Ltd. 
+Class Name:         Camera
+Class GUID:         {ca3e7ab9-b4c3-4ae6-8251-579ef933890f}
+Driver Version:     09/23/2024 2.21.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem64.inf
+Original Name:      ss_bmdm2.inf
+Provider Name:      Samsung Electronics Co., LTD
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/19/2009 5.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem15.inf
+Original Name:      ss_mdm2.inf
+Provider Name:      SAMSUNG Electronics Co.,Ltd. 
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     09/21/2009 5.0.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem126.inf
+Original Name:      surfaceihvcpusmfclient.inf
+Provider Name:      Surface
+Class Name:         SurfaceSystemManagement
+Class GUID:         {db07c471-c4ad-46d0-afff-06b56a65ccf4}
+Driver Version:     12/12/2023 1.173.45.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem170.inf
+Original Name:      surfaceoempanel.inf
+Provider Name:      Surface
+Class Name:         Monitor
+Class GUID:         {4d36e96e-e325-11ce-bfc1-08002be10318}
+Driver Version:     07/15/2021 6.81.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem210.inf
+Original Name:      surfacesmfclient.inf
+Provider Name:      Surface
+Class Name:         SurfaceSystemManagement
+Class GUID:         {db07c471-c4ad-46d0-afff-06b56a65ccf4}
+Driver Version:     06/04/2021 8.86.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Declarative
+WHCP Version:       Unknown
+
+Published Name:     oem146.inf
+Original Name:      surfacesystemmanagementframeworkdriver.inf
+Provider Name:      Surface
+Class Name:         SurfaceSystemManagement
+Class GUID:         {db07c471-c4ad-46d0-afff-06b56a65ccf4}
+Driver Version:     06/08/2021 3.140.139.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem38.inf
+Original Name:      vbmmecable64_win10.inf
+Provider Name:      VB-Audio Software
+Class Name:         MEDIA
+Class GUID:         {4d36e96c-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/07/2024 3.3.1.7
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+                    Attested
+WHCP Version:       Unknown
+
+Published Name:     oem213.inf
+Original Name:      via_usb_modem.inf
+Provider Name:      SAMSUNG Inc
+Class Name:         Modem
+Class GUID:         {4d36e96d-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/12/2009 2.0.23.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Legacy
+WHCP Version:       Unknown
+
+Published Name:     oem59.inf
+Original Name:      voiceclarityep_audio_component.inf
+Provider Name:      Microsoft Corporation
+Class Name:         AudioProcessingObject
+Class GUID:         {5989fce8-9cd0-467d-8a6a-5419e31529d4}
+Driver Version:     05/04/2026 1.0.3.56670
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem100.inf
+Original Name:      wintun.inf
+Provider Name:      WireGuard LLC
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/13/2021 0.14.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+Published Name:     oem208.inf
+Original Name:      wireguard.inf
+Provider Name:      WireGuard LLC
+Class Name:         Net
+Class GUID:         {4d36e972-e325-11ce-bfc1-08002be10318}
+Driver Version:     10/12/2021 0.10.0.0
+Signer Name:        Microsoft Windows Hardware Compatibility Publisher
+Attributes:         Universal
+WHCP Version:       Unknown
+
+
