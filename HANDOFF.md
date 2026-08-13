@@ -469,3 +469,19 @@ driver had valid signing conditions on every attempt.
 What did NOT survive: **WDK 10.0.28000.0**. Only SDK 10.0.26100.0 is present and
 there are no iddcx headers anywhere. Mode 4 cannot build until the WDK is
 reinstalled — and REBUILD.md's winget block does not include it.
+
+### One major change per reboot
+
+CBS transactions are staged in WinSxS\pending.xml and applied in EARLY BOOT --
+before the shell, before the dump stack, and Safe Mode processes them too. A
+failed transaction is retried every boot and cannot be reached from a running OS.
+'dism /cleanup-image /revertpendingactions' asks CBS to unwind it; 0x800f082f
+means it cannot. Renaming pending.xml is the crude escape.
+
+The 2026-08-12 boot carried FOUR first-time changes at once: testsigning newly
+set and never booted, a staged driver package, DenyUnspecified=1 machine-wide
+device policy, and a registered protocol provider. When it failed there was no
+way to tell which -- and the logs that would have said were destroyed by the
+reset.
+
+RULE: one boot-affecting change, then reboot, then verify, then the next.
