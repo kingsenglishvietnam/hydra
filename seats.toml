@@ -16,7 +16,7 @@
 # both onto one unifying receiver, add the &MI_ part to keep them distinct.
 
 [hostA]
-confine_monitor = '\\.\DISPLAY1'
+# confine_monitor = '\\.\DISPLAY1'
 
 [[seat]]
 name     = "B"
