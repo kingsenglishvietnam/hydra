@@ -1,0 +1,71 @@
+
+TimeCreated  : 8/13/2026 7:27:31 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: DISPLAY\LGD0554\4&231e9386&0&UID8388688
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:25 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: HID\Target_KIP&Category_HID&Col02\4&2096fe9c&0&0001
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:22 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: {98DE32A9-5D44-419E-B67D-66072BCEF58B}\SurfaceDtx\3&2184e5a6&0&SID_DEVICE_01
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:22 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: {98DE32A9-5D44-419E-B67D-66072BCEF58B}\SurfaceSarManager\3&2184e5a6&0&SID_DEVICE_04
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:22 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: HID\HID_DEVICE_SYSTEM_VHF\6&ec9e578&0&0000
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:22 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: HID\Vid_8087&Pid_0AC2\6&2d0ab97b&0&0000
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:22 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: {DD8E82AE-334B-49A2-AEAE-AEB0FD5C40DD}\DetectionVerification\5&23cc679b&0&0
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:15 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: HID\VEN_8086&DEV_34E4&SUBSYS_00401414&REV_30&Col09\4&39c3384d&0&0008
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:27:12 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: ROOT\WindowsHelloFaceSoftwareDriver\0000
+               Status: 0xC0000365
+
+TimeCreated  : 8/13/2026 7:21:11 PM
+Id           : 219
+ProviderName : Microsoft-Windows-Kernel-PnP
+Message      : The driver \Driver\WudfRd failed to load.
+               Device: DISPLAY\LGD0554\4&231e9386&0&UID8388688
+               Status: 0xC0000365
+
