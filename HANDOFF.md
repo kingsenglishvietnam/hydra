@@ -382,3 +382,36 @@ the live set is 001 or 002. Drive letters are reassigned on every WinRE boot.
 - **Machine-specific values belong in the repo docs**, not only in `seats.toml`.
 - **Update `STATE.md`.** Its gfx section still sends readers down eleven closed
   hypotheses, and its mode table predates mode 4.
+
+---
+
+## Addendum — ASTER
+
+The dead-ends table above is out of date. ASTER **does** work, using a build sent
+directly by their tech support rather than the public download — the public one
+ships `mutenx.sys`, which the April 2026 CI policy blocks.
+
+Not currently in use, and not reinstalled after the 2026-08-12 reset. But it is a
+working fallback, not a closed door: if Hydra needs to be down for a lesson, this
+is the escape route.
+
+Unknowns worth settling before relying on it:
+- Where the support build is archived, and whether it survived the reset.
+- Whether it still needs Secure Boot off / CI policies removed from the ESP, or
+  whether the support build is signed differently.
+- Whether it coexists with Interception, or wants exclusive input.
+
+### ASTER installers, located 2026-08-13
+
+`Setup_ASTER2705.exe`  v2.70.5, built 2026-07-01, 60,963,664 bytes
+`Setup_ASTER2704.exe`  v2.70.4, built 2026-03-26, 61,147,184 bytes
+
+Both validly signed by IBIK LLC. Neither is distinguishable as a support build --
+sequential public releases with ordinary version metadata. The thing support
+provided may have been the LICENSE rather than the installer: the original June
+problem was a V7 key rejected by the current activation dialog, not a download.
+
+Check the support email before relying on either. Use 2705 (newer).
+
+`vendor/` is gitignored -- 120MB of installers does not belong in the repo.
+Copy to the recovery stick, which is FAT32 and has room.
