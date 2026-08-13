@@ -1,0 +1,92 @@
+UNDO-OFFLINE.txt   generated 20260813-194953   for: iddseat-hostsharing
+=====================================================================
+Read this from a WinRE command prompt:   type X:\UNDO-OFFLINE.txt
+=====================================================================
+
+CRITICAL: in WinRE, HKLM is WinPE's OWN registry (a RAM hive). reg add and
+reg delete against HKLM do NOTHING to the installed system. You must load the
+offline hive first. Drive letters are reassigned on every WinRE boot.
+
+--- 0. find the Windows volume -------------------------------------
+for %d in (C D E F G) do @if exist %d:\Windows\System32\ntoskrnl.exe echo %d:
+
+  Assume it says D: below. Verify before every command.
+
+--- 1. read what failed --------------------------------------------
+notepad D:\Windows\System32\LogFiles\Srt\SrtTrail.txt
+
+  Look for "Root cause found" near the BOTTOM. If it says
+  "Start network for cloud remediation 0x4c6" that is ERROR_NO_NETWORK --
+  Startup Repair failing to phone home, NOT a diagnosis. Ignore it.
+
+  dir D:\Windows\Minidump
+    files dated at the failure = a driver bugchecked (dump names it)
+    empty = not crashing; look elsewhere
+
+--- 2. remove the driver package -----------------------------------
+dism /image:D:\ /get-drivers /format:table > D:\drivers.txt
+notepad D:\drivers.txt
+
+  (the console scrollback is too short; notepad exists in WinRE and has Ctrl+F)
+  Or filter:  dism /image:D:\ /get-drivers /format:table | find /i "iddseat"
+
+dism /image:D:\ /remove-driver /driver:oemNN.inf
+
+  Verify:  dism /image:D:\ /get-drivers /format:table | find /i "oemNN"
+  (silence = gone)
+
+--- 3. clear half-committed servicing -------------------------------
+dism /image:D:\ /cleanup-image /revertpendingactions
+
+  0x800f082f usually means "nothing to revert" or "not in a revertible state".
+  It does NOT undo /remove-driver -- those are independent.
+
+  If it fails and pending.xml exists:
+    dir D:\Windows\WinSxS\pending.xml
+    ren D:\Windows\WinSxS\pending.xml pending.old
+
+--- 4. restore class filters ---------------------------------------
+reg load HKLM\OFFSYS D:\Windows\System32\config\SYSTEM
+
+  CHECK WHICH CONTROL SET IS LIVE FIRST:
+    reg query "HKLM\OFFSYS\Select"
+    Current 0x1 = ControlSet001, 0x2 = ControlSet002. Use the right one.
+
+  KNOWN-GOOD VALUES AS OF 20260813-194953 :
+    {4D36E96B-E325-11CE-BFC1-08002BE10318}  UpperFilters = keyboard\0kbdclass
+    {4D36E96F-E325-11CE-BFC1-08002BE10318}  UpperFilters = mouse\0mouclass
+
+  (a value shown as  keyboard\0kbdclass  is TWO entries -- \0 is the separator)
+
+  Stock, with Interception REMOVED:
+    reg add "HKLM\OFFSYS\ControlSet001\Control\Class\{4D36E96B-E325-11CE-BFC1-08002BE10318}" /v UpperFilters /t REG_MULTI_SZ /d "kbdclass" /f
+    reg add "HKLM\OFFSYS\ControlSet001\Control\Class\{4D36E96F-E325-11CE-BFC1-08002BE10318}" /v UpperFilters /t REG_MULTI_SZ /d "mouclass" /f
+
+--- 5. disable the Hydra service offline ---------------------------
+reg add "HKLM\OFFSYS\ControlSet001\Services\Hydra" /v Start /t REG_DWORD /d 4 /f
+
+reg unload HKLM\OFFSYS
+
+--- 6. if WinRE itself is unreachable ------------------------------
+Boot the stick: shut down, hold VOLUME DOWN, press and release POWER,
+keep holding Volume Down until spinning dots appear. Nothing else plugged in.
+
+  VOLUME UP + Power = UEFI settings (NOT boot media). Easy to confuse.
+
+Then undo the BCD settings that removed your way in:
+  mountvol S: /s
+  bcdedit /store S:\EFI\Microsoft\Boot\BCD /deletevalue {default} safeboot
+  bcdedit /store S:\EFI\Microsoft\Boot\BCD /set {default} bootstatuspolicy displayallfailures
+
+--- 7. before any reset --------------------------------------------
+COPY THESE OFF FIRST -- reset destroys them and they are NOT in Windows.old:
+  xcopy D:\Windows\INF\setupapi.dev.log E:\evidence\ /Y
+  xcopy D:\Windows\Logs\CBS\CBS.log E:\evidence\ /Y
+  xcopy D:\Windows\System32\winevt\Logs\System.evtx E:\evidence\ /Y
+
+  Then: Troubleshoot -> Reset this PC -> Keep my files -> LOCAL reinstall.
+  NOT "Recover from a drive" (that is the full wipe).
+
+=====================================================================
+snapshot dir on the installed system: C:\Programs\hydra\safety\iddseat-hostsharing-20260813-194953
+=====================================================================

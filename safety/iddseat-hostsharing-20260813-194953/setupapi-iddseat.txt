@@ -1,0 +1,454 @@
+
+  C:\Windows\INF\setupapi.dev.log:22390:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22391:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22392:<<<  Section end 2026/08/13 19:39:16.995
+  C:\Windows\INF\setupapi.dev.log:22393:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22394:
+  C:\Windows\INF\setupapi.dev.log:22395:
+> C:\Windows\INF\setupapi.dev.log:22396:>>>  [Device Install (Hardware initiated) - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003]
+  C:\Windows\INF\setupapi.dev.log:22397:>>>  Section start 2026/08/13 19:39:17.414
+  C:\Windows\INF\setupapi.dev.log:22398:     ump: Install needed due to device having problem code CM_PROB_NOT_CONFIGURED
+> C:\Windows\INF\setupapi.dev.log:22399:     utl: {Select Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:39:17.440
+  C:\Windows\INF\setupapi.dev.log:22400:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22401:     utl:           Status         - Selected
+  C:\Windows\INF\setupapi.dev.log:22402:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22403:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22404:     utl:           Driver Version - 08/13/2026,1.0.0.1
+> C:\Windows\INF\setupapi.dev.log:22405:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22406:     utl:           Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:22407:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22408:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22409:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22410:     utl:           Status         - Outranked
+  C:\Windows\INF\setupapi.dev.log:22411:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22412:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22413:     utl:           Driver Version - 08/13/2026,1.0.0.1
+> C:\Windows\INF\setupapi.dev.log:22414:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22415:     utl:           Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:22416:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22417:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22418:     utl: {Select Drivers - exit(0x00000000} 19:39:17.461
+  C:\Windows\INF\setupapi.dev.log:22419:     dvi: Install flags: 0x00010000
+  C:\Windows\INF\setupapi.dev.log:22420:     dvi: {Core Device Install} 19:39:17.465
+> C:\Windows\INF\setupapi.dev.log:22421:     dvi:      {Configure Device - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:39:17.622
+  C:\Windows\INF\setupapi.dev.log:22422:     dvi:           Device Status: 0x01806400 [0x01 - 0xc0000493]
+  C:\Windows\INF\setupapi.dev.log:22423:     dvi:           Config Flags: 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22424:     dvi:           Parent Device: HTREE\ROOT\0
+  C:\Windows\INF\setupapi.dev.log:22425:     sto:           {Configure Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf} 19:39:17.630
+> C:\Windows\INF\setupapi.dev.log:22426:     sto:                Source Filter  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22427:     inf:                Config Options = IsolationCompat
+  C:\Windows\INF\setupapi.dev.log:22428:     inf:                Class GUID     = {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22429:     inf:                Class Options  = Configurable
+  C:\Windows\INF\setupapi.dev.log:22430:!    inf:                Using WDF schema version 2.23 when section requires version 2.33. Section = [IddseatRemote_Install.NT.Wdf]
+  C:\Windows\INF\setupapi.dev.log:22431:     inf:                {Configure Driver: Hydra Virtual Seat Display (Remote Session)}
+  C:\Windows\INF\setupapi.dev.log:22432:     inf:                     Section Name = IddseatRemote_Install.NT
+  C:\Windows\INF\setupapi.dev.log:22433:     inf:                     {Add Service: WUDFRd}
+  C:\Windows\INF\setupapi.dev.log:22434:     inf:                          Flags         = 0x1FA
+  C:\Windows\INF\setupapi.dev.log:22435:     inf:                          Start Type    = 3
+  C:\Windows\INF\setupapi.dev.log:22436:     inf:                          Service Type  = 1
+  C:\Windows\INF\setupapi.dev.log:22437:     inf:                          Error Control = 1
+  C:\Windows\INF\setupapi.dev.log:22438:     inf:                          Image Path    = \SystemRoot\System32\drivers\WUDFRd.sys
+  C:\Windows\INF\setupapi.dev.log:22439:     inf:                          Display Name  = Windows Driver Frameworks - User-mode Driver Framework Reflector
+  C:\Windows\INF\setupapi.dev.log:22440:     inf:                          Leaving existing load order group (base).
+  C:\Windows\INF\setupapi.dev.log:22441:     inf:                          Leaving existing display name (Windows Driver Foundation - User-mode Driver Framework Reflector).
+  C:\Windows\INF\setupapi.dev.log:22442:     inf:                          Updated service 'WUDFRd'.
+  C:\Windows\INF\setupapi.dev.log:22443:     inf:                          Leaving existing description (A kernel mode driver that uses message-based interprocess communication mechanism to communicate with the driver manager and host process to facilitate UMDF drivers).
+  C:\Windows\INF\setupapi.dev.log:22444:     inf:                     {Add Service: exit(0x00000000)}
+> C:\Windows\INF\setupapi.dev.log:22445:     inf:                     Hardware Id  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22446:     inf:                     {Configure Driver Configuration: IddseatRemote_Install.NT}
+  C:\Windows\INF\setupapi.dev.log:22447:     inf:                          Service Name  = WUDFRd
+  C:\Windows\INF\setupapi.dev.log:22448:     inf:                          Included INFs = WUDFRD.inf
+  C:\Windows\INF\setupapi.dev.log:22449:     inf:                          Config Flags  = 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22450:     inf:                     {Configure Driver Configuration: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22451:     inf:                {Configure Driver: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22452:     flq:                {FILE_QUEUE_COMMIT} 19:39:17.680
+  C:\Windows\INF\setupapi.dev.log:22453:     flq:                {FILE_QUEUE_COMMIT - exit(0x00000000)} 19:39:17.680
+  C:\Windows\INF\setupapi.dev.log:22454:     sto:                Driver configuration complete.
+  C:\Windows\INF\setupapi.dev.log:22455:     sto:           {Configure Driver Package: exit(0x00000000)} 19:39:17.680
+  C:\Windows\INF\setupapi.dev.log:22456:     dvi:           Install Device: Configuring device. 19:39:17.684
+> C:\Windows\INF\setupapi.dev.log:22457:     dvi:                Configuration: oem222.inf:HydraSeat_RemoteIDD_v1,*
+  C:\Windows\INF\setupapi.dev.log:22458:     dvi:           Install Device: Configuring device completed. 19:39:17.692
+  C:\Windows\INF\setupapi.dev.log:22459:     dvi:           Device Status: 0x01806000
+> C:\Windows\INF\setupapi.dev.log:22460:     dvi:           Install Device: Starting device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003'. 19:39:17.696
+  C:\Windows\INF\setupapi.dev.log:22461:     dvi:           Install Device: Starting device completed. 19:39:18.654
+  C:\Windows\INF\setupapi.dev.log:22462:!!!  dvi:           Device not started: Device has problem: 0x1f (CM_PROB_FAILED_ADD), problem status: 0xc0000001.
+  C:\Windows\INF\setupapi.dev.log:22463:     dvi:      {Configure Device - exit(0x00000000)} 19:39:18.654
+  C:\Windows\INF\setupapi.dev.log:22464:     dvi: {Core Device Install - exit(0x00000000)} 19:39:18.659
+  C:\Windows\INF\setupapi.dev.log:22465:<<<  Section end 2026/08/13 19:39:18.666
+  C:\Windows\INF\setupapi.dev.log:22466:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22467:
+  C:\Windows\INF\setupapi.dev.log:22468:
+  C:\Windows\INF\setupapi.dev.log:22469:>>>  [Delete Device - UMB\UMB\1&841921D&0&TSBUS]
+  C:\Windows\INF\setupapi.dev.log:22470:>>>  Section start 2026/08/13 19:40:10.116
+  C:\Windows\INF\setupapi.dev.log:22471:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22472:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22515:
+  C:\Windows\INF\setupapi.dev.log:22516:
+  C:\Windows\INF\setupapi.dev.log:22517:>>>  [Driver Uninstall (DrvSetupUninstallDriver) - oem222.inf]
+  C:\Windows\INF\setupapi.dev.log:22518:>>>  Section start 2026/08/13 19:50:04.460
+  C:\Windows\INF\setupapi.dev.log:22519:      cmd: "C:\WINDOWS\system32\pnputil.exe" /delete-driver oem222.inf /uninstall
+  C:\Windows\INF\setupapi.dev.log:22520:     dvs: Flags: 0x00000000
+> C:\Windows\INF\setupapi.dev.log:22521:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:50:04.478
+> C:\Windows\INF\setupapi.dev.log:22522:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003' for reinstall.
+  C:\Windows\INF\setupapi.dev.log:22523:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:50:04.478
+> C:\Windows\INF\setupapi.dev.log:22524:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:50:04.478
+> C:\Windows\INF\setupapi.dev.log:22525:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004' for reinstall.
+  C:\Windows\INF\setupapi.dev.log:22526:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:50:04.489
+  C:\Windows\INF\setupapi.dev.log:22527:     dvs: {Driver Setup Delete Driver Package: oem222.inf} 19:50:04.495
+> C:\Windows\INF\setupapi.dev.log:22528:     utl:      'oem222.inf' is pending removal from non-present device 'SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003'.
+> C:\Windows\INF\setupapi.dev.log:22529:     utl:      'oem222.inf' is pending removal from non-present device 'SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004'.
+  C:\Windows\INF\setupapi.dev.log:22530:     ump:      Delete flags: 0x00000002
+  C:\Windows\INF\setupapi.dev.log:22531:     pol:      {Driver package policy check} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22532:     pol:      {Driver package policy check - exit(0x00000000)} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22533:     sto:      {Unstage Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22534:     inf:           Provider       = Hydra
+  C:\Windows\INF\setupapi.dev.log:22535:     inf:           Class GUID     = {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22536:     inf:           Driver Version = 08/13/2026,1.0.0.1
+  C:\Windows\INF\setupapi.dev.log:22537:     inf:           Catalog File   = iddseat-remote.cat
+  C:\Windows\INF\setupapi.dev.log:22538:     inf:           Version Flags  = 0x00000003
+  C:\Windows\INF\setupapi.dev.log:22539:     sto:           {Core Driver Package Delete: iddseat-remote.inf_amd64_db99b813dcec674c} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22540:     sto:                {DRIVERSTORE DELETE BEGIN} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22541:     sto:                {DRIVERSTORE DELETE BEGIN: exit(0x00000000)} 19:50:04.571
+  C:\Windows\INF\setupapi.dev.log:22550:     inf:                               Service 'WUDFRd' still in use by 20 sources.
+  C:\Windows\INF\setupapi.dev.log:22551:     inf:                          {Add Service: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22552:     inf:                          AddReg: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\WUDF\Services\iddseatremote\WdfMajorVersion
+  C:\Windows\INF\setupapi.dev.log:22553:     inf:                          AddReg: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\WUDF\Services\iddseatremote\WdfMinorVersion
+  C:\Windows\INF\setupapi.dev.log:22554:     inf:                          AddReg: HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\WUDF\Services\iddseatremote\ImagePath
+  C:\Windows\INF\setupapi.dev.log:22555:     cpy:                          Skipping isolated file 'iddseat.dll'.
+> C:\Windows\INF\setupapi.dev.log:22556:     inf:                          Hardware Id  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22557:     inf:                     {Unconfigure Driver: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22558:     flq:                     {FILE_QUEUE_COMMIT} 19:50:04.586
+  C:\Windows\INF\setupapi.dev.log:22559:     flq:                     {FILE_QUEUE_COMMIT - exit(0x00000000)} 19:50:04.586
+  C:\Windows\INF\setupapi.dev.log:22560:     sto:                {Unconfigure Driver Package: exit(0x00000000)} 19:50:04.586
+  C:\Windows\INF\setupapi.dev.log:22561:     idb:                {Unpublish Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf} 19:50:04.586
+  C:\Windows\INF\setupapi.dev.log:22562:     idb:                     Clearing active driver package 'iddseat-remote.inf_amd64_db99b813dcec674c'.
+  C:\Windows\INF\setupapi.dev.log:22563:     cpy:                     Unpublished 'oem222.inf'.
+  C:\Windows\INF\setupapi.dev.log:22564:     idb:                     Deindexed 2 device IDs for 'iddseat-remote.inf_amd64_db99b813dcec674c'.
+  C:\Windows\INF\setupapi.dev.log:22565:     sto:                     Flushed driver database node 'DRIVERS'. Time = 0 ms
+  C:\Windows\INF\setupapi.dev.log:22566:     sto:                     Flushed driver database node 'SYSTEM'. Time = 0 ms
+  C:\Windows\INF\setupapi.dev.log:22567:     idb:                {Unpublish Driver Package: exit(0x00000000)} 19:50:04.608
+  C:\Windows\INF\setupapi.dev.log:22568:     idb:                {Unregister Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_db99b813dcec674c\iddseat-remote.inf} 19:50:04.608
+  C:\Windows\INF\setupapi.dev.log:22575:     sto:                {DRIVERSTORE DELETE END} 19:50:04.618
+  C:\Windows\INF\setupapi.dev.log:22576:     sig:                     Uninstalled catalog 'oem222.cat'.
+  C:\Windows\INF\setupapi.dev.log:22577:     sto:                {DRIVERSTORE DELETE END: exit(0x00000000)} 19:50:04.669
+  C:\Windows\INF\setupapi.dev.log:22578:     sto:           {Core Driver Package Delete: exit(0x00000000)} 19:50:04.669
+  C:\Windows\INF\setupapi.dev.log:22579:     sto:      {Unstage Driver Package: exit(0x00000000)} 19:50:04.669
+  C:\Windows\INF\setupapi.dev.log:22580:     dvs: {Driver Setup Delete Driver Package - exit (0x00000000)} 19:50:04.681
+> C:\Windows\INF\setupapi.dev.log:22581:     dvs: {Install Related Drivers - swd\remotedisplayenum\hydraseat_remoteidd_v1&sessionid_0003} 19:50:04.681
+  C:\Windows\INF\setupapi.dev.log:22582:!    dvs:      Unable to install related drivers. Error = 0x00000002
+  C:\Windows\INF\setupapi.dev.log:22583:     dvs: {Install Related Drivers: exit(0x00000002)} 19:50:04.681
+> C:\Windows\INF\setupapi.dev.log:22584:     dvs: {Install Related Drivers - swd\remotedisplayenum\hydraseat_remoteidd_v1&sessionid_0004} 19:50:04.681
+  C:\Windows\INF\setupapi.dev.log:22585:!    dvs:      Unable to install related drivers. Error = 0x00000002
+  C:\Windows\INF\setupapi.dev.log:22586:     dvs: {Install Related Drivers: exit(0x00000002)} 19:50:04.681
+  C:\Windows\INF\setupapi.dev.log:22587:<<<  Section end 2026/08/13 19:50:04.681
+  C:\Windows\INF\setupapi.dev.log:22588:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22589:
+  C:\Windows\INF\setupapi.dev.log:22590:
+  C:\Windows\INF\setupapi.dev.log:22591:>>>  [Driver Install (DrvSetupInstallDriver) - C:\Programs\hydra\dist\driver-remote\iddseat-remote.inf]
+  C:\Windows\INF\setupapi.dev.log:22592:>>>  Section start 2026/08/13 19:50:05.623
+  C:\Windows\INF\setupapi.dev.log:22593:      cmd: "C:\WINDOWS\system32\pnputil.exe" /add-driver dist\driver-remote\iddseat-remote.inf /install
+  C:\Windows\INF\setupapi.dev.log:22594:     dvs: Flags: 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22595:     dvs: {Driver Setup Import Driver Package: C:\Programs\hydra\dist\driver-remote\iddseat-remote.inf} 19:50:05.623
+  C:\Windows\INF\setupapi.dev.log:22596:     sto:      {Copy Driver Package: C:\Programs\hydra\dist\driver-remote\iddseat-remote.inf} 19:50:05.639
+  C:\Windows\INF\setupapi.dev.log:22669:     dvs:      Driver Package:
+  C:\Windows\INF\setupapi.dev.log:22670:     dvs:           Outcome        - Imported
+  C:\Windows\INF\setupapi.dev.log:22671:     dvs:           Driver INF     - iddseat-remote.inf (oem222.inf)
+  C:\Windows\INF\setupapi.dev.log:22672:     dvs:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22673:     dvs:           Driver Version - 08/13/2026,1.0.0.2
+  C:\Windows\INF\setupapi.dev.log:22674:     dvs: {Driver Setup Import Driver Package - exit (0x00000000)} 19:50:05.956
+> C:\Windows\INF\setupapi.dev.log:22675:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:50:05.956
+> C:\Windows\INF\setupapi.dev.log:22676:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003' for reinstall.
+> C:\Windows\INF\setupapi.dev.log:22677:     dvs:      {Install Related Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:50:05.956
+  C:\Windows\INF\setupapi.dev.log:22678:     dvs:      {Install Related Drivers: exit(0x00000000)} 19:50:05.956
+  C:\Windows\INF\setupapi.dev.log:22679:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:50:05.956
+> C:\Windows\INF\setupapi.dev.log:22680:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:50:05.956
+> C:\Windows\INF\setupapi.dev.log:22681:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004' for reinstall.
+> C:\Windows\INF\setupapi.dev.log:22682:     dvs:      {Install Related Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:50:05.956
+  C:\Windows\INF\setupapi.dev.log:22683:     dvs:      {Install Related Drivers: exit(0x00000000)} 19:50:05.972
+  C:\Windows\INF\setupapi.dev.log:22684:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:50:05.972
+  C:\Windows\INF\setupapi.dev.log:22685:<<<  Section end 2026/08/13 19:50:05.974
+  C:\Windows\INF\setupapi.dev.log:22686:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22687:
+  C:\Windows\INF\setupapi.dev.log:22688:
+  C:\Windows\INF\setupapi.dev.log:22689:>>>  [Delete Device - UMB\UMB\1&841921D&0&TSBUS]
+  C:\Windows\INF\setupapi.dev.log:22690:>>>  Section start 2026/08/13 19:50:19.224
+  C:\Windows\INF\setupapi.dev.log:22691:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22692:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22693:<<<  Section end 2026/08/13 19:50:19.239
+  C:\Windows\INF\setupapi.dev.log:22694:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22699:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22700:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22701:<<<  Section end 2026/08/13 19:50:19.302
+  C:\Windows\INF\setupapi.dev.log:22702:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22703:
+  C:\Windows\INF\setupapi.dev.log:22704:
+> C:\Windows\INF\setupapi.dev.log:22705:>>>  [Device Install (Hardware initiated) - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004]
+  C:\Windows\INF\setupapi.dev.log:22706:>>>  Section start 2026/08/13 19:50:34.798
+  C:\Windows\INF\setupapi.dev.log:22707:     ump: Install needed due to device having problem code CM_PROB_REINSTALL
+> C:\Windows\INF\setupapi.dev.log:22708:     utl: {Select Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:50:34.808
+  C:\Windows\INF\setupapi.dev.log:22709:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22710:     utl:           Status         - Selected | Installed
+  C:\Windows\INF\setupapi.dev.log:22711:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22712:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22713:     utl:           Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22714:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22715:     utl:           Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:22716:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22717:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22718:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22719:     utl:           Status         - Outranked | Installed
+  C:\Windows\INF\setupapi.dev.log:22720:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22721:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22722:     utl:           Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22723:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22724:     utl:           Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:22725:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22726:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22727:     utl: {Select Drivers - exit(0x00000000} 19:50:34.830
+  C:\Windows\INF\setupapi.dev.log:22728:     dvi: Install flags: 0x00010000
+  C:\Windows\INF\setupapi.dev.log:22729:     dvi: {Core Device Install} 19:50:34.833
+> C:\Windows\INF\setupapi.dev.log:22730:     dvi:      {Configure Device - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:50:34.993
+  C:\Windows\INF\setupapi.dev.log:22731:     dvi:           Device Status: 0x01806400 [0x12 - 0xc0000493]
+  C:\Windows\INF\setupapi.dev.log:22732:     dvi:           Config Flags: 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22733:     dvi:           Parent Device: HTREE\ROOT\0
+  C:\Windows\INF\setupapi.dev.log:22734:     sto:           {Configure Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf} 19:50:35.007
+> C:\Windows\INF\setupapi.dev.log:22735:     sto:                Source Filter  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22736:     inf:                Config Options = IsolationCompat
+  C:\Windows\INF\setupapi.dev.log:22737:     inf:                Class GUID     = {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22738:     inf:                Class Options  = Configurable
+  C:\Windows\INF\setupapi.dev.log:22739:!    inf:                Using WDF schema version 2.23 when section requires version 2.33. Section = [IddseatRemote_Install.NT.Wdf]
+  C:\Windows\INF\setupapi.dev.log:22740:     inf:                {Configure Driver: Hydra Virtual Seat Display (Remote Session)}
+  C:\Windows\INF\setupapi.dev.log:22741:     inf:                     Section Name = IddseatRemote_Install.NT
+  C:\Windows\INF\setupapi.dev.log:22742:     inf:                     {Add Service: WUDFRd}
+  C:\Windows\INF\setupapi.dev.log:22743:     inf:                          Flags         = 0x1FA
+  C:\Windows\INF\setupapi.dev.log:22744:     inf:                          Start Type    = 3
+  C:\Windows\INF\setupapi.dev.log:22745:     inf:                          Service Type  = 1
+  C:\Windows\INF\setupapi.dev.log:22746:     inf:                          Error Control = 1
+  C:\Windows\INF\setupapi.dev.log:22747:     inf:                          Image Path    = \SystemRoot\System32\drivers\WUDFRd.sys
+  C:\Windows\INF\setupapi.dev.log:22748:     inf:                          Display Name  = Windows Driver Frameworks - User-mode Driver Framework Reflector
+  C:\Windows\INF\setupapi.dev.log:22749:     inf:                          Leaving existing load order group (base).
+  C:\Windows\INF\setupapi.dev.log:22750:     inf:                          Leaving existing display name (Windows Driver Foundation - User-mode Driver Framework Reflector).
+  C:\Windows\INF\setupapi.dev.log:22751:     inf:                          Updated service 'WUDFRd'.
+  C:\Windows\INF\setupapi.dev.log:22752:     inf:                          Leaving existing description (A kernel mode driver that uses message-based interprocess communication mechanism to communicate with the driver manager and host process to facilitate UMDF drivers).
+  C:\Windows\INF\setupapi.dev.log:22753:     inf:                     {Add Service: exit(0x00000000)}
+> C:\Windows\INF\setupapi.dev.log:22754:     inf:                     Hardware Id  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22755:     inf:                     {Configure Driver Configuration: IddseatRemote_Install.NT}
+  C:\Windows\INF\setupapi.dev.log:22756:     inf:                          Service Name  = WUDFRd
+  C:\Windows\INF\setupapi.dev.log:22757:     inf:                          Included INFs = WUDFRD.inf
+  C:\Windows\INF\setupapi.dev.log:22758:     inf:                          Config Flags  = 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22759:     inf:                     {Configure Driver Configuration: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22760:     inf:                {Configure Driver: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22761:     flq:                {FILE_QUEUE_COMMIT} 19:50:35.051
+  C:\Windows\INF\setupapi.dev.log:22762:     flq:                {FILE_QUEUE_COMMIT - exit(0x00000000)} 19:50:35.052
+  C:\Windows\INF\setupapi.dev.log:22763:     sto:                Driver configuration complete.
+  C:\Windows\INF\setupapi.dev.log:22764:     sto:           {Configure Driver Package: exit(0x00000000)} 19:50:35.056
+  C:\Windows\INF\setupapi.dev.log:22765:     dvi:           Install Device: Configuring device. 19:50:35.058
+> C:\Windows\INF\setupapi.dev.log:22766:     dvi:                Configuration: oem222.inf:HydraSeat_RemoteIDD_v1,*
+  C:\Windows\INF\setupapi.dev.log:22767:     dvi:           Install Device: Configuring device completed. 19:50:35.064
+  C:\Windows\INF\setupapi.dev.log:22768:     dvi:           Deferring device restart until end of operation.
+  C:\Windows\INF\setupapi.dev.log:22769:     dvi:      {Configure Device - exit(0x00000000)} 19:50:35.066
+> C:\Windows\INF\setupapi.dev.log:22770:     utl:      {Select Drivers - SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003} 19:50:35.069
+  C:\Windows\INF\setupapi.dev.log:22771:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22772:     utl:                Status         - Selected | Installed | Designated
+  C:\Windows\INF\setupapi.dev.log:22773:     utl:                Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22774:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22775:     utl:                Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22776:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:22777:     utl:                Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:22778:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22779:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22780:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22781:     utl:                Status         - Outranked | Installed | Designated
+  C:\Windows\INF\setupapi.dev.log:22782:     utl:                Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22783:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22784:     utl:                Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22785:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:22786:     utl:                Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:22787:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22788:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22789:     utl:      {Select Drivers - exit(0x00000000} 19:50:35.099
+> C:\Windows\INF\setupapi.dev.log:22790:     dvi:      Refreshing driver on SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003.
+> C:\Windows\INF\setupapi.dev.log:22791:     dvi:      Marking non-present device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003 for reinstall.
+  C:\Windows\INF\setupapi.dev.log:22792:     dvi:      Device Status: 0x01806000
+> C:\Windows\INF\setupapi.dev.log:22793:     dvi:      Install Device: Starting device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004'. 19:50:35.108
+  C:\Windows\INF\setupapi.dev.log:22794:     dvi:      Install Device: Starting device completed. 19:50:38.095
+  C:\Windows\INF\setupapi.dev.log:22795:!!!  dvi:      Device not started: Device has problem: 0x1f (CM_PROB_FAILED_ADD), problem status: 0xc0000001.
+  C:\Windows\INF\setupapi.dev.log:22796:     dvi: {Core Device Install - exit(0x00000000)} 19:50:38.108
+  C:\Windows\INF\setupapi.dev.log:22797:<<<  Section end 2026/08/13 19:50:38.115
+  C:\Windows\INF\setupapi.dev.log:22798:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22799:
+  C:\Windows\INF\setupapi.dev.log:22800:
+  C:\Windows\INF\setupapi.dev.log:22801:>>>  [Driver Install (DrvSetupInstallDriver) - C:\Programs\hydra\dist\driver-remote\iddseat-remote.inf]
+  C:\Windows\INF\setupapi.dev.log:22802:>>>  Section start 2026/08/13 19:52:52.189
+  C:\Windows\INF\setupapi.dev.log:22803:      cmd: "C:\WINDOWS\system32\pnputil.exe" /add-driver dist\driver-remote\iddseat-remote.inf /install
+  C:\Windows\INF\setupapi.dev.log:22804:     dvs: Flags: 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22805:     dvs: {Driver Setup Import Driver Package: C:\Programs\hydra\dist\driver-remote\iddseat-remote.inf} 19:52:52.189
+  C:\Windows\INF\setupapi.dev.log:22879:     dvs:      Driver Package:
+  C:\Windows\INF\setupapi.dev.log:22880:     dvs:           Outcome        - Imported
+  C:\Windows\INF\setupapi.dev.log:22881:     dvs:           Driver INF     - iddseat-remote.inf (oem223.inf)
+  C:\Windows\INF\setupapi.dev.log:22882:     dvs:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22883:     dvs:           Driver Version - 08/13/2026,1.0.0.3
+  C:\Windows\INF\setupapi.dev.log:22884:     dvs: {Driver Setup Import Driver Package - exit (0x00000000)} 19:52:52.567
+> C:\Windows\INF\setupapi.dev.log:22885:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:52:52.571
+> C:\Windows\INF\setupapi.dev.log:22886:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003' for reinstall.
+> C:\Windows\INF\setupapi.dev.log:22887:     dvs:      {Install Related Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:52:52.571
+  C:\Windows\INF\setupapi.dev.log:22888:     dvs:      {Install Related Drivers: exit(0x00000000)} 19:52:52.571
+  C:\Windows\INF\setupapi.dev.log:22889:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:52:52.576
+> C:\Windows\INF\setupapi.dev.log:22890:     dvs: {Driver Setup Update Device: SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:52:52.576
+> C:\Windows\INF\setupapi.dev.log:22891:     dvs:      Marking non-present device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004' for reinstall.
+> C:\Windows\INF\setupapi.dev.log:22892:     dvs:      {Install Related Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0004} 19:52:52.578
+  C:\Windows\INF\setupapi.dev.log:22893:     dvs:      {Install Related Drivers: exit(0x00000000)} 19:52:52.578
+  C:\Windows\INF\setupapi.dev.log:22894:     dvs: {Driver Setup Update Device - exit(0x00000000)} 19:52:52.583
+  C:\Windows\INF\setupapi.dev.log:22895:<<<  Section end 2026/08/13 19:52:52.597
+  C:\Windows\INF\setupapi.dev.log:22896:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22897:
+  C:\Windows\INF\setupapi.dev.log:22898:
+  C:\Windows\INF\setupapi.dev.log:22899:>>>  [Delete Device - UMB\UMB\1&841921D&0&TSBUS]
+  C:\Windows\INF\setupapi.dev.log:22900:>>>  Section start 2026/08/13 19:54:49.189
+  C:\Windows\INF\setupapi.dev.log:22901:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22902:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22903:<<<  Section end 2026/08/13 19:54:49.207
+  C:\Windows\INF\setupapi.dev.log:22904:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22909:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:22910:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:22911:<<<  Section end 2026/08/13 19:54:49.291
+  C:\Windows\INF\setupapi.dev.log:22912:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:22913:
+  C:\Windows\INF\setupapi.dev.log:22914:
+> C:\Windows\INF\setupapi.dev.log:22915:>>>  [Device Install (Hardware initiated) - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003]
+  C:\Windows\INF\setupapi.dev.log:22916:>>>  Section start 2026/08/13 19:54:49.721
+  C:\Windows\INF\setupapi.dev.log:22917:     ump: Install needed due to device having problem code CM_PROB_REINSTALL
+> C:\Windows\INF\setupapi.dev.log:22918:     utl: {Select Drivers - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:54:49.736
+  C:\Windows\INF\setupapi.dev.log:22919:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22920:     utl:           Status         - Selected
+  C:\Windows\INF\setupapi.dev.log:22921:     utl:           Driver INF     - oem223.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_f728532d2bc30bc2\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22922:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22923:     utl:           Driver Version - 08/13/2026,1.0.0.3
+> C:\Windows\INF\setupapi.dev.log:22924:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22925:     utl:           Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:22926:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22927:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22928:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22929:     utl:           Status         - Outranked | Installed
+  C:\Windows\INF\setupapi.dev.log:22930:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22931:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22932:     utl:           Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22933:     utl:           Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:22934:     utl:           Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:22935:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22936:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22937:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22938:     utl:           Status         - Outranked | Installed
+  C:\Windows\INF\setupapi.dev.log:22939:     utl:           Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22940:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22941:     utl:           Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:22942:     utl:           Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:22943:     utl:           Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:22944:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22945:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22946:     utl:      Driver Node:
+  C:\Windows\INF\setupapi.dev.log:22947:     utl:           Status         - Outranked
+  C:\Windows\INF\setupapi.dev.log:22948:     utl:           Driver INF     - oem223.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_f728532d2bc30bc2\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:22949:     utl:           Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22950:     utl:           Driver Version - 08/13/2026,1.0.0.3
+> C:\Windows\INF\setupapi.dev.log:22951:     utl:           Configuration  - HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22952:     utl:           Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:22953:     utl:           Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:22954:     utl:           Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:22955:     utl: {Select Drivers - exit(0x00000000} 19:54:49.786
+  C:\Windows\INF\setupapi.dev.log:22956:     dvi: Install flags: 0x00010000
+  C:\Windows\INF\setupapi.dev.log:22957:     dvi: {Core Device Install} 19:54:49.792
+> C:\Windows\INF\setupapi.dev.log:22958:     dvi:      {Configure Device - SWD\RemoteDisplayEnum\HydraSeat_RemoteIDD_v1&SessionId_0003} 19:54:49.939
+  C:\Windows\INF\setupapi.dev.log:22959:     dvi:           Device Status: 0x01806400 [0x12 - 0xc0000493]
+  C:\Windows\INF\setupapi.dev.log:22960:     dvi:           Config Flags: 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22961:     dvi:           Parent Device: HTREE\ROOT\0
+  C:\Windows\INF\setupapi.dev.log:22962:     sto:           {Configure Driver Package: C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_f728532d2bc30bc2\iddseat-remote.inf} 19:54:49.943
+> C:\Windows\INF\setupapi.dev.log:22963:     sto:                Source Filter  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22964:     inf:                Config Options = IsolationCompat
+  C:\Windows\INF\setupapi.dev.log:22965:     inf:                Class GUID     = {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:22966:     inf:                Class Options  = Configurable
+  C:\Windows\INF\setupapi.dev.log:22967:!    inf:                Using WDF schema version 2.23 when section requires version 2.33. Section = [IddseatRemote_Install.NT.Wdf]
+  C:\Windows\INF\setupapi.dev.log:22968:     inf:                {Configure Driver: Hydra Virtual Seat Display (Remote Session)}
+  C:\Windows\INF\setupapi.dev.log:22969:     inf:                     Section Name = IddseatRemote_Install.NT
+  C:\Windows\INF\setupapi.dev.log:22970:     inf:                     {Add Service: WUDFRd}
+  C:\Windows\INF\setupapi.dev.log:22971:     inf:                          Flags         = 0x1FA
+  C:\Windows\INF\setupapi.dev.log:22972:     inf:                          Start Type    = 3
+  C:\Windows\INF\setupapi.dev.log:22973:     inf:                          Service Type  = 1
+  C:\Windows\INF\setupapi.dev.log:22974:     inf:                          Error Control = 1
+  C:\Windows\INF\setupapi.dev.log:22975:     inf:                          Image Path    = \SystemRoot\System32\drivers\WUDFRd.sys
+  C:\Windows\INF\setupapi.dev.log:22977:     inf:                          Leaving existing load order group (base).
+  C:\Windows\INF\setupapi.dev.log:22978:     inf:                          Leaving existing display name (Windows Driver Foundation - User-mode Driver Framework Reflector).
+  C:\Windows\INF\setupapi.dev.log:22979:     inf:                          Updated service 'WUDFRd'.
+  C:\Windows\INF\setupapi.dev.log:22980:     inf:                          Leaving existing description (A kernel mode driver that uses message-based interprocess communication mechanism to communicate with the driver manager and host process to facilitate UMDF drivers).
+  C:\Windows\INF\setupapi.dev.log:22981:     inf:                     {Add Service: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22982:!    idb:                     Last driver package 'iddseat-remote.inf_amd64_5c711a4635f4a760' using service 'iddseatremote' needs reconfiguration.
+> C:\Windows\INF\setupapi.dev.log:22983:     inf:                     Hardware Id  = HydraSeat_RemoteIDD_v1
+  C:\Windows\INF\setupapi.dev.log:22984:     inf:                     {Configure Driver Configuration: IddseatRemote_Install.NT}
+  C:\Windows\INF\setupapi.dev.log:22985:     inf:                          Service Name  = WUDFRd
+  C:\Windows\INF\setupapi.dev.log:22986:     inf:                          Included INFs = WUDFRD.inf
+  C:\Windows\INF\setupapi.dev.log:22987:     inf:                          Config Flags  = 0x00000000
+  C:\Windows\INF\setupapi.dev.log:22988:     inf:                     {Configure Driver Configuration: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22989:     inf:                {Configure Driver: exit(0x00000000)}
+  C:\Windows\INF\setupapi.dev.log:22990:     flq:                {FILE_QUEUE_COMMIT} 19:54:49.976
+  C:\Windows\INF\setupapi.dev.log:22991:     flq:                {FILE_QUEUE_COMMIT - exit(0x00000000)} 19:54:49.976
+  C:\Windows\INF\setupapi.dev.log:22992:     sto:                Driver configuration complete.
+  C:\Windows\INF\setupapi.dev.log:22993:     sto:           {Configure Driver Package: exit(0x00000000)} 19:54:49.980
+  C:\Windows\INF\setupapi.dev.log:22994:     dvi:           Install Device: Configuring device. 19:54:49.980
+> C:\Windows\INF\setupapi.dev.log:22995:     dvi:                Configuration: oem223.inf:HydraSeat_RemoteIDD_v1,*
+  C:\Windows\INF\setupapi.dev.log:22996:     dvi:           Install Device: Configuring device completed. 19:54:49.987
+  C:\Windows\INF\setupapi.dev.log:22997:     dvi:           Deferring device restart until end of operation.
+  C:\Windows\INF\setupapi.dev.log:22998:     dvi:      {Configure Device - exit(0x00000000)} 19:54:49.992
+> C:\Windows\INF\setupapi.dev.log:22999:     utl:      {Select Drivers - SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004} 19:54:49.992
+  C:\Windows\INF\setupapi.dev.log:23000:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:23001:     utl:                Status         - Selected | Designated
+  C:\Windows\INF\setupapi.dev.log:23002:     utl:                Driver INF     - oem223.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_f728532d2bc30bc2\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:23003:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:23004:     utl:                Driver Version - 08/13/2026,1.0.0.3
+> C:\Windows\INF\setupapi.dev.log:23005:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:23006:     utl:                Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:23007:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:23008:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:23009:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:23010:     utl:                Status         - Outranked | Installed
+  C:\Windows\INF\setupapi.dev.log:23011:     utl:                Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:23012:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:23013:     utl:                Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:23014:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:23015:     utl:                Driver Rank    - 00FF0000
+  C:\Windows\INF\setupapi.dev.log:23016:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:23017:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:23018:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:23019:     utl:                Status         - Outranked | Installed
+  C:\Windows\INF\setupapi.dev.log:23020:     utl:                Driver INF     - oem222.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_5c711a4635f4a760\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:23021:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:23022:     utl:                Driver Version - 08/13/2026,1.0.0.2
+> C:\Windows\INF\setupapi.dev.log:23023:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:23024:     utl:                Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:23025:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:23026:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:23027:     utl:           Driver Node:
+  C:\Windows\INF\setupapi.dev.log:23028:     utl:                Status         - Outranked | Designated
+  C:\Windows\INF\setupapi.dev.log:23029:     utl:                Driver INF     - oem223.inf (C:\WINDOWS\System32\DriverStore\FileRepository\iddseat-remote.inf_amd64_f728532d2bc30bc2\iddseat-remote.inf)
+  C:\Windows\INF\setupapi.dev.log:23030:     utl:                Class GUID     - {4d36e968-e325-11ce-bfc1-08002be10318}
+  C:\Windows\INF\setupapi.dev.log:23031:     utl:                Driver Version - 08/13/2026,1.0.0.3
+> C:\Windows\INF\setupapi.dev.log:23032:     utl:                Configuration  - HydraSeat_RemoteIDD_v1 [IddseatRemote_Install.NT]
+  C:\Windows\INF\setupapi.dev.log:23033:     utl:                Driver Rank    - 00FF2000
+  C:\Windows\INF\setupapi.dev.log:23034:     utl:                Signer Score   - Authenticode (0F000000)
+  C:\Windows\INF\setupapi.dev.log:23035:     utl:                Attributes     - Legacy
+  C:\Windows\INF\setupapi.dev.log:23036:     utl:      {Select Drivers - exit(0x00000000} 19:54:50.024
+> C:\Windows\INF\setupapi.dev.log:23037:     dvi:      Marking non-present device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004 for reinstall.
+  C:\Windows\INF\setupapi.dev.log:23038:     dvi:      Device Status: 0x01806000
+> C:\Windows\INF\setupapi.dev.log:23039:     dvi:      Install Device: Starting device 'SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003'. 19:54:50.024
+  C:\Windows\INF\setupapi.dev.log:23040:     dvi:      Install Device: Starting device completed. 19:54:53.050
+  C:\Windows\INF\setupapi.dev.log:23041:!!!  dvi:      Device not started: Device has problem: 0x1f (CM_PROB_FAILED_ADD), problem status: 0xc0000001.
+  C:\Windows\INF\setupapi.dev.log:23042:     dvi: {Core Device Install - exit(0x00000000)} 19:54:53.050
+  C:\Windows\INF\setupapi.dev.log:23043:<<<  Section end 2026/08/13 19:54:53.050
+  C:\Windows\INF\setupapi.dev.log:23044:<<<  [Exit status: SUCCESS]
+  C:\Windows\INF\setupapi.dev.log:23045:
+  C:\Windows\INF\setupapi.dev.log:23046:
+  C:\Windows\INF\setupapi.dev.log:23047:>>>  [Delete Device - UMB\UMB\1&841921D&0&TSBUS]
+  C:\Windows\INF\setupapi.dev.log:23048:>>>  Section start 2026/08/13 20:41:57.759
+  C:\Windows\INF\setupapi.dev.log:23049:      cmd: C:\WINDOWS\System32\svchost.exe -k LocalSystemNetworkRestricted -p -s UmRdpService
+  C:\Windows\INF\setupapi.dev.log:23050:!    dvi: Query-and-Remove failed: 0x05: CR_INVALID_DEVNODE.
+  C:\Windows\INF\setupapi.dev.log:23051:<<<  Section end 2026/08/13 20:41:57.775
+

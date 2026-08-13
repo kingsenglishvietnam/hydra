@@ -1,0 +1,22 @@
+[
+  {
+    "Name": "Hydra",
+    "Status": 1,
+    "StartType": 3
+  },
+  {
+    "Name": "keyboard",
+    "Status": 4,
+    "StartType": 3
+  },
+  {
+    "Name": "mouse",
+    "Status": 4,
+    "StartType": 3
+  },
+  {
+    "Name": "TermService",
+    "Status": 4,
+    "StartType": 3
+  }
+]

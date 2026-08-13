@@ -76,9 +76,9 @@ Needs   = WUDFRD.NT.Services
 [IddseatRemote_Install.NT.Wdf]
 UmdfService                = iddseatremote, IddseatRemote_Service_Inst
 UmdfServiceOrder           = iddseatremote
-UmdfKernelModeClientPolicy = AllowKernelModeClients
 UmdfFileObjectPolicy       = AllowNullAndUnknownFileObjects
 UmdfFsContextUsePolicy     = CannotUseFsContexts
+UmdfHostProcessSharing     = ProcessSharingDisabled
 ; REQUIRED for remote IDDs -- one host process per session. See note 2 above.
 
 [IddseatRemote_Service_Inst]

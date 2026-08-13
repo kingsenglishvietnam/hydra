@@ -1,0 +1,121 @@
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 1008
+Message     : The host process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has been shutdown.
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 2901
+Message     : The UMDF Host ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has shutdown.
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 2900
+Message     : The UMDF Host ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has been asked to shutdown.
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 1006
+Message     : The host process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) is being asked to shutdown.
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 2007
+Message     : The UMDF Host failed to load the driver at level 0.  The error reported was 3489660941.
+
+TimeCreated : 8/13/2026 7:54:53 PM
+Id          : 2005
+Message     : The UMDF Host Process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has loaded module C:\Windows\System32\WUDFx02000.dll while loading drivers for device NULL.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 2004
+Message     : The UMDF Host is loading driver iddseatremote at level 0 for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 2010
+Message     : The UMDF Host Process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has successfully loaded drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 2003
+Message     : The UMDF Host Process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) has been asked to load drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 1004
+Message     : The host process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) started successfully.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 2001
+Message     : The UMDF Host Process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) started successfully.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 2000
+Message     : The UMDF Host Process ({265e4dd8-da37-4c68-a4bf-958b6542c636}) is starting up.
+
+TimeCreated : 8/13/2026 7:54:50 PM
+Id          : 1003
+Message     : The Driver Manager service is starting a host process for device SWD.REMOTEDISPLAYENUM.HYDRASEAT_REMOTEIDD_V1&SESSIONID_0003.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 1008
+Message     : The host process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has been shutdown.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 2901
+Message     : The UMDF Host ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has shutdown.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 2900
+Message     : The UMDF Host ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has been asked to shutdown.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 1006
+Message     : The host process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) is being asked to shutdown.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 2007
+Message     : The UMDF Host failed to load the driver at level 0.  The error reported was 3489660941.
+
+TimeCreated : 8/13/2026 7:50:38 PM
+Id          : 2005
+Message     : The UMDF Host Process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has loaded module C:\Windows\System32\WUDFx02000.dll while loading drivers for device NULL.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 2004
+Message     : The UMDF Host is loading driver iddseatremote at level 0 for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 2010
+Message     : The UMDF Host Process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has successfully loaded drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 2003
+Message     : The UMDF Host Process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) has been asked to load drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 1004
+Message     : The host process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) started successfully.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 2001
+Message     : The UMDF Host Process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) started successfully.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 2000
+Message     : The UMDF Host Process ({c2d6f26b-4436-4f8c-8301-13d9ec97c817}) is starting up.
+
+TimeCreated : 8/13/2026 7:50:35 PM
+Id          : 1003
+Message     : The Driver Manager service is starting a host process for device SWD.REMOTEDISPLAYENUM.HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:42:50 PM
+Id          : 2007
+Message     : The UMDF Host failed to load the driver at level 0.  The error reported was 3489660941.
+
+TimeCreated : 8/13/2026 7:42:50 PM
+Id          : 2004
+Message     : The UMDF Host is loading driver iddseatremote at level 0 for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:42:50 PM
+Id          : 2010
+Message     : The UMDF Host Process ({d8358a59-3a8e-4705-a1b2-28cd4c45173c}) has successfully loaded drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
+TimeCreated : 8/13/2026 7:42:50 PM
+Id          : 2003
+Message     : The UMDF Host Process ({d8358a59-3a8e-4705-a1b2-28cd4c45173c}) has been asked to load drivers for device SWD\REMOTEDISPLAYENUM\HYDRASEAT_REMOTEIDD_V1&SESSIONID_0004.
+
