@@ -1,0 +1,324 @@
+=== 39466f0 2026-08-13 (HEAD -> main, origin/main)
+docs: ASTER addendum -- not a dead end after all
+
+The dead-ends table listed ASTER as blocked by the April 2026 CI policy. That
+is out of date: it works using a build obtained via tech support, though it is
+not currently in use and was not reinstalled after the reset.
+
+Installers located and stashed in vendor/ (gitignored):
+- Setup_ASTER2705.exe  v2.70.5, built 2026-07-01
+- Setup_ASTER2704.exe  v2.70.4, built 2026-03-26
+
+Both validly signed by IBIK LLC with ordinary sequential version metadata, so
+neither is identifiable as a support build. The support-provided item may have
+been the licence rather than the installer -- the original June failure was a V7
+key rejected by the current activation dialog, not a download. Check the support
+email before relying on either.
+
+Recorded as a working fallback: if Hydra has to be down for a lesson, this is
+the escape route.
+
+=== 15618ef 2026-08-13 (tag: handoff-2026-08-13)
+docs: cold-start handoff + four-mode consolidation + mode 4 blocker
+
+HANDOFF.md: assembled from every prior session. Recovers material that existed
+only in conversation and would have been lost:
+
+- D3D11 shared textures do NOT cross a Terminal Services session boundary
+  (OpenSharedResourceByName -> E_INVALIDARG). This is why capture runs inside
+  the seat session and frames travel as CPU pixels through the seqlock ring.
+  The original IDD topology was abandoned for this reason, not arbitrarily.
+- IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER exists, but the OS fails init if
+  the flag and the RD stack's involvement disagree. The RD stack must
+  instantiate the driver -- which is the entire justification for HydraProto.
+- The 08-12 trace shows GetHardwareId IS called (count=200), then
+  ConnectNotify session=4, then PreDisconnect reason=17. Combined with error
+  87 this reads as: stack asked, driver failed to install, connection dropped.
+  Earlier notes saying the stack never asks are wrong.
+- EnableWddmIdd is termsrv TELLING the provider its mode, not asking. Ruled
+  out as the cause of the silence.
+- build-driver.ps1 had three doubled-quoting bugs; -Remote had never taken
+  effect and both driver variants were byte-identical.
+- hydra_ipc.h publishes a 'stalled' field -- PROBLEM 1's first candidate,
+  built and then never read during an actual lockup.
+- Monitor separation was ~8100px (0,0 and 11340,0); the reset put them at
+  3240,0 adjacent. That separation, not ClipCursor, was the cursor-leak fix.
+- HydraProto emergency undo: delete the WinStations key, restart TermService.
+
+MODES.md rewritten to four modes, consolidating STATE.md (three) and the old
+MODES.md (two). Revisions tagged [CHANGED 08-11] / [CHANGED 08-13].
+
+REBUILD.md corrected: UmdfLibraryVersion is 2.33.0, NOT 2.35 -- 2.35 makes
+WUDFHost refuse the driver before DriverEntry on this OS build. build-driver.ps1
+does not call stampinf at all, so the literal token was never substituted.
+
+safety-gate.ps1 added: three-level undo verification before boot-risk work.
+
+=== f9c9d14 2026-08-13 (tag: post-reset-2026-08-13)
+docs: post-reset rebuild + mode 4 blocker confirmed
+
+MODES.md rewritten to cover four modes, consolidating STATE.md (three) and
+the old MODES.md (two). Revisions tagged [CHANGED 08-11] / [CHANGED 08-13].
+
+CORRECTIONS to earlier claims:
+- UmdfLibraryVersion must be 2.33.0, NOT 2.35. build-driver.ps1 pins 2.33
+  because this OS (26100/24H2) runs that UMDF runtime; 2.35 makes WUDFHost
+  refuse the driver before DriverEntry.
+- build-driver.ps1 does NOT call stampinf. The literal UMDFVERSION token in
+  both INFs was never substituted, not substituted wrongly. This is error 87.
+- Monitor separation (~8100px, 0,0 and 11340,0) was the retired fix for the
+  cursor leak. The reset put displays adjacent at 3240,0. Restore the gap
+  rather than reaching for confine_monitor.
+
+POST-RESET FINDINGS:
+- sc config TermService type= own is mandatory for RDP-Wrapper, undone by reset.
+  Symptom is ERRCONNECT_ACTIVATION_TIMEOUT, identical to a wedged stack.
+- Audio endpoint GUIDs reissued: 623f2512->3012a3df, 548a2a1a->969db10d.
+- Interception device numbers drifted; hardware-ID matching needed no change.
+- MSYS2 FreeRDP has no rdpsnd backend, so modes 2/3 have no Remote Audio
+  endpoint and audio_bridge has nothing to capture. Mode 1 is not retired.
+- mstsc does not read the pixel ring; mirror is the seat display.
+- STATE.md gfx section is stale: crash was fixed 08-11 via DesktopResize.
+
+NEW:
+- safety-gate.ps1: three-level undo verification (cwd / WinRE / USB) before
+  boot-risk operations. Refuses on bootstatuspolicy=ignoreallfailures.
+- fix-winsta0.ps1 applied earlier; window-station theory for seatB_agent err 5
+  was a clean negative. Log line kept as a permanent rule-out.
+
+=== 3243624 2026-08-13
+REBUILD.md + PROBLEM 1 reproduced and characterised
+
+REBUILD.md: post-reset runbook. sc config TermService type= own is mandatory
+for RDP-Wrapper and is silently undone by Reset. Audio endpoint GUIDs reissued
+(623f2512->3012a3df, 548a2a1a->969db10d). Interception device numbers drifted
+(seat B now 6/12, console 4/14) but hardware-ID matching in seats.toml needed
+no change. mstsc does not read the pixel ring -- mirror is the seat display
+under display_mode=capture. Error 87 confirmed as literal UMDFVERSION token in
+both IDD INFs, unfixed. Interception ruled out as cause of RDP activation
+timeouts. seatB_agent err 5 narrowed to lock-screen desktops; window-station
+hypothesis tested and ruled out via fix-winsta0.ps1.
+
+PROBLEM 1 (mode 2 random lockups, open since May) reproduced with a trigger:
+installing a Logitech mouse driver inside the seat session tore down its
+display stack. session_capture then loops attach/re-attach forever without
+reaching 'acquiring' -- 1806 cycles logged, STALLED counter climbing, pix seq
+and cur seq both frozen. 'hydractl restart B' does NOT clear it. Reconnecting
+the RDP client DOES. The duplicatable display belongs to the client session,
+not the helper -- so any client disconnect or resolution change is a candidate
+for the same stall. Evidence: STALL-2026-08-13-capture_B.log.
+
+seats.toml: audio_bridge endpoint id updated to current GUID.
+
+=== c1ea620 2026-08-13
+post-reset: audio endpoint GUIDs 623f2512->3012a3df, 548a2a1a->969db10d; TermService needs type= own for RDP-Wrapper; error 87 = literal UMDFVERSION token
+
+
+=== b4cfb7c 2026-08-12
+incident doc, RDP-Wrapper procedure, vendor-freerdp mirrors DLLs into dist\ for hydrardp (delay-loads make ldd unreliable), fix-milestone-banner retires the stale usage string
+
+
+=== 04bc195 2026-08-12
+post-reset: hydrardp.exe runs. Needs the full vendored DLL set beside it in dist\, not just the three static imports -- ldd shows clean after three, but FreeRDP delay-loads channel/codec modules. vendor-freerdp.ps1 only populates dist\freerdp\; add a step for dist\. Usage banner still says MILESTONE 1, stale since gfx-working.
+
+
+=== 1427b7a 2026-08-12
+stampinf in build-kbfilter uses -f -d -a -v, which do not touch UmdfLibraryVersion -- porting it would not fix the token. Needs an explicit substitution step in build-driver.ps1. dist/driver still literal, dist/driver-remote hand-fixed at 2.33.0.
+
+
+=== 6d79e0b 2026-08-12
+post-reboot steps for the WUDF framework trace; four driver defects fixed today
+
+
+=== fb346cb 2026-08-12
+driver: fixed policy block, UMDFVERSION token, DIRID 13 decoration, dynamic CRT. Package installs cleanly. UMDF still refuses the load with 0xD000000D before DriverEntry runs - constant across every change including UMDF 2.35->2.33.
+
+
+=== 1a36bdf 2026-08-12
+A/B proves the staged driver kills the connection - error 87 is the single remaining bug
+
+
+=== 15cb0a9 2026-08-11
+device install policy was blocking the IDD (DenyUnspecified=1); allow-list added for HydraSeat_RemoteIDD_v1. Now fails later at DIF_INSTALLDEVICE with error 87 from WUDFCoinstaller - open.
+
+
+=== 97e4555 2026-08-11
+rebuild list for a toolset switch; note that all MSVC output so far is 2026
+
+
+=== e8a9820 2026-08-11
+provider instrumented: the stack DOES call GetHardwareId - it stops at driver load, test-signing pending reboot
+
+
+=== 2381bf3 2026-08-11
+provider instrumented: the stack DOES call GetHardwareId - it stops at driver load, test-signing pending reboot
+
+
+=== eed4f63 2026-08-11 (tag: rdsprov-idd-staged)
+rds provider + remote IDD: credentials from the listener registry key; hardware id HydraSeat_RemoteIDD_v1 on both sides; iddseat-remote.inf; separate build output dirs; three build-driver quoting fixes that meant the driver had never compiled from source
+
+
+=== f39f860 2026-08-11
+testsigning Yes, Secure Boot off, HydraTest cert valid to 2027-07 -- driver environment ready
+
+
+=== 3465b75 2026-08-11 (tag: idd-builds)
+build-driver: fix three doubled-quoting bugs (incArgs, compile src/obj, link OUT). The driver had NEVER been compiled from current source - cl.exe was silently no-oping and the link was reusing a stale August .obj, so -Remote did nothing and both builds were byte-identical. Also adds IddCxAdapterDisplayConfigUpdate2, required for remote IDDs: the OS keeps one desktop config per remote session, it starts empty, and paths stay inactive until the driver supplies one - monitor arrival alone shows nothing while reporting success.
+
+
+=== c333e21 2026-08-11
+remote IDD requirements: IddCxDisplayConfigUpdate is the missing piece
+
+
+=== b691e41 2026-08-11
+rds provider: full logged-in session with a real desktop
+
+
+=== ec995bb 2026-08-11 (tag: rdsprov-session)
+rds provider: PROVEN - created a Windows session with no RDP in the path
+
+
+=== c8211c0 2026-08-11
+rdsprov: register/unregister with rollback and emergency card
+
+
+=== 936cf8e 2026-08-11
+rds provider: mechanism mapped end to end, sample builds under both toolsets
+
+
+=== 2641ae1 2026-08-11
+rds provider: connection mechanism, both toolsets build
+
+
+=== ccd26dd 2026-08-11
+rds provider: sample builds, notes on the IDD junction
+
+
+=== 116ef23 2026-08-11 (tag: gfx-working)
+blackbox: drop dead WindowFromPoint import, breaks on PS7
+
+
+=== b6bc66e 2026-08-11
+next steps from gfx-working
+
+
+=== 98ad249 2026-08-11
+hydra: fix the /gfx crash, CPU spin and video glitching
+
+Root cause of the crash was update->DesktopResize being NULL. gdi_graphics_pipeline_init sends ResetGraphics on attach, the server answers with a desktop-size notification, and libfreerdp calls update->DesktopResize(gdi->context) having checked only that update itself is non-NULL: call *0x68(%r14) at libfreerdp3+0xDCB4B, one argument, offsetof confirmed 0x068. Without /gfx that path never runs, which is why eleven earlier hypotheses about codecs, surfaces and pointers all missed it. Found with rdp/hydra_veh.c, a first-chance vectored handler that resolves [rsp+00] to module+RVA and names the caller directly. Two further faults fixed on top: the publish throttle now tests the clock at function entry, since the main loop spins at ~4100/s under gfx and 98 percent of calls did their region bookkeeping before being discarded (CPU ~200 percent to normal); and publishing is now driven by the gfx EndFrame callback rather than a blind 16ms timer, which could sample mid-blit and emit part-new part-old frames. That last one was the glitching. Also retires both HYDRA_GFX bisect guards, which were scaffolding for a bug that was somewhere else entirely.
+
+=== b67b06d 2026-08-09
+STATE.md: gfx stopped, thread affinity eliminated
+
+
+=== 9f8cebe 2026-08-09
+Add ON-LOCKUP.md: diagnostics to run before restarting
+
+
+=== 0fd59d8 2026-08-09
+STATE.md: gfx stopped at ten attempts
+
+
+=== 1af7376 2026-08-09
+STATE.md: gfx stopped, nine hypotheses eliminated
+
+
+=== 5724b09 2026-08-09
+STATE.md: gfx source-derived fix also failed
+
+
+=== 0d0bdd8 2026-08-09
+Add NEXT-TEST.md: gfx fix, built but untested
+
+
+=== 303e327 2026-08-09
+STATE.md: gfx crash characterised, six hypotheses eliminated
+
+
+=== 718d055 2026-08-09 (tag: v2.2-gfx-codec)
+Add STATE.md
+
+
+=== 9fab411 2026-08-09 (tag: v2.2-modeview)
+Document two modes with one-command launchers; retire cursorfence and the ClipCursor approach with reasons
+
+
+=== 56e5fcf 2026-08-09
+Document two modes with one-command launchers; retire cursorfence and the ClipCursor approach with reasons
+
+
+=== 07252d5 2026-08-09
+Remove cursorfence: built for a monitor crossing that cannot happen -- the displays are 8100px apart, so the desktop is not contiguous
+
+
+=== 06d514d 2026-08-09
+hydra-view.ps1: one-command mode 3 launcher -- clears conflicts, enforces start order, waits for frames, optional virtual desktop placement. Add START.md, TEST-NEXT.md, RESTART.md, cursorfence.
+
+
+=== 5998c0b 2026-08-09
+Add hydra-view.ps1 (whole seat in one command, ordering enforced) and install-shortcut.ps1
+
+
+=== 9351c27 2026-08-08 (tag: v2.1-cursor)
+Add RESTART.md quick reference
+
+
+=== d1e609a 2026-08-08 (tag: v2.2-selfhealing)
+mirror: re-attach to the pixel transport after 10s without frames -- a stale mapping survived service restarts and looked like a start-up ordering problem. hydrardp: 30fps publish, full-frame copies, gfx channel handler no longer double-subscribes
+
+
+=== 3290349 2026-08-08 (tag: v2.1-cursor-wip)
+hydrardp: full-frame copies (damage-rect fought cursor compositing); no phantom cursor before a real position
+
+
+=== c18600d 2026-08-08 (tag: v2.1-client-mode)
+hydrad: display_mode=client creates the shared sections but launches no capture agent, so hydrardp is the only producer
+
+
+=== 46ff18c 2026-08-08
+hydrardp: full-frame copies, 30fps throttle, no cursor before first position; video still glitchy, cause unidentified
+
+
+=== 930b587 2026-08-07
+hydrardp: clean shutdown on every exit path including crashes; milestone 3, take over the pointer and composite it deliberately
+
+
+=== 198c02a 2026-08-07 (tag: v2.0-headless)
+hydrardp milestone 2 refinements; document the three modes, remaining milestones, and that a crashing client wedges the RDP stack
+
+
+=== 579ad79 2026-08-07
+hydrardp: opt-in graphics pipeline, GDI buffer guard, damaged-region copy with accumulation across coalesced paints
+
+
+=== e743648 2026-08-07
+Milestone 2: headless client publishes frames to the shared ring, throttled to 60fps. Fix probe double-counting seqlock increments.
+
+
+=== c99fcd0 2026-08-06
+Milestone 2 of 5 reached for sdl-freerdp
+
+
+=== c5ca98b 2026-08-06 (tag: v1.2-freerdp)
+Don't redirect audio to the FreeRDP client -- audio_bridge already carries it, and both playing gives an echo
+
+
+=== 970df6f 2026-08-06
+FreeRDP as default client: fixes the panel freeze (mstsc suppresses output when minimized or covered, FreeRDP does not). Probe now generates activity so idle isn't mistaken for frozen. Stalls reported in hydractl status. Headless client milestone 1 (untested).
+
+
+=== 93ff97a 2026-08-06 (tag: v1.1-diagnostics)
+Make silent failures visible: capture reports no-display stalls with retry counts and publishes them to hydractl status; audio bridge reports every retry path. Add probe mode, borderless fullscreen view window, client selection.
+
+
+=== 1ce4318 2026-08-04 (tag: v1.0-mstsc)
+Windowed seat view with input forwarding; router inject port; audio bridge for A/V sync; mirror recovers from GPU device loss. Untrack dist/ and teacher.rdp
+
+
+=== de55933 2026-08-04
+Add audio keepalive, README, gitignore
+
+
+=== a581556 2026-08-04
+Hydra multiseat: per-seat input, DDA capture with composited cursor, isolated audio
+

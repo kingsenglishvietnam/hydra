@@ -160,3 +160,22 @@ knowing which mattered.
 
 **Reboot and test under 2026 first.** If it loads, the toolset question is
 settled by evidence. If it does not, switch and you have a clean comparison.
+
+---
+
+## SUPERSEDED 2026-08-13 — the switch happened by force
+
+The reset removed VS 2026 (`18\Community`) entirely. `install-shortcut.ps1`
+rediscovered 2022 BuildTools, so the Hydra Shell now points there and every
+build picks up 2022's cl.exe. Sections 0 and 5's toolset discussion are history.
+
+The clean comparison this file argued for is now unavailable in one direction
+and free in the other: there is only 2022. If the driver loads under it, the
+toolset mattered. If 0xD000000D persists, it never did.
+
+Also settled since: testsigning IS active and the HydraTest cert is trusted in
+both LocalMachine\Root and TrustedPublisher — so 'test-signing never activated'
+is no longer an open variable. The blocker is measured under valid conditions.
+
+Still required before any of this runs: WDK 10.0.28000.0, which the reset took.
+See REBUILD.md section 11.

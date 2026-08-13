@@ -344,30 +344,41 @@ Note `LogonUI.exe` runs as **SYSTEM**, so filtering session processes by
 
 ---
 
-## 8. Error 87 (IDD driver) — CONFIRMED, UNFIXED
+## 8. Mode 4 — blocked on `0xD000000D`, NOT error 87
 
-```powershell
-Select-String -Path C:\Programs\hydra\iddseat\iddseat.inf, C:\Programs\hydra\iddseat\iddseat-remote.inf -Pattern 'UmdfLibraryVersion'
-```
+**Corrected 08-13 after reading the git log.** Earlier revisions of this file
+named error 87 as the blocker. It was fixed the previous day.
 
-Both INFs ship the **literal token**:
+`fb346cb` (08-12) fixed four defects together — the `DenyUnspecified` policy
+block, the UMDFVERSION token, DIRID 13 decoration, and dynamic CRT. **The package
+installs cleanly.**
 
-```
-iddseat.inf:67:UmdfLibraryVersion = $UMDFVERSION$
-iddseat-remote.inf:85:UmdfLibraryVersion = $UMDFVERSION$
-```
+The live blocker is **`0xD000000D`** (`STATUS_INVALID_PARAMETER`): UMDF refuses
+the load **before `DriverEntry` runs**, *constant across every change tried,
+including UMDF 2.35 → 2.33*. The version was tested and eliminated — do not
+retry it.
 
-Handing a co-installer the string `$UMDFVERSION$` produces exactly "the parameter
-is incorrect".
+Next instrument is the **WUDF framework trace**; `6d79e0b` has the post-reboot
+steps. `1a36bdf` established by A/B that the staged driver is what kills the
+connection.
 
-`build-driver.ps1` **does not call `stampinf`** — it compiles, links, copies the
-INF verbatim, and ends by telling you to run `stampinf + inf2cat +
-sign-driver.ps1`. So the token was never substituted, rather than substituted
-wrongly.
+### Separately: the UMDFVERSION token in source
 
-### The value is 2.33.0 — NOT 2.35
+The source INFs still contain the literal `$UMDFVERSION$`, and that is expected.
+`1427b7a`:
 
-`build-driver.ps1` pins it, with the reason inline:
+> stampinf in build-kbfilter uses `-f -d -a -v`, which do not touch
+> `UmdfLibraryVersion` — porting it would not fix the token. Needs an explicit
+> substitution step in `build-driver.ps1`. `dist/driver` still literal,
+> `dist/driver-remote` hand-fixed at 2.33.0.
+
+The working fix was a hand-edit in `dist/driver-remote`, never propagated back.
+**`build-driver.ps1` needs an explicit substitution step**, or every rebuild
+reintroduces the literal token in `dist/driver`. Build-hygiene bug, not the
+blocker.
+
+When substituting, the value is **2.33.0**, matching what the DLL is linked
+against:
 
 ```powershell
 $umdf = '2.33'   # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2),
@@ -375,23 +386,14 @@ $umdf = '2.33'   # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2),
                  # the driver before DriverEntry runs
 ```
 
-`UmdfLibraryVersion` must match what the DLL was linked against. **2.35 fails
-before `DriverEntry` runs**, which would present as an entirely different bug and
-cost another day.
-
-Since `build-driver.ps1` copies the INFs verbatim rather than regenerating them,
-hardcoding `2.33.0` is safe — nothing overwrites it.
-
 Pinned build environment: SDK `10.0.28000.0`, IddCx `1.11`, UMDF **`2.33`**,
 `NTDDI_VERSION=0x0A000010`, cert `CN=HydraTest` (valid to 2027-07-19).
 
-**Not yet applied** — the fix leads to staging a driver package, which is the
-category that caused INCIDENT-2026-08-12. Run `.\safety-gate.ps1` first.
+Full mode 4 detail: `MODES.md`. Cold-start context: `HANDOFF.md`.
 
-Full mode 4 detail: `MODES.md`.
-
-This was findable by a read-only grep at any point. It was blocker #5 in a chain
-that cost an OS reinstall. **Run the cheap checks before the expensive ones.**
+**Read the git log before trusting any of this.** Three documents in this repo
+claimed error 87 was the blocker for a full day after it had been fixed. The
+commit messages are the authoritative record.
 
 ---
 
@@ -428,7 +430,11 @@ box (stale ring, no publisher). No audio (see §5).
 - **Read the source before theorising.** On 2026-08-13, `seat_router.c` and
   `hydrad.cpp` each answered in one read what several rounds of inference got
   wrong. Same lesson as the gfx crash: eleven guesses, one source read.
-- **Cheap checks before expensive ones.** Error 87 was a grep.
+- **Read the git log before the docs.** Commit messages on this project run
+  ahead of every `.md` in it. Three files here named error 87 as mode 4's
+  blocker for a day after `fb346cb` had fixed it.
+- **Cheap checks before expensive ones.** `git log -- iddseat/` would have
+  settled the mode 4 question in one command.
 - **Recovery stick in the bag, tested, before any driver install.** Not after.
 - **Never `bcdedit /set bootstatuspolicy ignoreallfailures`** on a machine you
   might need WinRE on — it suppresses the automatic failover *into* WinRE and
@@ -443,3 +449,24 @@ box (stale ring, no publisher). No audio (see §5).
 - **Machine-specific values belong in this file, not only in `seats.toml`** —
   `seats.toml` appears to be gitignored, so its GUIDs and hardware IDs do not
   reach the repo.
+
+---
+
+## 11. WDK — required for mode 4, NOT in the winget block above
+
+Reset removes it. Only SDK 10.0.26100.0 comes back with VS Build Tools, and
+there are no iddcx headers in it. `build-driver.ps1` pins:
+
+- SDK/WDK `10.0.28000.0` — includes, libs, and `bin\10.0.28000.0\x64\stampinf.exe`
+- IddCx `1.11` headers + `iddcxstub.lib`
+- UMDF `2.33` — `WdfDriverStubUm.lib`
+
+`REBUILD-LIST.md` calls stampinf and Inf2Cat by full path under that version,
+so the WDK bin directory is needed too, not just headers.
+
+Check what is present:
+
+```powershell
+Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Include' -Directory | Select-Object Name
+Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Include\*\um\iddcx' -Directory
+```

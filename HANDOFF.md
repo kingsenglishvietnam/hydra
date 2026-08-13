@@ -46,8 +46,32 @@ account is `user`.
 The muxless GPU is why VFIO/hypervisor multiseat was impossible and why this is
 an RDP-loopback design at all.
 
-**Tags:** `gfx-working`, `rdsprov-session`, `idd-builds`, `rdsprov-idd-staged`,
-`post-reset-2026-08-13`.
+**Tags, in order — this is the project's real history:**
+
+| tag | what it marks |
+|---|---|
+| `v1.0-mstsc` | 08-04. Windowed seat view, input forwarding, audio bridge. |
+| `v1.1-diagnostics` | 08-06. Silent failures made visible; stall counts published to `hydractl`. |
+| `v1.2-freerdp` | 08-06. FreeRDP becomes default — mstsc suppresses output when covered. |
+| `v2.0-headless` | 08-07. `hydrardp` milestone 2; a crashing client wedges the RDP stack. |
+| `v2.1-client-mode` | 08-08. `display_mode=client`. |
+| `v2.1-cursor-wip` / `v2.1-cursor` | 08-08. Full-frame copies; damage-rect fought cursor compositing. |
+| `v2.2-selfhealing` | 08-08. `mirror` re-attaches after 10s without frames. |
+| `v2.2-modeview` | 08-09. Two modes with one-command launchers; `cursorfence` retired. |
+| `v2.2-gfx-codec` | 08-09. `STATE.md` added. |
+| `gfx-working` | 08-11. The `DesktopResize` fix. |
+| `rdsprov-session` | 08-11. **Provider created a Windows session with no RDP in the path.** |
+| `idd-builds` | 08-11. Three quoting bugs fixed; `IddCxAdapterDisplayConfigUpdate2` added. |
+| `rdsprov-idd-staged` | 08-11. Provider + remote IDD both staged, matching hardware ID. |
+| `post-reset-2026-08-13`, `handoff-2026-08-13` | today. |
+
+**Read the commit messages.** They are written as documentation and are more
+current than any `.md` in the repo — this file was wrong about mode 4 until they
+were read:
+
+```powershell
+git --no-pager log --pretty=format:'=== %h %ad%d%n%s%n%n%b' --date=short > gitlog.txt
+```
 
 ---
 
@@ -100,9 +124,10 @@ says is affordable at 1080p.
 **`stalled` is the diagnostic nobody reads.** Non-zero means the producer is
 attached to the seat's desktop but `EnumOutputs` returns no duplicatable display
 — a permanent failure that looks *identical* to healthy-and-idle from outside:
-process alive, log quiet, `hydractl` reporting "running". It is PROBLEM 1's first
-candidate and it was built, published, and then ignored in favour of the two
-signals its own comment warns are useless.
+process alive, log quiet, `hydractl` reporting "running". **Confirmed as
+PROBLEM 1's mechanism on 08-13** — see §7. It was built, published, and then
+ignored for months in favour of the two signals its own comment warns are
+useless.
 
 **`seq` is the real liveness signal**, not mirror's CPU. It increments per
 published frame. Flat `seq` = stopped pipeline, definitively.
@@ -240,23 +265,38 @@ Close
 `GetHardwareId` **is** called. Then IDD creation starts and the connection drops.
 Consistent with the driver failing to install — which §6 now explains.
 
-### The blocker: error 87
+### The blocker: `0xD000000D`, not error 87
 
-```
-iddseat.inf:67:UmdfLibraryVersion = $UMDFVERSION$
-iddseat-remote.inf:85:UmdfLibraryVersion = $UMDFVERSION$
-```
+**Error 87 is FIXED** (`fb346cb`, 08-12). So is the `DenyUnspecified` policy block
+(`15cb0a9`) that preceded it. **The package installs cleanly.**
 
-Both INFs ship the **literal token**. A co-installer handed the string
-`$UMDFVERSION$` returns "the parameter is incorrect" = error 87.
+The live blocker is **`0xD000000D`** (`STATUS_INVALID_PARAMETER`): UMDF refuses
+the load **before `DriverEntry` runs**, and it is *constant across every change
+tried, including UMDF 2.35 → 2.33*. So the version is not the answer — that was
+tested and eliminated.
 
-`build-driver.ps1` **does not call `stampinf`** — it ends by telling you to. So
-the token was never substituted.
+`fb346cb` fixed four defects together: the policy block, the UMDFVERSION token,
+DIRID 13 decoration, and dynamic CRT. `6d79e0b` adds post-reboot steps for a WUDF
+framework trace, which is the instrument for `0xD000000D` and the obvious next
+move.
 
-**The value is `2.33.0`, NOT 2.35.** `build-driver.ps1` pins 2.33 with the reason
-inline: 2.35 ships with WDK 28000, but this OS is build 26100 whose runtime is
-2.33, and *requesting 2.35 makes WUDFHost refuse the driver before DriverEntry
-runs*.
+`1a36bdf` established by A/B that the staged driver is what kills the connection.
+
+### The UMDFVERSION token is still open, but separately
+
+`1427b7a` (08-12) records the true state:
+
+> stampinf in build-kbfilter uses `-f -d -a -v`, which do not touch
+> `UmdfLibraryVersion` — porting it would not fix the token. Needs an explicit
+> substitution step in `build-driver.ps1`. `dist/driver` still literal,
+> `dist/driver-remote` hand-fixed at 2.33.0.
+
+So the source INFs legitimately still contain `$UMDFVERSION$` — the working fix
+was a hand-edit in `dist/driver-remote`, never propagated back. **`build-driver.ps1`
+needs an explicit substitution step**, and until it has one every rebuild
+reintroduces the literal token in `dist/driver`.
+
+That is a build-hygiene bug, not the blocker. Do not confuse them again.
 
 ### Pinned build environment
 
@@ -307,10 +347,29 @@ compiled. Removed offline during the 08-12 recovery.
 
 ## 7. Open problems
 
-**1. PROBLEM 1 — mode 2 random lockups.** Highest priority; teaching depends on
-it. Never diagnosed. Run `ON-LOCKUP.md` *before* restarting or the evidence is
-gone. First candidate is the `stalled` field (see §3) which has never been
-checked during an actual lockup.
+**1. PROBLEM 1 — mode 2 lockups. REPRODUCED AND CHARACTERISED 08-13
+(`3243624`).** No longer a mystery.
+
+**Trigger found:** installing a Logitech mouse driver *inside the seat session*
+tore down that session's display stack.
+
+**Failure shape:** `session_capture` loops attach / re-attach forever without
+ever reaching `acquiring` — **1806 cycles logged**, `STALLED` climbing, and both
+`pix seq` and `cur seq` frozen. Exactly the failure `hydra_ipc.h`'s comment
+predicted, and exactly why `capture_B.log` and `hydractl status` look healthy
+through it.
+
+**`hydractl restart B` does NOT clear it. Reconnecting the RDP client DOES.**
+
+**The insight:** the duplicatable display belongs to the *client session*, not
+the helper. So **any client disconnect or resolution change is a candidate for
+the same stall** — the Logitech driver was one instance of a general class.
+
+Evidence: `STALL-2026-08-13-capture_B.log`, committed.
+
+Open from here: whether `session_capture` can detect the torn-down stack and
+force a client reconnect itself, since restarting the helper provably cannot fix
+it.
 
 **2. `seatB_agent` err 5 at lock screens.** `SendInput` returns
 `ERROR_ACCESS_DENIED` when seat B is at a lock screen (`LogonUI.exe` in the
@@ -319,8 +378,11 @@ it). The SYSTEM/`SE_TCB_PRIVILEGE` assumption in `hydrad.cpp` ~369 is false.
 Seat B cannot unlock itself, because unlocking needs injection into the desktop
 injection is blocked from. **Mitigation: stop `teacher` locking.**
 
-**3. Mode 4 — error 87.** See §5. Fix is `2.33.0`, then `stampinf`/`inf2cat`/
-sign/`pnputil`. Safety gate first.
+**3. Mode 4 — `0xD000000D`.** See §5. Error 87 and the policy block are both
+fixed; the package installs cleanly. UMDF refuses the load before `DriverEntry`,
+unchanged across UMDF 2.35 and 2.33. Next instrument is the WUDF framework trace
+(`6d79e0b`). Separately, `build-driver.ps1` still needs an explicit
+`UmdfLibraryVersion` substitution step.
 
 **4. PROBLEM 5 — the reboot tax.** `hydrardp` dying leaves the wrapper holding a
 session only a reboot clears. ~12 reboots over the project. Fix is a supervisor
@@ -333,8 +395,15 @@ Audio endpoint exists in the seat session and `abcap` has nothing to loopback.
 Only mode 1 (mstsc) has audio. Options: rebuild FreeRDP `WITH_WINMM=ON`, try
 `/sound:sys:fake`, or give `abcap` a virtual-endpoint fallback.
 
-**6. `display_mode = "client"`.** Set 08-13 after reading `hydrad.cpp` ~695. Not
-in `seats.toml`'s comments. Nobody has written down what it does.
+**6. `display_mode = "client"` — RESOLVED (`c18600d`, tag `v2.1-client-mode`).**
+Not an open question after all:
+
+> hydrad: `display_mode=client` creates the shared sections but launches no
+> capture agent, so `hydrardp` is the only producer.
+
+That is the correct setting for mode 3, and it makes the manual
+`Stop-Process -Name session_capture` in `STATE.md`'s mode 3 sequence
+unnecessary. `seats.toml`'s own comment block never listed it — worth adding.
 
 ---
 
@@ -364,6 +433,10 @@ the live set is 001 or 002. Drive letters are reassigned on every WinRE boot.
 
 ## 9. Rules
 
+- **Read the git log before the docs.** Commit messages on this project are
+  written as documentation and run ahead of every `.md` in the repo. On 08-13
+  three separate documents claimed error 87 was mode 4's blocker; `fb346cb` had
+  fixed it the previous day and the real blocker was `0xD000000D`.
 - **Read the source, not the summary.** `Select-String -Path .\rdp\hydrardp.c
   -Pattern "<thing>" -Context 0,10`
 - **Cheap checks before expensive ones.** Error 87 was a grep behind an OS
@@ -383,35 +456,16 @@ the live set is 001 or 002. Drive letters are reassigned on every WinRE boot.
 - **Update `STATE.md`.** Its gfx section still sends readers down eleven closed
   hypotheses, and its mode table predates mode 4.
 
----
+### Signing environment — verified intact post-reset, 2026-08-13
 
-## Addendum — ASTER
+- `bcdedit` testsigning = Yes (BCD survives a reset)
+- `CN=HydraTest` private key in `Cert:\CurrentUser\My`, valid to 2027-07-19
+- Same thumbprint `B38E367A...` in `LocalMachine\Root` AND `LocalMachine\TrustedPublisher`
+- Secure Boot off
 
-The dead-ends table above is out of date. ASTER **does** work, using a build sent
-directly by their tech support rather than the public download — the public one
-ships `mutenx.sys`, which the April 2026 CI policy blocks.
+So 0xD000000D was NOT a trust failure. That was checked and ruled out. The
+driver had valid signing conditions on every attempt.
 
-Not currently in use, and not reinstalled after the 2026-08-12 reset. But it is a
-working fallback, not a closed door: if Hydra needs to be down for a lesson, this
-is the escape route.
-
-Unknowns worth settling before relying on it:
-- Where the support build is archived, and whether it survived the reset.
-- Whether it still needs Secure Boot off / CI policies removed from the ESP, or
-  whether the support build is signed differently.
-- Whether it coexists with Interception, or wants exclusive input.
-
-### ASTER installers, located 2026-08-13
-
-`Setup_ASTER2705.exe`  v2.70.5, built 2026-07-01, 60,963,664 bytes
-`Setup_ASTER2704.exe`  v2.70.4, built 2026-03-26, 61,147,184 bytes
-
-Both validly signed by IBIK LLC. Neither is distinguishable as a support build --
-sequential public releases with ordinary version metadata. The thing support
-provided may have been the LICENSE rather than the installer: the original June
-problem was a V7 key rejected by the current activation dialog, not a download.
-
-Check the support email before relying on either. Use 2705 (newer).
-
-`vendor/` is gitignored -- 120MB of installers does not belong in the repo.
-Copy to the recovery stick, which is FAT32 and has room.
+What did NOT survive: **WDK 10.0.28000.0**. Only SDK 10.0.26100.0 is present and
+there are no iddcx headers anywhere. Mode 4 cannot build until the WDK is
+reinstalled — and REBUILD.md's winget block does not include it.

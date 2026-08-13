@@ -19,11 +19,11 @@ Boot-loop post-mortem: `INCIDENT-2026-08-12.md`.
 | | mode 1 | mode 2 | mode 3 | mode 4 |
 |---|---|---|---|---|
 | client | mstsc | sdl-freerdp | hydrardp | none |
-| `display_mode` | `off` | `capture` | `capture` / `client`? | `idd` |
+| `display_mode` | `off` | `capture` | **`client`** | `idd` |
 | pixel path | mstsc window is the panel | DDA → ring → mirror | client → ring → mirror | virtual monitor |
 | cursor | `cursor_overlay` | composited | composited | native |
 | audio | **works** | none — see §Audio | none | untested |
-| status | works, freezes when covered | **teach on this** | works, no codec | blocked on error 87 |
+| status | works, freezes when covered | **teach on this** | works, no codec | blocked on `0xD000000D` |
 
 **Never run two modes at once.** Two clients on one session, or two producers on
 one pixel ring, wedges the RDP stack — and that costs a reboot, not a restart.
@@ -164,8 +164,31 @@ several rounds on 08-13.
 `mirror.exe B --window` is the **debug** view, not the seat form — no display
 target, lands on the console screen, forwards input into seat B by design.
 
-**Open:** PROBLEM 1, random lockups, never diagnosed. Run `ON-LOCKUP.md` before
-restarting or the evidence is gone.
+### **[CHANGED 08-13] PROBLEM 1 reproduced and characterised** (`3243624`)
+
+Open since May, now understood.
+
+**Trigger:** installing a Logitech mouse driver *inside the seat session* tore
+down that session's display stack.
+
+**Shape:** `session_capture` loops attach / re-attach forever without reaching
+`acquiring` — 1806 cycles logged, `STALLED` climbing, `pix seq` and `cur seq`
+both frozen. Exactly the failure `hydra_ipc.h`'s comment predicted, and why
+`capture_B.log` and `hydractl status` look healthy throughout.
+
+**`hydractl restart B` does NOT clear it. Reconnecting the RDP client DOES.**
+
+**Why:** the duplicatable display belongs to the *client session*, not the
+helper. So **any client disconnect or resolution change is a candidate for the
+same stall** — the mouse driver was one instance of a general class.
+
+Evidence: `STALL-2026-08-13-capture_B.log`, committed.
+
+Still run `ON-LOCKUP.md` before restarting, and check `.\hydra-shm.ps1` — a
+climbing `STALLED` with frozen `seq` confirms this failure rather than a new one.
+
+Open: whether `session_capture` can detect the torn-down stack and force a client
+reconnect itself, since restarting the helper provably cannot fix it.
 
 ---
 
@@ -195,8 +218,11 @@ cd C:\Programs\hydra; Start-Service Hydra; Stop-Process -Name session_capture -F
 ```
 
 `Stop-Process session_capture` matters — mode 3 must not also have DDA running,
-or two producers fight over one ring. `Remove-Item Env:HYDRA_GFX` matters
-because a stale `HYDRA_GFX=1` crashes the client.
+or two producers fight over one ring. **[CHANGED 08-13]** Redundant if
+`display_mode = "client"` is set, since `hydrad` then launches no capture agent
+at all (`c18600d`). Harmless either way, so it stays as a belt-and-braces.
+`Remove-Item Env:HYDRA_GFX` matters because a stale `HYDRA_GFX=1` crashes the
+client.
 
 Wait for `pixel transport opened` **and** publishes climbing.
 
@@ -255,9 +281,12 @@ MSYS2 and no compiler.
 
 ### Open
 
-- **`display_mode = "client"`** was set on 08-13 after reading `hydrad.cpp` ~695.
-  Not in `seats.toml`'s comments, which list only `capture`, `off`, `idd`.
-  Someone needs to write down what it does.
+- **`display_mode = "client"` — RESOLVED** (`c18600d`, tag `v2.1-client-mode`,
+  08-08): *"hydrad: display_mode=client creates the shared sections but launches
+  no capture agent, so hydrardp is the only producer."* That is the correct
+  setting for mode 3, and it makes the manual `Stop-Process session_capture` in
+  the by-hand sequence above unnecessary. `seats.toml`'s comment block still
+  lists only `capture`, `off`, `idd` — add it.
 - PROBLEM 5, the reboot tax: `hydrardp` dying leaves the wrapper holding a
   session only a reboot clears. Fix is a supervisor that runs `logoff <id>` on
   *any* exit — clean, crashed or killed. ~40 lines. Not written.
@@ -271,27 +300,42 @@ real virtual monitor and the `HydraProto` protocol provider hands it to
 `termsrv`. No DDA, no ring, no client in the pixel path. Only mode that creates
 the `SWD\HYDRA` device.
 
-**~90% complete. Blocked on error 87.** Interrupted by INCIDENT-2026-08-12 and
-not properly documented elsewhere — this section is the record.
+**~90% complete. Blocked on `0xD000000D`.** Interrupted by INCIDENT-2026-08-12.
+Read `git log` for this path before anything else — the commit messages are the
+real record and run ahead of every `.md` in the repo.
 
-### The blocker, confirmed 08-13
+### The blocker — NOT error 87
 
-```
-iddseat.inf:67:UmdfLibraryVersion = $UMDFVERSION$
-iddseat-remote.inf:85:UmdfLibraryVersion = $UMDFVERSION$
-```
+**Error 87 is fixed** (`fb346cb`, 08-12), along with the `DenyUnspecified` policy
+block that preceded it (`15cb0a9`). **The package installs cleanly.**
 
-Both INFs ship the **literal token**. A co-installer handed the string
-`$UMDFVERSION$` returns "the parameter is incorrect" — error 87.
+The live blocker is **`0xD000000D`** (`STATUS_INVALID_PARAMETER`): UMDF refuses
+the load **before `DriverEntry` runs**, and it is *constant across every change
+tried, including UMDF 2.35 → 2.33*. The version was tested and eliminated.
 
-Matches the 08-12 provider trace: `GetHardwareId *** THE STACK IS ASKING FOR THE
-DRIVER ***`, then `ConnectNotify session=4`, then `PreDisconnect reason=17`. The
-stack asked, the driver could not install, the connection dropped.
+`fb346cb` fixed four defects at once: the policy block, the UMDFVERSION token,
+DIRID 13 decoration, and dynamic CRT. `1a36bdf` proved by A/B that the staged
+driver is what kills the connection. `6d79e0b` adds post-reboot steps for a
+**WUDF framework trace** — that is the instrument for `0xD000000D` and the next
+move.
 
-`build-driver.ps1` **does not call `stampinf`** — it ends by telling you to. So
-the token was never substituted, rather than substituted wrongly.
+### The UMDFVERSION token — separate, still open
 
-### The value is 2.33.0 — NOT 2.35
+`1427b7a`:
+
+> stampinf in build-kbfilter uses `-f -d -a -v`, which do not touch
+> `UmdfLibraryVersion` — porting it would not fix the token. Needs an explicit
+> substitution step in `build-driver.ps1`. `dist/driver` still literal,
+> `dist/driver-remote` hand-fixed at 2.33.0.
+
+So the source INFs legitimately still contain `$UMDFVERSION$`; the working fix
+was a hand-edit in `dist/driver-remote` that was never propagated back. Until
+`build-driver.ps1` gains a substitution step, every rebuild reintroduces the
+literal token in `dist/driver`.
+
+Build-hygiene bug, not the blocker. Do not confuse them.
+
+### The value, when substituting, is 2.33.0
 
 `build-driver.ps1` pins it with the reason inline:
 
@@ -325,17 +369,35 @@ hardcoding `2.33.0` is safe — there is nothing to overwrite it.
 
 ### Path to finish
 
-1. Fix `UmdfLibraryVersion` → `2.33.0` in both INFs.
-2. `.\build-driver.ps1`
-3. `stampinf`, then `inf2cat` — the existing `iddseat.cat` is dated 4 August and
-   was built from a stale object, so it signs the wrong thing.
-4. `.\sign-driver.ps1`
-5. `bcdedit /enum {current} | Select-String testsigning` → must read `Yes`.
-   Secure Boot is off, so `bcdedit /set testsigning on` is accepted.
-6. `pnputil /add-driver` — **the boot-risk step.**
-7. `.\rdsprov-register.ps1`
+The install chain works. The remaining problem is the load, not the install.
 
-### Safety gate — mandatory before step 6
+1. **Run the WUDF framework trace** (`6d79e0b` has the post-reboot steps). That is
+   the instrument for `0xD000000D`; everything below is downstream of what it
+   says.
+2. Add an explicit `UmdfLibraryVersion` substitution step to `build-driver.ps1`,
+   so `dist/driver` stops shipping the literal token on every rebuild.
+3. `.\build-driver.ps1` (and `-Remote`)
+4. `inf2cat` — the existing `iddseat.cat` is dated 4 August and was built from a
+   stale object, so it signs the wrong thing.
+5. `.\sign-driver.ps1`
+6. `bcdedit /enum {current} | Select-String testsigning` → must read `Yes`.
+   Secure Boot is off, so `bcdedit /set testsigning on` is accepted, and it
+   needs a reboot.
+7. `pnputil /add-driver` — **the boot-risk step.**
+8. `.\rdsprov-register.ps1 -Register -Apply`
+
+### HydraProto emergency undo
+
+If the provider takes RDP down, this is the whole recovery — deleting the key
+stops termsrv loading the DLL on next start:
+
+```
+reg delete "HKLM\System\CurrentControlSet\Control\Terminal Server\WinStations\HydraProto" /f
+sc stop TermService
+sc start TermService
+```
+
+### Safety gate — mandatory before step 7
 
 ```powershell
 .\safety-gate.ps1 -Label "iddseat-mode4"

@@ -116,6 +116,40 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  linked OK" -ForegroundColor Green
 
 Copy-Item (Join-Path $root ($(if ($Remote) { 'iddseat\iddseat-remote.inf' } else { 'iddseat\iddseat.inf' }))) $outdir -Force
+
+# --- substitute UmdfLibraryVersion in the COPY, never the source -------------
+#
+# The source INFs carry the literal $UMDFVERSION$ token deliberately, so the
+# value can only ever come from $umdf above -- the same variable the include and
+# lib paths are built from. It therefore cannot drift from what the DLL is
+# actually linked against.
+#
+# stampinf does NOT do this. Its -f -d -a -v switches do not touch
+# UmdfLibraryVersion, which is why porting build-kbfilter.ps1's call here would
+# have changed nothing (commit 1427b7a). Handing a co-installer the literal
+# string produces error 87, "the parameter is incorrect".
+#
+# NOTE: this fixes the token, NOT mode 4. The blocker is 0xD000000D -- UMDF
+# refusing the load before DriverEntry, unchanged across UMDF 2.35 and 2.33
+# (fb346cb).
+#
+# No BOM: setupapi reads the INF before any of our code runs.
+$infOut = Join-Path $outdir ($(if ($Remote) { 'iddseat-remote.inf' } else { 'iddseat.inf' }))
+$infTxt = [System.IO.File]::ReadAllText($infOut)
+if ($infTxt -match [regex]::Escape('$UMDFVERSION$')) {
+    $infTxt = $infTxt -replace [regex]::Escape('$UMDFVERSION$'), "$umdf.0"
+    [System.IO.File]::WriteAllText($infOut, $infTxt, (New-Object System.Text.UTF8Encoding $false))
+    Write-Host "  UmdfLibraryVersion -> $umdf.0" -ForegroundColor Green
+} else {
+    Write-Warning "no UMDFVERSION token in $infOut -- already substituted, or the INF changed."
+}
+
+# Prove it rather than assume it.
+$check = Select-String -Path $infOut -Pattern '^\s*UmdfLibraryVersion\s*=' |
+         Select-Object -First 1 -ExpandProperty Line
+if (-not $check)       { Write-Error "no UmdfLibraryVersion line in $infOut" }
+if ($check -match '\$'){ Write-Error "UmdfLibraryVersion still holds a literal token: $check" }
+Write-Host "  $($check.Trim())" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "Built: $dll" -ForegroundColor Green
 Get-Item $dll | ForEach-Object { "  {0:N0} bytes" -f $_.Length }
