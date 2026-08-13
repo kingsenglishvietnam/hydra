@@ -77,7 +77,7 @@ audio_prime = "chime"
 # seat's session and 48000 on the monitor is the normal case here).
 audio_bridge = "3012a3df"
 
-display_mode = "capture"
+display_mode = "client"
 
 # AUDIO ROUTING -- VERIFIED WORKING 2026-07-30.
 #

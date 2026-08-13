@@ -265,8 +265,22 @@ design — which reads as a cursor leak.
 
 ```
 \\.\DISPLAY1   3240x2160 at (0,0)      Surface panel, 200% scaling, primary
-\\.\DISPLAY2   1920x1080 at (3240,0)   2770 external
+\\.\DISPLAY2   1920x1080 at (3240,0)   2770 external   <-- WRONG, see below
 ```
+
+**The reset destroyed a deliberate setting here, and it is easy to miss.**
+
+The displays were placed **~8100 px apart** (`0,0` and `11340,0`) on purpose, so
+the desktop is not contiguous and the console cursor physically cannot walk onto
+the seat panel. `MODES.md` records that as the fix which retired `cursorfence`
+and the `ClipCursor` work — the leak was never a hook problem.
+
+Reset put them back **adjacent**. Restore the gap in Settings → System → Display
+by dragging the seat monitor far right, or above and nudged sideways so only a
+couple of hundred pixels of edge touch.
+
+Until that is done you will be tempted to fix the leak with `confine_monitor`,
+which is the approach already retired as unnecessary.
 
 **DPI-unaware processes see DISPLAY1 as 926x617.** `mirror --help` reports the
 scaled figure; `sdl-freerdp /list:monitor` and `clip_console.exe` (which opts
@@ -289,6 +303,10 @@ Add-Type -Namespace W -Name U -MemberDefinition '[DllImport("user32.dll")] publi
 cursor to the Surface panel via a `WH_MOUSE_LL` hook. Working as designed, but
 it stops a solo operator reaching DISPLAY2. Comment it out when there is no real
 second user — `hydrad` then does not launch `clip` at all.
+
+Note this is the *retired* approach to the cursor leak. Monitor separation
+(above) is the one that works. If you find yourself needing `confine_monitor`,
+check the display arrangement first.
 
 `Stop-Process -Force` on `clip_console` skips its cleanup. Its header says Ctrl+C
 releases and a crash lets the OS remove the hook; a forced kill is neither.
@@ -339,13 +357,38 @@ iddseat.inf:67:UmdfLibraryVersion = $UMDFVERSION$
 iddseat-remote.inf:85:UmdfLibraryVersion = $UMDFVERSION$
 ```
 
-`build-driver.ps1` calls `stampinf` without the flag that substitutes it. Handing
-a co-installer the string `$UMDFVERSION$` produces exactly "the parameter is
-incorrect". Fix is substitution to `2.35.0`, matching what `build-driver.ps1`
-already pins.
+Handing a co-installer the string `$UMDFVERSION$` produces exactly "the parameter
+is incorrect".
+
+`build-driver.ps1` **does not call `stampinf`** — it compiles, links, copies the
+INF verbatim, and ends by telling you to run `stampinf + inf2cat +
+sign-driver.ps1`. So the token was never substituted, rather than substituted
+wrongly.
+
+### The value is 2.33.0 — NOT 2.35
+
+`build-driver.ps1` pins it, with the reason inline:
+
+```powershell
+$umdf = '2.33'   # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2),
+                 # whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse
+                 # the driver before DriverEntry runs
+```
+
+`UmdfLibraryVersion` must match what the DLL was linked against. **2.35 fails
+before `DriverEntry` runs**, which would present as an entirely different bug and
+cost another day.
+
+Since `build-driver.ps1` copies the INFs verbatim rather than regenerating them,
+hardcoding `2.33.0` is safe — nothing overwrites it.
+
+Pinned build environment: SDK `10.0.28000.0`, IddCx `1.11`, UMDF **`2.33`**,
+`NTDDI_VERSION=0x0A000010`, cert `CN=HydraTest` (valid to 2027-07-19).
 
 **Not yet applied** — the fix leads to staging a driver package, which is the
-category that caused INCIDENT-2026-08-12. Safety gate first.
+category that caused INCIDENT-2026-08-12. Run `.\safety-gate.ps1` first.
+
+Full mode 4 detail: `MODES.md`.
 
 This was findable by a read-only grep at any point. It was blocker #5 in a chain
 that cost an OS reinstall. **Run the cheap checks before the expensive ones.**
