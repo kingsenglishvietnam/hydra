@@ -68,14 +68,14 @@ audio_prime = "chime"
 # audioqualitymode does not help -- it only picks the codec inside that channel.
 #
 # Set to the MONITOR endpoint id substring to enable:
-#   audio_bridge = "623f2512"
+#   audio_bridge = "3012a3df"
 #
 # THEN MUTE mstsc.exe in the console session's volume mixer, or the same audio
 # also arrives the slow way and you hear it twice, slightly apart.
 #
 # The bridge resamples, so the two endpoints need not share a rate (44100 in the
 # seat's session and 48000 on the monitor is the normal case here).
-audio_bridge = "623f2512"
+audio_bridge = "3012a3df"
 
 display_mode = "capture"
 
@@ -105,8 +105,8 @@ display_mode = "capture"
 # VERIFY THE IDs BEFORE TRUSTING THEM -- endpoint GUIDs are reissued on driver
 # reinstall. Run:  .\dist\route_endpoint.exe --list
 #   0329839f = CABLE Input        (was 9dd1d418 before a VB-CABLE reinstall)
-#   623f2512 = Intel Display Audio (monitor)
-#   548a2a1a = Realtek            (laptop speakers, seat 1)
+#   3012a3df = Intel Display Audio (monitor)
+#   969db10d = Realtek            (laptop speakers, seat 1)
 # audio_route is NOT needed. VB-CABLE was removed once it became clear the RDP
 # client can be pointed straight at the monitor: on audiomode:i:0 teacher's audio
 # is played by mstsc.exe in the CONSOLE session, so a per-app output assignment

@@ -521,6 +521,39 @@ int main(int argc, char **argv) {
     SetConsoleCtrlHandler(on_ctrl, TRUE);
     disable_quickedit();
 
+    /* Attach to WinSta0 explicitly before touching any desktop.
+     *
+     * CreateProcessAsUserW's lpDesktop sets the STARTING DESKTOP but not the
+     * process WINDOW STATION. A SYSTEM process stamped into another session can
+     * therefore resolve OpenInputDesktop() against the wrong station: the call
+     * succeeds, SetThreadDesktop succeeds, we log "re-attached and recovered",
+     * and every SendInput after it still returns ERROR_ACCESS_DENIED (5)
+     * because the desktop we attached to is not the one receiving input.
+     *
+     * The logged station name is the diagnostic. "WinSta0" here means this was
+     * never the problem; anything else means it was. */
+    {
+        HWINSTA ws = OpenWindowStationW(L"WinSta0", FALSE, WINSTA_ALL_ACCESS);
+        if (ws && SetProcessWindowStation(ws)) {
+            wchar_t nm[128];
+            char    utf8[256];
+            DWORD   n = 0;
+            nm[0] = 0;
+            if (GetUserObjectInformationW(ws, UOI_NAME, nm, sizeof(nm), &n) &&
+                WideCharToMultiByte(CP_UTF8, 0, nm, -1, utf8, sizeof(utf8),
+                                    NULL, NULL) > 0) {
+                fprintf(stderr, "[agent] window station: %s\n", utf8);
+            } else {
+                fprintf(stderr, "[agent] window station: (name query failed err=%lu)\n",
+                        GetLastError());
+            }
+        } else {
+            fprintf(stderr, "[agent] OpenWindowStation(WinSta0) failed err=%lu"
+                            " -- staying on inherited station\n", GetLastError());
+        }
+        fflush(stderr);
+    }
+
     /* Responsiveness levers:
      *   - HIGH_PRIORITY_CLASS + THREAD_PRIORITY_HIGHEST so the scheduler
      *     doesn't deprioritise input replay when both seats are busy.
