@@ -379,7 +379,7 @@ if (Test-Path $minify) {
         Say "  panel will freeze. Use -ClientWindow thumbnail to avoid that." 'Yellow'
     } else {
         try {
-            & $minify -Process $clientProc -TopMost -Width 320 -Height 200 -Corner TopRight | Out-Null
+            & $minify -Process $clientProc -TopMost -Width 320 -Height 200 -Corner BottomLeft | Out-Null
         } catch { Say "  window placement failed: $_" 'Yellow' }
     }
 } else {
