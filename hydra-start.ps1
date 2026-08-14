@@ -95,7 +95,7 @@ $root = $PSScriptRoot
 if ($Desktop -gt 0) {
     try {
         if (-not (Get-Module -ListAvailable -Name VirtualDesktop)) { throw "not installed" }
-        Import-Module VirtualDesktop -ErrorAction Stop
+        Import-Module -Name VirtualDesktop -DisableNameChecking -ErrorAction Stop
 
         while ((Get-DesktopCount) -lt $Desktop) { New-Desktop | Out-Null }
 
@@ -388,7 +388,7 @@ if (Test-Path $minify) {
 
 if ($Desktop -gt 0) {
     try {
-        Import-Module VirtualDesktop -ErrorAction Stop
+        Import-Module -Name VirtualDesktop -DisableNameChecking -ErrorAction Stop
         $mp = Get-Process $clientProc -ErrorAction SilentlyContinue |
               Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
         if ($mp) {

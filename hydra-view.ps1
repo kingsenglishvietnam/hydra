@@ -85,7 +85,9 @@ $deadline = (Get-Date).AddSeconds($TimeoutSec)
 $ready = $false
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 2
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $probe = & $mirror $Seat --probe 2 2>&1 | Out-String
+    $ErrorActionPreference = $eap
     if ($probe -match 'seq starts at (\d+)') {
         if ([int]$Matches[1] -gt 0) { $ready = $true; break }
     }
@@ -112,7 +114,7 @@ if (-not $NoWindow) {
             if (-not (Get-Module -ListAvailable -Name VirtualDesktop)) {
                 throw "module not installed"
             }
-            Import-Module VirtualDesktop -ErrorAction Stop
+            Import-Module -Name VirtualDesktop -DisableNameChecking -ErrorAction Stop
 
             while ((Get-DesktopCount) -lt $Desktop) { New-Desktop | Out-Null }
 

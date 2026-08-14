@@ -88,14 +88,14 @@ if ($Apply) {
     # exactly the "it looks right but plays nowhere" state.
     $removed = 0
     foreach ($e in @(Get-AppEntries)) {
-        Remove-Item (Join-Path $store ([string]$e.Key)) -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path $store ([string]$e.Key)) -Recurse -Force -ErrorAction SilentlyContinue
         $removed++
     }
 
     foreach ($e in $saved) {
         $kp = Join-Path $store ([string]$e.Key)
-        if (-not (Test-Path $kp)) { New-Item -Path $kp -Force | Out-Null }
-        Set-ItemProperty -Path $kp -Name '(default)' -Value $e.Value
+        if (-not (Test-Path -LiteralPath $kp)) { New-Item -Path $kp -Force | Out-Null }
+        Set-ItemProperty -LiteralPath $kp -Name '(default)' -Value ([string]$e.Value) -Type String
     }
     Write-Host "audio assignment restored for $App ($($saved.Count) entry/entries, $removed stale removed)" -ForegroundColor Green
     return
