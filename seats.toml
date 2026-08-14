@@ -77,6 +77,15 @@ audio_prime = "chime"
 # seat's session and 48000 on the monitor is the normal case here).
 audio_bridge = "3012a3df"
 
+# TWO VALID ARRANGEMENTS FOR MODE 1 (mstsc). Both changes go together:
+#   A) display_mode = "off"     + teacher.rdp screen mode id:i:2 (FULLSCREEN)
+#      mstsc IS the panel and draws its own cursor. No mirror, no capture, no
+#      cursor_overlay. Recovered from hydra-no-overlay-needed\seats.toml, whose
+#      comment called it "the configuration that actually works".
+#   B) display_mode = "capture" + teacher.rdp screen mode id:i:1 (windowed)
+#      mstsc is only a session holder; mirror draws DISPLAY2 and DDA composites
+#      the cursor. Same path mode 2 uses. CURRENT.
+# Switching only one of the two gives a broken hybrid.
 display_mode = "capture"
 
 # AUDIO ROUTING -- VERIFIED WORKING 2026-07-30.
