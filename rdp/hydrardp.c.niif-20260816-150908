@@ -149,12 +149,6 @@ typedef struct HydraContext {
     HANDLE            pixMap;
     HydraSeatPixels*  pixHdr;
     BYTE*             pixData;
-    /* display_mode=client launches no capture agent, so nothing else fills the
-     * meta section -- hydrad creates and zeroes it. mirror reads meta FIRST for
-     * dimensions and format; with ready=0 it draws a white box however many
-     * frames are in the pixel ring. So we populate it ourselves. */
-    HANDLE            metaMap;
-    HydraSeatMeta*    metaHdr;
     BOOL              pixWarned;
 } HydraContext;
 
@@ -530,25 +524,14 @@ static BOOL hydra_pointer_set_null(rdpContext* context)
     HydraContext* h = (HydraContext*)context;
     EnterCriticalSection(&h->curLock);
     h->curVisible = FALSE;     /* app hid the cursor -- honour that */
-    L("pointer SET_NULL");
     LeaveCriticalSection(&h->curLock);
     return TRUE;
 }
 
 static BOOL hydra_pointer_set_default(rdpContext* context)
 {
-    /* SetDefault means "show the standard arrow" -- it is a SHOW, not a no-op.
-     * set_null clears curVisible and nothing here put it back, so once an app
-     * hid the cursor it stayed hidden until a NEW pointer IMAGE arrived. RDP
-     * caches shapes, so returning to a shape already sent does not necessarily
-     * reach hydra_pointer_set -- and the cursor vanished over text fields, mid
-     * drag, and between windows. That is the "blinky cursor" in mode 3. */
-    HydraContext* h = (HydraContext*)context;
-    EnterCriticalSection(&h->curLock);
-    h->curVisible = TRUE;
-    LeaveCriticalSection(&h->curLock);
-    L("pointer SET_DEFAULT");
-    return TRUE;
+    (void)context;
+    return TRUE;               /* keep whatever we last had */
 }
 
 static BOOL hydra_pointer_set_position(rdpContext* context, UINT32 x, UINT32 y)
@@ -773,34 +756,6 @@ static BOOL hydra_open_pixels(HydraContext* h)
     if (!v) { CloseHandle(h->pixMap); h->pixMap = NULL; return FALSE; }
     h->pixHdr  = (HydraSeatPixels*)v;
     h->pixData = (BYTE*)v + sizeof(HydraSeatPixels);
-    {
-        wchar_t mname[128];
-        hydra_meta_name(mname, 128, h->seat);
-        h->metaMap = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, mname);
-        if (h->metaMap) {
-            void* mv = MapViewOfFile(h->metaMap, FILE_MAP_ALL_ACCESS, 0, 0,
-                                     sizeof(HydraSeatMeta));
-            if (mv) {
-                rdpGdi* gg = ((rdpContext*)h)->gdi;
-                h->metaHdr = (HydraSeatMeta*)mv;
-                h->metaHdr->version    = HYDRA_IPC_VERSION;
-                h->metaHdr->width      = gg ? gg->width  : 0;
-                h->metaHdr->height     = gg ? gg->height : 0;
-                h->metaHdr->dxgiFormat = 87;
-                h->metaHdr->luidLow    = 0;
-                h->metaHdr->luidHigh   = 0;
-                h->metaHdr->frame      = 0;
-                h->metaHdr->generation = h->metaHdr->generation + 1;
-                h->metaHdr->stalled    = 0;
-                MemoryBarrier();
-                h->metaHdr->ready      = 1;
-                L("meta published: %ux%u fmt=87 gen=%u",
-                  h->metaHdr->width, h->metaHdr->height, h->metaHdr->generation);
-            }
-        } else {
-            L("meta section not found -- mirror will show a white box");
-        }
-    }
     L("pixel transport opened -- mirror will display these frames");
     return TRUE;
 }

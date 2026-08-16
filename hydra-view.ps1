@@ -86,7 +86,13 @@ $ready = $false
 while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 2
     $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    # HYDRA_PROBE_EAP: mirror writes its 'pixel transport opened' SUCCESS line to
+    # stderr. On PS 7.4+ \False is ON by default,
+    # so 2>&1 under 'Stop' turns that into a terminating error and kills the run.
+    $__eap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     $probe = & $mirror $Seat --probe 2 2>&1 | Out-String
+    $ErrorActionPreference = $__eap
     $ErrorActionPreference = $eap
     if ($probe -match 'seq starts at (\d+)') {
         if ([int]$Matches[1] -gt 0) { $ready = $true; break }

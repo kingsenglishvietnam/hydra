@@ -244,7 +244,7 @@ static void flush(void) {
         if (err == ERROR_ACCESS_DENIED) {
             static DWORD lastTry = 0;
             DWORD now = GetTickCount();
-            if (now - lastTry >= 500) {
+            if (now - lastTry >= 120) {
                 lastTry = now;
                 if (reattach_input_desktop()) {
                     sent = SendInput((UINT)batch_n, batch, (int)sizeof(INPUT));

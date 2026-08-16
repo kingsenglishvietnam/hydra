@@ -647,7 +647,7 @@ static bool present_pixels(Gfx& g, const char* seat)
     if (g_pix.w && (g_pix.w != g.w || g_pix.h != g.h)) {
         if (SUCCEEDED(g.swap->ResizeBuffers(2, g_pix.w, g_pix.h,
                                             DXGI_FORMAT_B8G8R8A8_UNORM, 0))) {
-            fwprintf(stderr, L"[mirror] backbuffer %ux%u -> %ux%u (DXGI stretches to panel)\n",
+            fwprintf(stderr, L"[mirror] backbuffer resized %ux%u -> %ux%u (now matches the frame)\n",
                      g.w, g.h, g_pix.w, g_pix.h);
             fflush(stderr);
             g.w = g_pix.w; g.h = g_pix.h;
@@ -975,7 +975,19 @@ int wmain(int argc, wchar_t** argv)
         WSAStartup(MAKEWORD(2, 2), &wsa);
     }
 
-    SetProcessDPIAware();
+    /* Per-Monitor-V2, not the Vista-era SetProcessDPIAware(). The old call sets
+
+     * SYSTEM awareness, so on a mixed-DPI box every monitor rect comes back
+
+     * virtualised against the PRIMARY monitor's scale -- DISPLAY2 reported
+
+     * 6720x3780 for a 1920x1080 panel. V2 gives true physical pixels.
+
+     * Falls back to the old call on anything before 1703. */
+
+    if (!SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
+
+        SetProcessDPIAware();
     SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
     /* WAIT for the panel rather than exiting if it isn't there yet.

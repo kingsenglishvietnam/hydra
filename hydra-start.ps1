@@ -170,7 +170,7 @@ if (-not $mstsc) {
         # from playing it. /d: gives an empty domain so the credential prompt
         # starts on the password field.
         $fa = @("/v:127.0.0.2", "/u:$FreeRdpUser", "/d:", "/size:$FreeRdpSize",
-                "/cert:ignore", "/sound", "+auto-reconnect") + $FreeRdpArgs
+                "/cert:ignore", "/sound", "-suppress-output", "/scale:140", "+auto-reconnect") + $FreeRdpArgs
         Say "  args: $($fa -join ' ')" 'DarkGray'
         Start-Process $FreeRdpPath -ArgumentList $fa
     } elseif (Test-Path $RdpFile) {
