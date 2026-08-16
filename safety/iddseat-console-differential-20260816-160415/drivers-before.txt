@@ -1,0 +1,238 @@
+
+Deployment Image Servicing and Management tool
+Version: 10.0.26100.8972
+
+Image Version: 10.0.26200.9168
+
+Obtaining list of 3rd party drivers from the driver store...
+
+Driver packages listing:
+
+
+-------------- | ------------------------------------------ | ----- | ------------------------------ | ------------------------------- | ---------- | ----------------
+Published Name | Original File Name                         | Inbox | Class Name                     | Provider Name                   | Date       | Version         
+-------------- | ------------------------------------------ | ----- | ------------------------------ | ------------------------------- | ---------- | ----------------
+oem0.inf       | sssdmdm2.inf                               | No    | Modem                          | Samsung Electronic, Co. Ltd.    | 11/25/2009 | 5.2.0.0         
+oem1.inf       | helloface.inf                              | No    | Biometric                      | Windows Hello Face              | 6/1/2018   | 10.0.19041.3636 
+oem10.inf      | ssm_bus.inf                                | No    | USB                            | SAMSUNG Electronics Co.,Ltd.    | 11/25/2009 | 5.12.0.0        
+oem100.inf     | wintun.inf                                 | No    | Net                            | WireGuard LLC                   | 10/13/2021 | 0.14.0.0        
+oem101.inf     | surfacepen0953firmwareupdate.inf           | No    | Extension                      | Surface                         | 10/23/2019 | 1.155.139.0     
+oem102.inf     | sscebus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem103.inf     | surfacecfuoverhid.inf                      | No    | Firmware                       | Surface                         | 4/7/2022   | 5.50.139.0      
+oem104.inf     | netwtw08.inf                               | No    | net                            | Intel                           | 9/2/2024   | 23.80.0.7       
+oem105.inf     | surfacedtxdriver.inf                       | No    | System                         | Surface                         | 5/23/2020  | 3.85.139.0      
+oem106.inf     | sscdw2k.inf                                | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem107.inf     | ish.inf                                    | No    | System                         | Intel                           | 7/30/2019  | 3.1.0.4027      
+oem108.inf     | prnms001.inf                               | No    | Printer                        | Microsoft                       | 6/21/2006  | 10.0.26100.1    
+oem109.inf     | surfacesam.inf                             | No    | Firmware                       | Surface                         | 4/29/2024  | 10.600.139.0    
+oem11.inf      | intcdaud.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 11/21/2021 | 11.2.0.10       
+oem110.inf     | intcsdw.inf                                | No    | MEDIA                          | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem111.inf     | ssaeunic.inf                               | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 2/5/2010   | 5.14.0.0        
+oem112.inf     | ssudbus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem113.inf     | oemvista.inf                               | No    | Net                            | TAP-NordVPN Windows Provider V9 | 5/30/2018  | 9.0.0.23        
+oem114.inf     | sscesdm2.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem115.inf     | surfacetouchpenprocessorupdate.inf         | No    | Extension                      | Surface                         | 5/24/2020  | 4.212.139.0     
+oem116.inf     | surfacebattery.inf                         | No    | Battery                        | Surface                         | 2/13/2020  | 2.26.139.0      
+oem117.inf     | heci.inf                                   | No    | System                         | Intel                           | 8/15/2024  | 2433.6.3.0      
+oem118.inf     | surfacesmf_15in.inf                        | No    | Firmware                       | Surface                         | 7/27/2022  | 39.0.1.4        
+oem119.inf     | intcdaud.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 11/21/2021 | 10.27.0.12      
+oem12.inf      | oemextension.inf                           | No    | Extension                      | Intel                           | 12/25/2019 | 1952.14.0.1470  
+oem120.inf     | ssudrnds.inf                               | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem121.inf     | axusbeth.inf                               | No    | Net                            | ASIX                            | 1/5/2026   | 4.22.1.0        
+oem122.inf     | nvppc.inf                                  | No    | USB                            | NVIDIA                          | 9/20/2020  | 1.46.831.832    
+oem123.inf     | surfaceme.inf                              | No    | Firmware                       | Surface                         | 10/11/2024 | 13.0.2436.2     
+oem124.inf     | ss_bsdm2.inf                               | No    | Ports                          | Samsung Electronics Co., LTD    | 9/19/2009  | 5.0.0.0         
+oem125.inf     | ssudqcnet.inf                              | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem126.inf     | surfaceihvcpusmfclient.inf                 | No    | SurfaceSystemManagement        | Surface                         | 12/12/2023 | 1.173.45.0      
+oem127.inf     | surfaceihvgpupowercontrollerdriver.inf     | No    | System                         | Surface                         | 12/26/2019 | 2.43.139.0      
+oem128.inf     | heci.inf                                   | No    | System                         | Intel                           | 1/3/2021   | 2102.100.0.1044 
+oem129.inf     | surfaceaccessoryfwupdate.inf               | No    | System                         | Surface                         | 3/4/2017   | 1.2.108.0       
+oem13.inf      | ialpss2_gpio2_icl.inf                      | No    | System                         | Intel Corporation               | 4/15/2019  | 30.100.1916.1   
+oem130.inf     | dax3_swc_aposvc.inf                        | No    | AudioProcessingObject          | Dolby                           | 5/17/2023  | 3.30508.581.0   
+oem131.inf     | netaapl64.inf                              | No    | Net                            | Apple                           | 7/15/2013  | 1.8.5.1         
+oem132.inf     | ssadsdm2.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem133.inf     | nordlwf.inf                                | No    | NetService                     | NordVPN                         | 7/8/2020   | 9.53.40.426     
+oem134.inf     | ssecmdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem135.inf     | surfaceusbhubfwupdatev2.inf                | No    | USB                            | Surface                         | 2/24/2020  | 1.27.139.0      
+oem136.inf     | ssudnd5.inf                                | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem137.inf     | mt7612us_br.inf                            | No    | Net                            | Xbox                            | 6/21/2017  | 1.0.45.4        
+oem138.inf     | detectionverificationdrv.inf               | No    | System                         | Intel(R) Corporation            | 5/17/2022  | 1.0.2283.0      
+oem139.inf     | hid_pci.inf                                | No    | HIDClass                       | Intel                           | 7/30/2019  | 3.1.0.4027      
+oem14.inf      | ssudnet.inf                                | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem140.inf     | icelakeusbfunctioncontroller.inf           | No    | USBFunctionController          | INTEL                           | 7/18/1968  | 10.1.20.3       
+oem141.inf     | mewmiprov.inf                              | No    | SoftwareComponent              | Intel                           | 7/22/2021  | 2130.1.15.0     
+oem142.inf     | ssaemdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 2/5/2010   | 5.14.0.0        
+oem143.inf     | ssusbdownload.inf                          | No    | USB                            | SAMSUNG Electronics Co., Ltd    | 7/29/2008  | 1.1.807.29178   
+oem144.inf     | ssudrmnet.inf                              | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem145.inf     | nvppc.inf                                  | No    | USB                            | NVIDIA                          | 8/21/2025  | 1.52.831.832    
+oem146.inf     | surfacesystemmanagementframeworkdriver.inf | No    | SurfaceSystemManagement        | Surface                         | 6/8/2021   | 3.140.139.0     
+oem147.inf     | surfacethermalpolicy.inf                   | No    | System                         | Surface                         | 12/23/2019 | 8.7.139.0       
+oem148.inf     | appleusb.inf                               | No    | USBDevice                      | Apple, Inc.                     | 6/14/2023  | 538.0.0.0       
+oem149.inf     | surfacepen0953cfuoverblelcextnpackage.inf  | No    | Extension                      | Surface                         | 10/23/2019 | 1.65.137.0      
+oem15.inf      | ss_mdm2.inf                                | No    | Modem                          | SAMSUNG Electronics Co.,Ltd.    | 9/21/2009  | 5.0.0.0         
+oem150.inf     | surfacepen217integration.inf               | No    | HIDClass                       | Surface                         | 8/2/2019   | 1.5.139.0       
+oem151.inf     | usbaapl64.inf                              | No    | USB                            | Apple, Inc.                     | 5/19/2017  | 6.0.9999.69     
+oem152.inf     | ccdcmbsamx64.inf                           | No    | Modem                          | Samsung                         | 2/5/2010   | 7.1.30.51       
+oem153.inf     | intcsst.inf                                | No    | MEDIA                          | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem154.inf     | surfacesarmanager.inf                      | No    | System                         | Surface                         | 6/28/2022  | 3.100.139.0     
+oem155.inf     | surfaceservicenulldriver.inf               | No    | System                         | Surface                         | 4/22/2024  | 6.214.10.0      
+oem156.inf     | nvvad.inf                                  | No    | MEDIA                          | NVIDIA                          | 5/13/2025  | 4.65.0.12       
+oem157.inf     | minictadriver.inf                          | No    | CTA Driver Devices             | Intel Corporation               | 6/15/2021  | 27.20.100.9621  
+oem158.inf     | sscemdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem159.inf     | surfacetpm.inf                             | No    | Firmware                       | Surface                         | 12/1/2020  | 7.2.2.0         
+oem16.inf      | via_usb_hub.inf                            | No    | USB                            | SAMSUNG Inc                     | 12/1/2009  | 2.2.11.0        
+oem160.inf     | iacamera64.inf                             | No    | Camera                         | Intel                           | 8/5/2024   | 42.18362.3.16827
+oem161.inf     | cui_dch.inf                                | No    | SoftwareComponent              | Intel Corporation               | 6/15/2021  | 27.20.100.9621  
+oem162.inf     | ialpss2_uart2_icl.inf                      | No    | System                         | Intel Corporation               | 8/8/2019   | 30.100.1932.6   
+oem163.inf     | ssudsdb.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem164.inf     | surfacetouchfw.inf                         | No    | Firmware                       | Surface                         | 5/24/2020  | 4.0.211.139     
+oem165.inf     | mshdadac.inf                               | No    | MEDIA                          | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem166.inf     | intcoed.inf                                | No    | System                         | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem167.inf     | ssm_ser2.inf                               | No    | Ports                          | SAMSUNG Electronics Co.,Ltd.    | 11/25/2009 | 5.12.0.0        
+oem168.inf     | surfacesmf_13in.inf                        | No    | Firmware                       | Surface                         | 7/2/2021   | 39.0.1.5        
+oem169.inf     | sssdsdm2.inf                               | No    | Ports                          | Samsung Electronic, Co. Ltd.    | 11/25/2009 | 5.2.0.0         
+oem17.inf      | ish_busdriver.inf                          | No    | System                         | Intel                           | 7/30/2019  | 3.1.0.4027      
+oem170.inf     | surfaceoempanel.inf                        | No    | Monitor                        | Surface                         | 7/15/2021  | 6.81.139.0      
+oem171.inf     | ssaendis.inf                               | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 2/5/2010   | 5.14.0.0        
+oem172.inf     | ov7251_extension.inf                       | No    | Extension                      | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem173.inf     | icelakepch-lpsystemnorthpeak.inf           | No    | System                         | INTEL                           | 7/18/1968  | 10.1.12.3       
+oem174.inf     | surfacetimealarmacpifilter.inf             | No    | Extension                      | Surface                         | 2/4/2020   | 1.5.137.0       
+oem175.inf     | ssudserd.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem176.inf     | ssudobex.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem177.inf     | surfacedockintegration.inf                 | No    | HIDClass                       | Surface                         | 1/24/2020  | 2.6.139.0       
+oem178.inf     | ss_conn_usb_driver2.inf                    | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem179.inf     | intcdaud.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 11/21/2021 | 11.1.0.20       
+oem18.inf      | ovpn-dco.inf                               | No    | Net                            | OpenVPN, Inc                    | 6/13/2025  | 1.3.1.0         
+oem180.inf     | dax3_ext_dolbyatmos.inf                    | No    | Extension                      | Dolby                           | 2/23/2020  | 5.224.130.56    
+oem181.inf     | hspusb.inf                                 | No    | USB                            | MobileTop                       | 8/18/2009  | 2.1.2.0         
+oem182.inf     | hdxsstmd3a.inf                             | No    | MEDIA                          | Realtek Semiconductor Corp.     | 10/8/2021  | 6.0.9249.2      
+oem183.inf     | unifhid.inf                                | No    | HIDClass                       | Logitech                        | 8/24/2021  | 1.10.80.0       
+oem184.inf     | dax3_ext_dolbyatmos.inf                    | No    | Extension                      | Dolby                           | 2/23/2020  | 5.224.132.1     
+oem185.inf     | ssudeadb.inf                               | No    | EclairAndroidUsbDeviceClass    | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem186.inf     | memcntrl.inf                               | No    | System                         | Intel                           | 6/15/2021  | 27.20.100.9621  
+oem187.inf     | surfacepowertrackercore.inf                | No    | System                         | Surface                         | 10/23/2023 | 2.148.11.0      
+oem188.inf     | sscdsdm2.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem189.inf     | icelakepch-lpsystem.inf                    | No    | System                         | INTEL                           | 7/18/1968  | 10.1.12.3       
+oem19.inf      | iaisp64.inf                                | No    | System                         | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem190.inf     | via_usb_ets.inf                            | No    | USB                            | SAMSUNG Inc                     | 10/12/2009 | 1.1.0.9         
+oem191.inf     | ssm_mdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co.,Ltd.    | 11/25/2009 | 5.12.0.0        
+oem192.inf     | netwtw08.inf                               | No    | net                            | Intel                           | 1/21/2024  | 23.30.0.6       
+oem193.inf     | intcdmic.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem194.inf     | surfaceuefi.inf                            | No    | Firmware                       | Surface                         | 10/11/2024 | 23.101.140.0    
+oem195.inf     | ssudmdm.inf                                | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 4/8/2026   | 2.21.4.0        
+oem196.inf     | ssecsdm2.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem197.inf     | surfacehotplug.inf                         | No    | System                         | Surface                         | 10/19/2023 | 3.204.20.0      
+oem198.inf     | kltun.inf                                  | No    | net                            | Kaspersky VPN Provider          | 1/21/2026  | 30.1918.0.9782  
+oem199.inf     | ssudaoa.inf                                | No    | AndroidAoADeviceClass          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem2.inf       | mbtmdm.inf                                 | No    | Modem                          | Schunid                         | 1/6/2011   | 2.6.5.0         
+oem20.inf      | ccdcmbcjsax64.inf                          | No    | Ports                          | Samsung                         | 2/5/2010   | 7.1.30.51       
+oem200.inf     | surfacetouchpenprocessorupdate.inf         | No    | Extension                      | Surface                         | 5/24/2020  | 4.212.139.0     
+oem201.inf     | ialpss2_i2c_icl.inf                        | No    | System                         | Intel Corporation               | 4/15/2019  | 30.100.1916.1   
+oem202.inf     | ssadndis.inf                               | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 5/13/2011  | 5.28.2.1        
+oem203.inf     | nvvad.inf                                  | No    | MEDIA                          | NVIDIA                          | 9/22/2022  | 4.49.0.0        
+oem204.inf     | surfacepen217fwupdate.inf                  | No    | System                         | Surface                         | 8/2/2019   | 1.7.139.0       
+oem205.inf     | mvusbews.inf                               | No    | USB                            | Hewlett-Packard, Inc.           | 8/31/2012  | 14.30.53.595    
+oem206.inf     | dax3_swc_hsa.inf                           | No    | SoftwareComponent              | Dolby                           | 10/14/2021 | 3.30201.210.0   
+oem207.inf     | nvhda.inf                                  | No    | MEDIA                          | NVIDIA Corporation              | 8/31/2024  | 1.3.40.14       
+oem208.inf     | wireguard.inf                              | No    | Net                            | WireGuard LLC                   | 10/12/2021 | 0.10.0.0        
+oem209.inf     | surfacestoragefwupdate.inf                 | No    | Firmware                       | Surface                         | 3/9/2022   | 6.40.139.0      
+oem21.inf      | iigd_dch.inf                               | No    | Display                        | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem210.inf     | surfacesmfclient.inf                       | No    | SurfaceSystemManagement        | Surface                         | 6/4/2021   | 8.86.139.0      
+oem211.inf     | ssudmdm.inf                                | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem212.inf     | ccdcmbsaox64.inf                           | No    | Wireless Communication Devices | Samsung                         | 2/5/2010   | 7.1.30.51       
+oem213.inf     | via_usb_modem.inf                          | No    | Modem                          | SAMSUNG Inc                     | 10/12/2009 | 2.0.23.0        
+oem214.inf     | ssbcbus.inf                                | No    | USB                            | Samsung Electronics Co., LTD    | 7/5/2007   | 4.40.7.0        
+oem215.inf     | ssudncm.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem216.inf     | surfacehidfriendlynames.inf                | No    | Extension                      | Surface                         | 2/13/2020  | 2.5.137.0       
+oem217.inf     | gscauxdriver.inf                           | No    | System                         | Intel                           | 3/3/2021   | 2110.0.9.0      
+oem218.inf     | msux64w10.inf                              | No    | Net                            | Surface                         | 10/30/2019 | 10.13.1030.2019 
+oem219.inf     | ss_bbus.inf                                | No    | USB                            | Samsung Electronics Co., LTD    | 9/19/2009  | 5.0.0.0         
+oem22.inf      | surfacetouchfw.inf                         | No    | Firmware                       | Surface                         | 5/24/2020  | 4.0.211.139     
+oem220.inf     | icelakesystemthermal.inf                   | No    | System                         | INTEL                           | 7/18/1968  | 10.1.20.3       
+oem221.inf     | c7xxphone.inf                              | No    | Net                            | Samsung Electronics             | 4/14/2010  | 4.2.407.0       
+oem23.inf      | ov5693_extension.inf                       | No    | Extension                      | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem24.inf      | surfacebutton.inf                          | No    | System                         | Surface                         | 1/28/2020  | 4.6.139.0       
+oem25.inf      | ialpss2_spi_icl.inf                        | No    | System                         | Intel Corporation               | 4/15/2019  | 30.100.1916.1   
+oem26.inf      | surfaceserialhubdriver.inf                 | No    | System                         | Surface                         | 1/22/2021  | 9.54.139.0      
+oem27.inf      | nvmsoi.inf                                 | No    | Display                        | NVIDIA                          | 3/17/2026  | 32.0.15.9597    
+oem28.inf      | hdxsstmd3a.inf                             | No    | MEDIA                          | Realtek Semiconductor Corp.     | 4/13/2020  | 6.0.8936.1      
+oem29.inf      | iaprecisetouch.inf                         | No    | HIDClass                       | Intel Corporation               | 8/25/2020  | 2.1.0.96        
+oem3.inf       | surfacepenblelcaddradaptationdriver.inf    | No    | HIDClass                       | Surface                         | 8/2/2019   | 2.17.139.0      
+oem30.inf      | secubus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 6/19/2009  | 4.52.5.0        
+oem31.inf      | ssudadb.inf                                | No    | AndroidUsbDeviceClass          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem32.inf      | ssdudfu.inf                                | No    | USB                            | SAMSUNG Electronics Co.,Ltd.    | 6/1/2011   | 5.28.6.0        
+oem33.inf      | intcdaud.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 4/16/2021  | 10.26.0.10      
+oem34.inf      | netwtw08.inf                               | No    | net                            | Intel                           | 5/27/2021  | 22.60.0.6       
+oem35.inf      | ss_bus.inf                                 | No    | USB                            | SAMSUNG Electronics Co.,Ltd.    | 9/21/2009  | 5.0.0.0         
+oem36.inf      | surfacetcondriver.inf                      | No    | HIDClass                       | Surface                         | 1/30/2020  | 4.11.139.0      
+oem37.inf      | oemvista.inf                               | No    | Net                            | TAP-NordVPN Windows Provider V9 | 2/27/2024  | 9.27.0.0        
+oem38.inf      | vbmmecable64_win10.inf                     | No    | MEDIA                          | VB-Audio Software               | 10/7/2024  | 3.3.1.7         
+oem39.inf      | surfacesystemtelemetrydriver.inf           | No    | System                         | Surface                         | 9/9/2020   | 2.29.137.0      
+oem4.inf       | ssadmdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem40.inf      | ov5693.inf                                 | No    | System                         | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem41.inf      | ssaeadb2.inf                               | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 2/5/2010   | 5.14.0.0        
+oem42.inf      | intcoed.inf                                | No    | System                         | Intel(R) Corporation            | 6/2/2020   | 10.24.3694.245  
+oem43.inf      | ssecndis.inf                               | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem44.inf      | iigd_ext_jz.inf                            | No    | Extension                      | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem45.inf      | gscheci.inf                                | No    | System                         | Intel                           | 3/4/2021   | 2110.100.0.1057 
+oem46.inf      | cui_dch.inf                                | No    | SoftwareComponent              | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem47.inf      | flashusb.inf                               | No    | USB                            | Intel Mobile Communications     | 2/27/2013  | 1.0.1.1         
+oem48.inf      | rtsuersdoms.inf                            | No    | USB                            | Realtek Semiconductor Corp.     | 9/24/2019  | 10.0.18362.31255
+oem49.inf      | ssadbus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem5.inf       | surfacesmfdisplayclient.inf                | No    | System                         | Surface                         | 9/9/2020   | 8.30.137.0      
+oem50.inf      | ssaebus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 2/5/2010   | 5.14.0.0        
+oem51.inf      | intcoed_oemlibpathext.inf                  | No    | Extension                      | Realtek Semiconductor Corp.     | 1/19/2023  | 10.24.245.1     
+oem52.inf      | sscdbus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem53.inf      | igcc_dch.inf                               | No    | SoftwareComponent              | Intel Corporation               | 6/15/2021  | 27.20.100.9621  
+oem54.inf      | surfacehpmi.inf                            | No    | System                         | Surface                         | 2/12/2020  | 1.18.139.0      
+oem55.inf      | intcaudiobus.inf                           | No    | System                         | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem56.inf      | ssuddmgr.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem57.inf      | ssudrmnetmp.inf                            | No    | Net                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem58.inf      | ssecbus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem59.inf      | voiceclarityep_audio_component.inf         | No    | AudioProcessingObject          | Microsoft Corporation           | 5/4/2026   | 1.0.3.56670     
+oem6.inf       | ovpn-dco.inf                               | No    | Net                            | OpenVPN, Inc                    | 5/22/2024  | 1.2.1.0         
+oem60.inf      | adobepdf.inf                               | No    | Printer                        | Adobe                           | 11/11/2021 | 21.3.0.0        
+oem61.inf      | ssuduvc_camera.inf                         | No    | Camera                         | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem62.inf      | hp1100.inf                                 | No    | Printer                        | Marvell                         | 8/31/2012  | 5.0.1.57036     
+oem63.inf      | hdbusext.inf                               | No    | Extension                      | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem64.inf      | ss_bmdm2.inf                               | No    | Modem                          | Samsung Electronics Co., LTD    | 9/19/2009  | 5.0.0.0         
+oem65.inf      | iclsclient.inf                             | No    | SoftwareComponent              | Intel                           | 8/1/2024   | 1.74.210.0      
+oem66.inf      | surfacelightsensor.inf                     | No    | System                         | Surface                         | 2/10/2020  | 2.11.139.0      
+oem67.inf      | igcc_dch.inf                               | No    | SoftwareComponent              | Intel Corporation               | 7/21/2022  | 30.0.101.3118   
+oem68.inf      | nvpcf.inf                                  | No    | SoftwareDevice                 | NVIDIA                          | 8/31/2024  | 31.0.15.3808    
+oem69.inf      | surfacebookbasev3fwupdate.inf              | No    | Extension                      | Surface                         | 5/8/2024   | 1.72.4.0        
+oem7.inf       | intcbtau.inf                               | No    | MEDIA                          | Intel(R) Corporation            | 8/2/2022   | 10.24.0.7927    
+oem70.inf      | prnms009.inf                               | No    | Printer                        | Microsoft                       | 6/21/2006  | 10.0.26100.4484 
+oem71.inf      | secumdm2.inf                               | No    | Modem                          | SAMSUNG Electronics Co., Ltd.   | 6/19/2009  | 4.52.5.0        
+oem72.inf      | ssudadb.inf                                | No    | AndroidUsbDeviceClass          | SAMSUNG Electronics Co., Ltd.   | 4/8/2026   | 2.21.4.0        
+oem73.inf      | surfacesmfbasethermalclient.inf            | No    | System                         | Surface                         | 1/31/2020  | 8.12.137.0      
+oem74.inf      | ov7251.inf                                 | No    | System                         | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem75.inf      | ovpn-dco.inf                               | No    | Net                            | OpenVPN, Inc                    | 8/6/2025   | 1.3.3.0         
+oem76.inf      | sssdbus.inf                                | No    | USB                            | Samsung Electronic, Co. Ltd.    | 11/25/2009 | 5.2.0.0         
+oem77.inf      | ss_conn_usb_driver.inf                     | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem78.inf      | ssudmarv.inf                               | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem79.inf      | surfaceintegrationdriver.inf               | No    | System                         | Surface                         | 9/14/2020  | 22.27.139.0     
+oem8.inf       | surfacesystemtelemetrydriver.inf           | No    | System                         | Surface                         | 4/22/2024  | 10.105.10.0     
+oem80.inf      | surfaceucmucsihidclient.inf                | No    | UCM                            | Surface                         | 2/11/2020  | 2.5.139.0       
+oem81.inf      | surfacedock2fwupdate.inf                   | No    | Extension                      | Surface                         | 4/6/2021   | 6.7.137.0       
+oem82.inf      | surfacehidminidriver.inf                   | No    | HIDClass                       | Surface                         | 10/16/2020 | 3.31.139.0      
+oem83.inf      | iactrllogic64.inf                          | No    | System                         | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem84.inf      | surfacepencfuoverblelc.inf                 | No    | Firmware                       | Surface                         | 8/2/2019   | 1.18.139.0      
+oem85.inf      | android_winusb.inf                         | No    | AndroidUsbDeviceClass          | Google, Inc.                    | 8/28/2014  | 11.0.0.0        
+oem86.inf      | ssudmtp.inf                                | No    | WPD                            | SAMSUNG Electronics Co., Ltd.   | 9/23/2024  | 2.21.0.0        
+oem87.inf      | ov8865.inf                                 | No    | System                         | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem88.inf      | prnhpcl1.inf                               | No    | Printer                        | HP                              | 4/22/2009  | 10.0.17119.1    
+oem89.inf      | surfacevirtualfunctionenum.inf             | No    | HIDClass                       | Surface                         | 1/24/2020  | 2.6.139.0       
+oem9.inf       | intcaudiobus.inf                           | No    | System                         | Intel(R) Corporation            | 3/13/2020  | 10.24.0.3694    
+oem90.inf      | ovpn-dco.inf                               | No    | Net                            | OpenVPN, Inc                    | 7/30/2025  | 1.3.2.0         
+oem91.inf      | ssadadb2.inf                               | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 11/30/2012 | 5.30.14.0       
+oem92.inf      | ibtusb.inf                                 | No    | Bluetooth                      | Intel Corporation               | 8/13/2024  | 23.80.0.3       
+oem93.inf      | ssudbus.inf                                | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 4/8/2026   | 2.21.4.0        
+oem94.inf      | ssbcmdm2.inf                               | No    | Modem                          | Samsung Electronics Co., LTD    | 7/5/2007   | 4.40.7.0        
+oem95.inf      | ccdcmbsax64.inf                            | No    | Wireless Communication Devices | Samsung                         | 2/5/2010   | 7.1.30.51       
+oem96.inf      | ov8865_extension.inf                       | No    | Extension                      | Intel Corporation               | 8/5/2024   | 42.18362.3.16827
+oem97.inf      | ssecobx2.inf                               | No    | Ports                          | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem98.inf      | ssecunic.inf                               | No    | USB                            | SAMSUNG Electronics Co., Ltd.   | 1/15/2009  | 4.50.3.0        
+oem99.inf      | sssdobx2.inf                               | No    | Ports                          | Samsung Electronic, Co. Ltd.    | 11/25/2009 | 5.2.0.0         
+
+The operation completed successfully.
