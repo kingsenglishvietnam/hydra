@@ -236,3 +236,27 @@ clears it.
 - **Judge any driver result before a demanded reboot.** `CM_PROB_NEED_RESTART`
   makes everything downstream unreadable, and it produced two false conclusions
   in one afternoon.
+
+---
+
+## CORRECTION 2026-08-17 — the virtual display is now permanent
+
+Section 1's devgen recreation step is obsolete. Installed instead as a
+ROOT-enumerated device:
+
+    devcon install C:\Programs\vdd\VirtualDisplayDriver\MttVDD.inf "Root\MttVDD"
+
+That produced ROOT\DISPLAY\0000, Status OK. It survives reboots, appears in
+Device Manager, and needs no per-boot recreation.
+
+devgen was the wrong tool. It creates a SOFTWARE device owned by the creating
+process, so it became a phantom the moment devgen.exe exited -- hence the
+recreation every boot and the accumulating Unknown entries. devcon is the
+deployment mechanism; devgen is a test tool.
+
+Cold start is now:
+  1. Start-Service Hydra
+  2. sdl-freerdp /list:monitor  -> take the VDD index
+  3. sdl-freerdp ... /f /monitors:<index>, log in as teacher
+  4. mirror B \\.\DISPLAY2                 (student's panel)
+  5. mirror B --window 1600x900 56789      (your control window, VD2)
