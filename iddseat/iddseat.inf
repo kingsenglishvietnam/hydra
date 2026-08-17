@@ -33,6 +33,7 @@ DriverVer   = 01/01/2026,1.0.0.0
 ; above gates install to that. Earlier builds have no IddCx.
 [Standard.NT$ARCH$.10.0...17134]
 %DeviceName% = Iddseat_Install, Root\HydraSeat
+%DeviceName% = Iddseat_Install, HydraSeat   ; bare id -- SwDeviceCreate passes this, Root\ is only for root-enumerated installs
 
 [SourceDisksFiles]
 iddseat.dll = 1

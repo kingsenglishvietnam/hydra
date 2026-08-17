@@ -80,7 +80,9 @@ $cldefs = @(
     '/D_WIN32_WINNT=0x0A00',
     '/DUMDF_USING_NTSTATUS',
     '/DWIN32_NO_STATUS',
-    '/DNTDDI_VERSION=0x0A000010'          # 24H2-ish; IddCx needs >= 1709
+    '/DNTDDI_VERSION=0x0A000010',
+    '/DIDDCX_VERSION_MAJOR=1',
+    '/DIDDCX_VERSION_MINOR=2'          # 24H2-ish; IddCx needs >= 1709
 )
 if ($Remote) {
     $cldefs += '/DHYDRA_REMOTE_IDD'
