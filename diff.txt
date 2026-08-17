@@ -1,0 +1,218 @@
+=== OUR INF ===
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Display
+ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
+ClassVer    = 2.0
+Provider    = %ManufacturerName%
+CatalogFile = iddseat.cat
+PnpLockdown = 1
+DriverVer = 08/16/2026,1.0.0.9
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64.10.0...17134
+[Standard.NTamd64.10.0...17134]
+%DeviceName% = Iddseat_Install, Root\HydraSeat
+[SourceDisksFiles]
+iddseat.dll = 1
+[SourceDisksNames]
+1 = %DiskName%
+[Iddseat_Install.NT]
+CopyFiles = UMDriverCopy
+Include   = WUDFRD.inf
+Needs     = WUDFRD.NT
+[Iddseat_Install.NT.hw]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.HW
+AddReg  = Iddseat_HwSettings
+[Iddseat_Install.NT.Services]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.Services
+[Iddseat_Install.NT.Wdf]
+UmdfService              = iddseat, Iddseat_Service_Inst
+UmdfServiceOrder         = iddseat
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfFileObjectPolicy     = AllowNullAndUnknownFileObjects
+UmdfFsContextUsePolicy   = CannotUseFsContexts
+[Iddseat_Service_Inst]
+UmdfLibraryVersion = 2.33.0
+UmdfExtensions = IddCx0102
+ServiceBinary      = %12%\UMDF\iddseat.dll
+[UMDriverCopy]
+iddseat.dll
+[DestinationDirs]
+UMDriverCopy = 12,UMDF   ; matches Microsoft's IddCx sample; %13% was tried and did not load
+[Strings]
+ManufacturerName = "Hydra"
+DiskName         = "Hydra Virtual Seat Installation Disk"
+DeviceName       = "Hydra Virtual Seat Display"
+[Iddseat_HwSettings]
+HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
+
+=== MS INF ===
+[Version]
+PnpLockDown=1
+Signature="$Windows NT$"
+ClassGUID = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Class = Display
+ClassVer = 2.0
+Provider=%ManufacturerName%
+CatalogFile=IddSampleDriver.cat
+DriverVer = 08/16/2026,1.0.0.1
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64.10.0...22000
+[Standard.NTamd64.10.0...22000]
+%DeviceName%=MyDevice_Install, Root\IddSampleDriver ; TODO: edit hw-id, this hardware id is used by Visual Studio remote debugging
+%DeviceName%=MyDevice_Install, IddSampleDriver      ; TODO: edit hw-id, this hardware if is used by the IddSampleApp.exe
+[SourceDisksFiles]
+IddSampleDriver.dll=1
+[SourceDisksNames]
+1 = %DiskName%
+[MyDevice_Install.NT]
+Include=WUDFRD.inf
+Needs=WUDFRD.NT
+CopyFiles=UMDriverCopy
+[MyDevice_Install.NT.hw]
+Include=WUDFRD.inf
+Needs=WUDFRD.NT.HW
+AddReg = MyDevice_HardwareDeviceSettings
+[MyDevice_HardwareDeviceSettings]
+HKR,, "UpperFilters",  %REG_MULTI_SZ%, "IndirectKmd"
+HKR, "WUDF", "DeviceGroupId", %REG_SZ%, "IddSampleDriverGroup" ; TODO: edit driver group name, see README.md for more info
+[MyDevice_Install.NT.Services]
+Include=WUDFRD.inf
+Needs=WUDFRD.NT.Services
+[MyDevice_Install.NT.Wdf]
+UmdfService=IddSampleDriver,IddSampleDriver_Install
+UmdfServiceOrder=IddSampleDriver
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+[IddSampleDriver_Install]
+UmdfLibraryVersion=2.33.0
+ServiceBinary=%12%\UMDF\IddSampleDriver.dll
+UmdfExtensions = IddCx0102
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
+[UMDriverCopy]
+IddSampleDriver.dll
+[Strings]
+ManufacturerName="<Your manufacturer name>" ; TODO: Replace with your manufacturer name
+DiskName = "IddSampleDriver Installation Disk" ; TODO: Replace with driver disk name
+DeviceName="IddSampleDriver Device" ; TODO: Replace with correct device name
+REG_MULTI_SZ  = 0x00010000
+REG_SZ        = 0x00000000
+
+=== OUR EXPORTS ===
+Microsoft (R) COFF/PE Dumper Version 14.44.35228.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Programs\hydra\dist\driver\iddseat.dll
+
+File Type: DLL
+
+  Section contains the following exports for iddseat.dll
+
+    00000000 characteristics
+    FFFFFFFF time date stamp
+        0.00 version
+           1 ordinal base
+           1 number of functions
+           1 number of names
+
+    ordinal hint RVA      name
+
+          1    0 00009310 FxDriverEntryUm
+
+  Summary
+
+        3000 .data
+        1000 .fptable
+        3000 .pdata
+        E000 .rdata
+        1000 .reloc
+       23000 .text
+
+=== MS EXPORTS ===
+Microsoft (R) COFF/PE Dumper Version 14.44.35228.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Programs\hydra\dist\mssample\IddSampleDriver.dll
+
+File Type: DLL
+
+  Section contains the following exports for IddSampleDriver.dll
+
+    00000000 characteristics
+    FFFFFFFF time date stamp
+        0.00 version
+           1 ordinal base
+           1 number of functions
+           1 number of names
+
+    ordinal hint RVA      name
+
+          1    0 00005600 FxDriverEntryUm
+
+  Summary
+
+        3000 .data
+        1000 .fptable
+        2000 .pdata
+        C000 .rdata
+        1000 .reloc
+       15000 .text
+
+=== OUR DEPENDENTS ===
+Microsoft (R) COFF/PE Dumper Version 14.44.35228.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Programs\hydra\dist\driver\iddseat.dll
+
+File Type: DLL
+
+  Image has the following dependencies:
+
+    d3d11.dll
+    dxgi.dll
+    AVRT.dll
+    ADVAPI32.dll
+    KERNEL32.dll
+    ole32.dll
+    ntdll.dll
+
+  Summary
+
+        3000 .data
+        1000 .fptable
+        3000 .pdata
+        E000 .rdata
+        1000 .reloc
+       23000 .text
+
+=== MS DEPENDENTS ===
+Microsoft (R) COFF/PE Dumper Version 14.44.35228.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+
+Dump of file C:\Programs\hydra\dist\mssample\IddSampleDriver.dll
+
+File Type: DLL
+
+  Image has the following dependencies:
+
+    d3d11.dll
+    dxgi.dll
+    AVRT.dll
+    KERNEL32.dll
+    ole32.dll
+    ntdll.dll
+
+  Summary
+
+        3000 .data
+        1000 .fptable
+        2000 .pdata
+        C000 .rdata
+        1000 .reloc
+       15000 .text

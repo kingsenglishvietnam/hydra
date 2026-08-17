@@ -91,7 +91,7 @@ UmdfLibraryVersion = $UMDFVERSION$
 ; the console and remote builds, and immune to every UMDF and IddCx version
 ; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
 ; did. Must match the iddcx version build-driver.ps1 links.
-UmdfExtensions = IddCx0102
+UmdfExtensions = IddCx0110
 ServiceBinary      = %13%\iddseat.dll
 
 [UMDriverCopy]

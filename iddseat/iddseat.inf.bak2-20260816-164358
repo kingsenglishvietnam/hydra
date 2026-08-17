@@ -18,7 +18,6 @@
 Signature   = "$WINDOWS NT$"
 Class       = Display
 ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
-ClassVer    = 2.0
 Provider    = %ManufacturerName%
 CatalogFile = iddseat.cat
 PnpLockdown = 1
@@ -59,6 +58,8 @@ Needs   = WUDFRD.NT.Services
 UmdfService              = iddseat, Iddseat_Service_Inst
 UmdfServiceOrder         = iddseat
 UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfFileObjectPolicy     = AllowNullAndUnknownFileObjects
+UmdfFsContextUsePolicy   = CannotUseFsContexts
 
 ; UMDF 2 loads the driver through the WDF host by ServiceBinary; a DriverCLSID is
 ; not required (Microsoft's own IddCx sample INF omits it) and a wrong one only
@@ -72,14 +73,14 @@ UmdfLibraryVersion = $UMDFVERSION$
 ; the console and remote builds, and immune to every UMDF and IddCx version
 ; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
 ; did. Must match the iddcx version build-driver.ps1 links.
-UmdfExtensions = IddCx0102
-ServiceBinary      = %12%\UMDF\iddseat.dll
+UmdfExtensions = IddCx0110
+ServiceBinary      = %13%\iddseat.dll
 
 [UMDriverCopy]
 iddseat.dll
 
 [DestinationDirs]
-UMDriverCopy = 12,UMDF   ; matches Microsoft's IddCx sample; %13% was tried and did not load
+UMDriverCopy = 13   ; driver store package dir
 
 [Strings]
 ManufacturerName = "Hydra"
@@ -94,4 +95,3 @@ DeviceName       = "Hydra Virtual Seat Display"
 ; enough -- both are needed.
 [Iddseat_HwSettings]
 HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
-HKR, "WUDF", "DeviceGroupId", 0x00000000, "HydraSeatGroup"

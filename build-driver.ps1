@@ -23,7 +23,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 # --- locate the kit pieces (pin to what we verified is installed) ---
 $kitRoot = 'C:\Program Files (x86)\Windows Kits\10'
 $sdkVer  = '10.0.26100.0'                 # headers/libs version present on this box
-$iddcx   = '1.10'                          # newest IddCx headers/stub present
+$iddcx   = '1.2'                          # newest IddCx headers/stub present
 $umdf    = '2.33'                          # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2), whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse the driver before DriverEntry runs
 
 $inc = @(
