@@ -80,3 +80,24 @@ Get-Process mirror, hydrardp, sdl-freerdp, mstsc -ErrorAction SilentlyContinue |
 - **`ClipCursor` confinement** — Windows releases the clip on every foreground
   change, so a background helper cannot hold it. Re-applying on a timer leaves
   gaps the cursor escapes through.
+
+---
+
+## Mouse handedness
+
+Seat B's button mapping has historically come out OPPOSITE to the console's,
+requiring a manual swap every time. Two places can compensate, and only one
+should:
+
+**seatB_agent.c MOUSE_MAP** (currently swapped) -- affects the STUDENT's
+wireless pair, which reaches the seat via seat_router -> agent:B -> SendInput.
+
+**SwapMouseButtons in the seat user's profile** -- Settings > Bluetooth &
+devices > Mouse > Primary mouse button, set INSIDE the seat session. Read by
+explorer at logon, so it needs a real logoff/logon, not just a client relaunch.
+
+Your console mouse crossing onto the seat's panel uses NEITHER -- that pointer
+belongs to the console session and follows the console's own setting.
+
+If a mouse comes out backwards, one layer is compensating twice. Remove the
+Windows setting first; it is per-profile and easy to lose track of.

@@ -116,10 +116,14 @@ typedef struct {
 #define I_MOUSE_WHEEL  0x400
 #define I_MOUSE_HWHEEL 0x800
 static const struct { unsigned short bit; DWORD flag; DWORD data; } MOUSE_MAP[] = {
-    { 0x001, MOUSEEVENTF_LEFTDOWN,   0        },
-    { 0x002, MOUSEEVENTF_LEFTUP,     0        },
-    { 0x004, MOUSEEVENTF_RIGHTDOWN,  0        },
-    { 0x008, MOUSEEVENTF_RIGHTUP,    0        },
+    /* LEFT-HANDED. SendInput injects the LITERAL button named, ignoring the
+     * user's SwapMouseButtons setting entirely -- so setting it in teacher's
+     * profile has no effect on injected input. The swap has to happen here.
+     * Bit 0x001 is the physical primary button. */
+    { 0x001, MOUSEEVENTF_RIGHTDOWN,  0        },
+    { 0x002, MOUSEEVENTF_RIGHTUP,    0        },
+    { 0x004, MOUSEEVENTF_LEFTDOWN,   0        },
+    { 0x008, MOUSEEVENTF_LEFTUP,     0        },
     { 0x010, MOUSEEVENTF_MIDDLEDOWN, 0        },
     { 0x020, MOUSEEVENTF_MIDDLEUP,   0        },
     { 0x040, MOUSEEVENTF_XDOWN,      XBUTTON1 },
