@@ -297,3 +297,24 @@ third day.
   Reboot between attempts.
 - **A registered provider locks its own DLL.** Unregister → build → register.
 - **`safety-gate.ps1` before every `pnputil /add-driver`.**
+
+
+## FINDING 2026-08-18 -- rdpidd.inf sets a device security descriptor
+
+Microsoft's own remote IDD INF has, in .NT.hw AddReg:
+
+    HKR,, Security, , "D:P(A;;GA;;;WD)"    ; All access
+
+Ours never did. WUDFHost runs as LOCAL SERVICE (confirmed when iddseat.log
+could not be written to C:\Windows\Temp). Without an explicit descriptor the
+devnode gets restrictive default security and the host may be unable to open
+it -- which is STATUS_INVALID_PARAMETER at load, before DriverEntry, on every
+devnode type, immune to every version change tried. Strongest untested candidate.
+
+Also differs: UmdfLibraryVersion = 2.15.0 (not 2.33); ServiceBinary = %13%\RdpIdd.dll
+(DIRID 13, which fb346cb had before it was changed to %12%\UMDF);
+UmdfImpersonationLevel = Identification; Include/Needs = WUDFRD.NT in the .NT
+section as well as .NT.HW.
+
+Stale devnodes to clear first: four HydraSeat_RemoteIDD_v1&SessionId_000n under
+SWD\REMOTEDISPLAYENUM.
