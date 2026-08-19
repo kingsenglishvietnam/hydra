@@ -1,0 +1,103 @@
+; iddseat.inf -- Hydra virtual display (IddCx indirect display driver)
+;
+; Root-enumerated software device: hydrad installs one instance per extra seat
+; via the SWDevice API (SwDeviceCreate), passing a per-seat instance ID plus the
+; seat-name and seat-mode device properties the driver reads back in DeviceAdd
+; (DEVPKEY_Hydra_SeatName / _SeatMode; see common/hydra_devprops.h). Multiple
+; instances coexist -- each is one virtual monitor.
+;
+; This is a UMDF/IddCx package. It requires the WDK's IddCx co-installer sections
+; and a signed catalog. Development: enable test-signing, self-sign the .cat.
+; Shipping to another machine: that machine in test mode, or an EV + attestation
+; signed package. There is no unsigned load path for a display-class driver.
+;
+; Class = Display so the device lands in the graphics stack; ClassGuid is the
+; standard Display class. Adjust manufacturer/model strings to taste.
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Display
+ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
+ClassVer    = 2.0
+Provider    = %ManufacturerName%
+CatalogFile = iddseat.cat
+PnpLockdown = 1
+; A concrete value so the INF parses even if built without stampinf; the WDK
+; build's stampinf step overwrites this with the real date + version.
+DriverVer   = 01/01/2026,1.0.0.0
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...17134
+
+; IddCx requires Windows 10 1709 (build 16299) or later -- the decorated section
+; above gates install to that. Earlier builds have no IddCx.
+[Standard.NT$ARCH$.10.0...17134]
+%DeviceName% = Iddseat_Install, Root\HydraSeat
+%DeviceName% = Iddseat_Install, HydraSeat   ; bare id -- SwDeviceCreate passes this, Root\ is only for root-enumerated installs
+
+[SourceDisksFiles]
+iddseat.dll = 1
+
+[SourceDisksNames]
+1 = %DiskName%
+
+; ---- UMDF / IddCx install ----
+[Iddseat_Install.NT]
+CopyFiles = UMDriverCopy
+Include   = WUDFRD.inf
+Needs     = WUDFRD.NT
+
+[Iddseat_Install.NT.hw]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.HW
+AddReg  = Iddseat_HwSettings
+
+[Iddseat_Install.NT.Services]
+Include = WUDFRD.inf
+Needs   = WUDFRD.NT.Services
+
+[Iddseat_Install.NT.Wdf]
+UmdfService              = iddseat, Iddseat_Service_Inst
+UmdfServiceOrder         = iddseat
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfImpersonationLevel     = Identification
+
+; UMDF 2 loads the driver through the WDF host by ServiceBinary; a DriverCLSID is
+; not required (Microsoft's own IddCx sample INF omits it) and a wrong one only
+; blocks load, so it is intentionally absent.
+[Iddseat_Service_Inst]
+UmdfLibraryVersion = 2.15.0
+; REQUIRED. iddcxstub.lib routes every IddCx* call into the IddCx class
+; extension, and UMDF only loads that extension if the INF asks for it. Without
+; this line the host is handed a driver whose imports cannot be satisfied and
+; refuses it at level 0 with 0xD000000D, before DriverEntry -- identically on
+; the console and remote builds, and immune to every UMDF and IddCx version
+; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
+; did. Must match the iddcx version build-driver.ps1 links.
+UmdfExtensions = IddCx0102
+ServiceBinary      = %13%\iddseat.dll
+
+[UMDriverCopy]
+iddseat.dll
+
+[DestinationDirs]
+UMDriverCopy = 13
+
+[Strings]
+ManufacturerName = "Hydra"
+DiskName         = "Hydra Virtual Seat Installation Disk"
+DeviceName       = "Hydra Virtual Seat Display"
+
+; REQUIRED for IddCx. IndirectKmd is the kernel-mode half of the indirect
+; display stack -- the partner the IddCx class extension binds to. Without it on
+; the devnode, UMDF is handed a driver whose class extension has nothing to
+; attach to below it, and refuses at level 0 with 0xD000000D before DriverEntry.
+; Microsoft's IddCx sample has it; ours never did. UmdfExtensions alone is not
+; enough -- both are needed.
+[Iddseat_HwSettings]
+HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
+; rdpidd.inf sets this and we never did. WUDFHost runs as LOCAL SERVICE, so
+; without an explicit descriptor the devnode keeps restrictive default security
+; and the host may be unable to open it -- STATUS_INVALID_PARAMETER at load.
+HKR,, Security, , "D:P(A;;GA;;;WD)"
+HKR, "WUDF", "DeviceGroupId", 0x00000000, "HydraSeatGroup"

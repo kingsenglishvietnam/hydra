@@ -1,103 +1,138 @@
+;
 ; iddseat.inf -- Hydra virtual display (IddCx indirect display driver)
 ;
-; Root-enumerated software device: hydrad installs one instance per extra seat
-; via the SWDevice API (SwDeviceCreate), passing a per-seat instance ID plus the
-; seat-name and seat-mode device properties the driver reads back in DeviceAdd
-; (DEVPKEY_Hydra_SeatName / _SeatMode; see common/hydra_devprops.h). Multiple
-; instances coexist -- each is one virtual monitor.
+; STRUCTURAL CLONE OF MttVDD.inf, 2026-08-19.
 ;
-; This is a UMDF/IddCx package. It requires the WDK's IddCx co-installer sections
-; and a signed catalog. Development: enable test-signing, self-sign the .cat.
-; Shipping to another machine: that machine in test mode, or an EV + attestation
-; signed package. There is no unsigned load path for a display-class driver.
+; MttVDD (VirtualDrivers/Virtual-Display-Driver 25.7.23) is a THIRD-PARTY IddCx
+; driver that loads on this exact machine right now -- ROOT\DISPLAY\0000, Status
+; OK. It is a better reference than Microsoft's rdpidd.inf, which may be
+; special-cased by the OS, and better than the WDK sample, which we could only
+; get to load once.
 ;
-; Class = Display so the device lands in the graphics stack; ClassGuid is the
-; standard Display class. Adjust manufacturer/model strings to taste.
+; Everything here follows MttVDD's structure. Only names, hardware IDs and the
+; binary differ. Five days of layered edits have been stripped back to what
+; demonstrably works.
+;
+; WHAT WAS REMOVED, and why -- do not add these back without evidence:
+;
+;   Include=WUDFRD.inf / Needs=WUDFRD.NT.Services
+;       MttVDD uses an EXPLICIT AddService with its own [WUDFRD_ServiceInstall]
+;       section instead. rdpidd.inf uses Include/Needs, but rdpidd is Microsoft's
+;       own and is not a safe model. Ours had Include/Needs and failed.
+;
+;   Include/Needs in [.NT] and [.NT.hw]
+;       MttVDD has neither -- just CopyFiles and AddReg. Ours had both.
+;
+;   HKR,, Security, , "D:P(A;;GA;;;WD)"
+;       Taken from rdpidd.inf on 2026-08-19 and it produced the FIRST EVER
+;       successful load of this driver -- but it did not reproduce, and MttVDD
+;       works with no descriptor at all. So it is not the answer. Left out to
+;       match the working reference. If a load fails with 0xD000000D and
+;       everything else matches, this is worth ONE experiment, not a permanent
+;       addition.
+;
+;   UmdfHostProcessSharing = ProcessSharingDisabled
+;       Required for REMOTE IDDs (one host per session) -- belongs in
+;       iddseat-remote.inf, not here. MttVDD, a console IDD, does not set it.
+;
+;   UmdfImpersonationLevel = Identification
+;       rdpidd sets it; MttVDD does not.
+;
+;   UmdfFileObjectPolicy / UmdfFsContextUsePolicy
+;       UMDF 1.x-era directives. Neither MttVDD nor the WDK sample has them.
+;
+; VERSIONS. MttVDD declares UmdfLibraryVersion=2.25.0. We use the $UMDFVERSION$
+; token so build-driver.ps1 substitutes whatever $umdf it actually LINKS
+; against -- the declared version and the linked WdfDriverStubUm.lib must agree,
+; and hardcoding invites them to drift. See commit 1427b7a.
+;
+; UmdfExtensions = IddCx0102 is NOT a guess. The registry names it:
+;   HKLM\SYSTEM\CurrentControlSet\Control\Wdf\UMDF\IddCx\Versions\1\2
+;     Service = IddCx0102
+; That is the only IddCx class extension registered on this OS, whatever version
+; headers the WDK ships. Do not "update" it to match the header version.
+;
+; HARDWARE IDs. Two, exactly as MttVDD:
+;   Root\HydraSeat  -- for devcon install / root enumeration (persistent)
+;   HydraSeat       -- bare, for SwDeviceCreate (hydrad, devgen)
+; A device on the SWD enumerator claiming only a Root\ ID is malformed.
+;
 
 [Version]
-Signature   = "$WINDOWS NT$"
-Class       = Display
-ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
-ClassVer    = 2.0
-Provider    = %ManufacturerName%
-CatalogFile = iddseat.cat
-PnpLockdown = 1
-; A concrete value so the INF parses even if built without stampinf; the WDK
-; build's stampinf step overwrites this with the real date + version.
-DriverVer   = 01/01/2026,1.0.0.0
+PnpLockdown=1
+Signature="$Windows NT$"
+ClassGUID = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Class = Display
+ClassVer = 2.0
+Provider=%ManufacturerName%
+CatalogFile=iddseat.cat
+; A concrete value so the INF parses even if built without stampinf; the build's
+; stampinf step overwrites this with the real date and version.
+DriverVer = 08/19/2026,1.2.0.0
 
 [Manufacturer]
-%ManufacturerName% = Standard,NT$ARCH$.10.0...17134
+%ManufacturerName%=Standard,NTamd64
 
-; IddCx requires Windows 10 1709 (build 16299) or later -- the decorated section
-; above gates install to that. Earlier builds have no IddCx.
-[Standard.NT$ARCH$.10.0...17134]
-%DeviceName% = Iddseat_Install, Root\HydraSeat
-%DeviceName% = Iddseat_Install, HydraSeat   ; bare id -- SwDeviceCreate passes this, Root\ is only for root-enumerated installs
+[Standard.NTamd64]
+%DeviceName%=MyDevice_Install, Root\HydraSeat
+%DeviceName%=MyDevice_Install, HydraSeat
 
 [SourceDisksFiles]
-iddseat.dll = 1
+iddseat.dll=1
 
 [SourceDisksNames]
 1 = %DiskName%
 
-; ---- UMDF / IddCx install ----
-[Iddseat_Install.NT]
-CopyFiles = UMDriverCopy
-Include   = WUDFRD.inf
-Needs     = WUDFRD.NT
+; =================== UMDF Device ==================================
 
-[Iddseat_Install.NT.hw]
-Include = WUDFRD.inf
-Needs   = WUDFRD.NT.HW
-AddReg  = Iddseat_HwSettings
+[MyDevice_Install.NT]
+CopyFiles=UMDriverCopy
 
-[Iddseat_Install.NT.Services]
-Include = WUDFRD.inf
-Needs   = WUDFRD.NT.Services
+[MyDevice_Install.NT.hw]
+AddReg = MyDevice_HardwareDeviceSettings
 
-[Iddseat_Install.NT.Wdf]
-UmdfService              = iddseat, Iddseat_Service_Inst
-UmdfServiceOrder         = iddseat
-UmdfKernelModeClientPolicy = AllowKernelModeClients
-UmdfImpersonationLevel     = Identification
+[MyDevice_HardwareDeviceSettings]
+; IndirectKmd is the kernel-mode half of the indirect display stack -- the
+; partner the IddCx class extension binds to. Every working IddCx INF has it:
+; MttVDD, rdpidd, and the WDK sample.
+HKR,, "UpperFilters",  %REG_MULTI_SZ%, "IndirectKmd"
+HKR, "WUDF", "DeviceGroupId", %REG_SZ%, "HydraSeatGroup"
 
-; UMDF 2 loads the driver through the WDF host by ServiceBinary; a DriverCLSID is
-; not required (Microsoft's own IddCx sample INF omits it) and a wrong one only
-; blocks load, so it is intentionally absent.
-[Iddseat_Service_Inst]
-UmdfLibraryVersion = 2.15.0
-; REQUIRED. iddcxstub.lib routes every IddCx* call into the IddCx class
-; extension, and UMDF only loads that extension if the INF asks for it. Without
-; this line the host is handed a driver whose imports cannot be satisfied and
-; refuses it at level 0 with 0xD000000D, before DriverEntry -- identically on
-; the console and remote builds, and immune to every UMDF and IddCx version
-; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
-; did. Must match the iddcx version build-driver.ps1 links.
+[MyDevice_Install.NT.Services]
+AddService=WUDFRd,0x000001fa,WUDFRD_ServiceInstall
+
+[MyDevice_Install.NT.Wdf]
+UmdfService=iddseat,iddseat_Install
+UmdfServiceOrder=iddseat
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+
+[iddseat_Install]
+UmdfLibraryVersion=$UMDFVERSION$
+ServiceBinary=%12%\UMDF\iddseat.dll
 UmdfExtensions = IddCx0102
-ServiceBinary      = %13%\iddseat.dll
+
+[WUDFRD_ServiceInstall]
+DisplayName = %WudfRdDisplayName%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
 
 [UMDriverCopy]
 iddseat.dll
 
-[DestinationDirs]
-UMDriverCopy = 13
+; =================== Generic ==================================
 
 [Strings]
-ManufacturerName = "Hydra"
-DiskName         = "Hydra Virtual Seat Installation Disk"
-DeviceName       = "Hydra Virtual Seat Display"
+ManufacturerName="Hydra"
+DiskName = "Hydra Seat Display Installation Disk"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
+DeviceName="Hydra Virtual Seat Display"
 
-; REQUIRED for IddCx. IndirectKmd is the kernel-mode half of the indirect
-; display stack -- the partner the IddCx class extension binds to. Without it on
-; the devnode, UMDF is handed a driver whose class extension has nothing to
-; attach to below it, and refuses at level 0 with 0xD000000D before DriverEntry.
-; Microsoft's IddCx sample has it; ours never did. UmdfExtensions alone is not
-; enough -- both are needed.
-[Iddseat_HwSettings]
-HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
-; rdpidd.inf sets this and we never did. WUDFHost runs as LOCAL SERVICE, so
-; without an explicit descriptor the devnode keeps restrictive default security
-; and the host may be unable to open it -- STATUS_INVALID_PARAMETER at load.
-HKR,, Security, , "D:P(A;;GA;;;WD)"
-HKR, "WUDF", "DeviceGroupId", 0x00000000, "HydraSeatGroup"
+REG_MULTI_SZ  = 0x00010000
+REG_SZ        = 0x00000000
+REG_EXPAND_SZ = 0x00020000
+REG_DWORD     = 0x00010001
