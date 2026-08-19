@@ -59,13 +59,14 @@ Needs   = WUDFRD.NT.Services
 [Iddseat_Install.NT.Wdf]
 UmdfService              = iddseat, Iddseat_Service_Inst
 UmdfServiceOrder         = iddseat
-UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfImpersonationLevel     = Identification
 
 ; UMDF 2 loads the driver through the WDF host by ServiceBinary; a DriverCLSID is
 ; not required (Microsoft's own IddCx sample INF omits it) and a wrong one only
 ; blocks load, so it is intentionally absent.
 [Iddseat_Service_Inst]
-UmdfLibraryVersion = $UMDFVERSION$
+UmdfLibraryVersion = 2.15.0
 ; REQUIRED. iddcxstub.lib routes every IddCx* call into the IddCx class
 ; extension, and UMDF only loads that extension if the INF asks for it. Without
 ; this line the host is handed a driver whose imports cannot be satisfied and
@@ -74,13 +75,13 @@ UmdfLibraryVersion = $UMDFVERSION$
 ; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
 ; did. Must match the iddcx version build-driver.ps1 links.
 UmdfExtensions = IddCx0102
-ServiceBinary      = %12%\UMDF\iddseat.dll
+ServiceBinary      = %13%\iddseat.dll
 
 [UMDriverCopy]
 iddseat.dll
 
 [DestinationDirs]
-UMDriverCopy = 12,UMDF   ; matches Microsoft's IddCx sample; %13% was tried and did not load
+UMDriverCopy = 13
 
 [Strings]
 ManufacturerName = "Hydra"
@@ -95,4 +96,8 @@ DeviceName       = "Hydra Virtual Seat Display"
 ; enough -- both are needed.
 [Iddseat_HwSettings]
 HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
+; rdpidd.inf sets this and we never did. WUDFHost runs as LOCAL SERVICE, so
+; without an explicit descriptor the devnode keeps restrictive default security
+; and the host may be unable to open it -- STATUS_INVALID_PARAMETER at load.
+HKR,, Security, , "D:P(A;;GA;;;WD)"
 HKR, "WUDF", "DeviceGroupId", 0x00000000, "HydraSeatGroup"

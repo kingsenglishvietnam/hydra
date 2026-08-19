@@ -1,0 +1,27 @@
+MODE 4/5 UNBLOCKED: 0xD000000D was a missing device security descriptor
+
+iddseat LOADS. Status OK, CM_PROB_NONE, events 1004/2003/2010/2004, no 2007.
+
+Found by reading C:\Windows\INF\rdpidd.inf -- Microsoft's own remote indirect
+display driver, which has loaded fine on this machine all along. Its
+.NT.hw AddReg section has TWO lines:
+
+    HKR,, "UpperFilters",  %REG_MULTI_SZ%, "IndirectKmd"
+    HKR,, Security, , "D:P(A;;GA;;;WD)"    ; All access
+
+We had the first. We never had the second.
+
+WUDFHost runs as LOCAL SERVICE -- established when iddseat.log could not be
+written to C:\Windows\Temp, whose ACL grants only BUILTIN\Users. Without an
+explicit security descriptor the devnode keeps restrictive default security and
+the host cannot open it. That is STATUS_INVALID_PARAMETER at load level 0,
+before DriverEntry, identical on console and remote devnodes, and immune to
+UMDF version, IddCx version, signing, UmdfExtensions, ClassVer, ServiceBinary
+location, SwDeviceCreate parameters and everything else tried across five days.
+
+Also converged onto rdpidd.inf: UmdfLibraryVersion 2.15.0, ServiceBinary
+%13%\iddseat.dll with UMDriverCopy = 13, UmdfImpersonationLevel = Identification.
+
+METHOD NOTE: found by READING Microsoft's shipped INF for the driver that
+already worked on this machine. rdpidd.inf had been sitting in C:\Windows\INF
+the entire time.
