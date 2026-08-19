@@ -83,7 +83,7 @@ UmdfHostProcessSharing     = ProcessSharingDisabled
 ; REQUIRED for remote IDDs -- one host process per session. See note 2 above.
 
 [IddseatRemote_Service_Inst]
-UmdfLibraryVersion = $UMDFVERSION$
+UmdfLibraryVersion = 2.15.0
 ; REQUIRED. iddcxstub.lib routes every IddCx* call into the IddCx class
 ; extension, and UMDF only loads that extension if the INF asks for it. Without
 ; this line the host is handed a driver whose imports cannot be satisfied and
@@ -113,3 +113,4 @@ DeviceName       = "Hydra Virtual Seat Display (Remote Session)"
 ; enough -- both are needed.
 [Iddseat_HwSettings]
 HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
+HKR,, Security, , "D:P(A;;GA;;;WD)"

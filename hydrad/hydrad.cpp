@@ -70,7 +70,7 @@
 #define BACKOFF_MAX_MS 15000u
 #define HEALTHY_MS     10000u
 #define EXIT_CONFIG    2u
-#define HW_ID          L"HydraSeat"
+#define HW_ID          L"Root\\HydraSeat"
 
 /* ===================================================================== *
  * Logging (service log file + optional console)
@@ -544,7 +544,7 @@ static HSWDEVICE create_idd(const std::string& seat, const std::string& mode)
 
     SwWait wait{ CreateEventW(nullptr, TRUE, FALSE, nullptr), E_FAIL };
     HSWDEVICE h = nullptr;
-    HRESULT hr = SwDeviceCreate(SVC_NAME, L"HTREE\\ROOT\\0", &ci, 0, nullptr,
+    HRESULT hr = SwDeviceCreate(SVC_NAME, L"HTREE\\ROOT\\0", &ci, 2, props,
                                 sw_create_cb, &wait, &h);
     if (FAILED(hr)) {
         hlog(L"[idd:%s] SwDeviceCreate hr=0x%08lx", seatW.c_str(), hr);
