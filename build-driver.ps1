@@ -23,7 +23,19 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 # --- locate the kit pieces (pin to what we verified is installed) ---
 $kitRoot = 'C:\Program Files (x86)\Windows Kits\10'
 $sdkVer  = '10.0.26100.0'                 # headers/libs version present on this box
-$iddcx   = '1.2'                          # newest IddCx headers/stub present
+# Console builds at 1.2 -- that is the combination proven to load, initialise
+# and present a display (2026-08-20). The REMOTE variant needs newer headers:
+# IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER and IddCxAdapterDisplayConfigUpdate2
+# do not exist in 1.2, and the latter needs 1.10 minimum per Microsoft's docs.
+#
+# UNKNOWN, and the first thing the remote build will answer: the only class
+# extension registered on this OS is IddCx0102
+# (Control\Wdf\UMDF\IddCx\Versions\1\2 -> Service = IddCx0102). Linking the 1.10
+# stub while the INF declares IddCx0102 is the pattern VDD uses -- newer headers,
+# older declared extension, runtime-guarded calls -- but whether the framework
+# accepts it here is untested. If the remote build fails at LOAD rather than at
+# init, that is the answer: remote-session IDDs are not reachable on this build.
+$iddcx   = $(if ($Remote) { '1.10' } else { '1.2' })
 $umdf    = '2.25'                          # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2), whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse the driver before DriverEntry runs
 
 $inc = @(

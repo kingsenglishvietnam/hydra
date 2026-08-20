@@ -1,116 +1,127 @@
-; iddseat-remote.inf -- Hydra virtual display, REMOTE-SESSION variant.
 ;
-; DIFFERENT FROM iddseat.inf IN THREE WAYS, and they are the whole point:
+; iddseat-remote.inf -- Hydra virtual display, REMOTE-SESSION variant
 ;
-; 1. NOT root-enumerated. The console package declares Root\HydraSeat because
-;    hydrad creates that device itself via SwDeviceCreate. A remote IDD must NOT
-;    be created that way -- the OS fails IddCxAdapterInitAsync when
-;    IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER is set on a device the remote
-;    desktop stack did not create. The RD stack creates the devnode instead,
-;    matching the hardware ID that the protocol provider returns from
-;    IWRdsWddmIddProps::GetHardwareId. So the model line below declares a bare
-;    hardware ID with no Root\ prefix, in the shape Microsoft's own sample uses
-;    ("SampleGPU_IndirectDisplay_v14_SimpleAutoRemoteConfig").
+; Aligned with iddseat.inf on 2026-08-20, once that one was proven to load and
+; present a display. Same structure throughout; the differences below are the
+; ONLY ones a remote-session IDD needs, and each is load-bearing.
 ;
-;    THIS STRING MUST MATCH GetHardwareId IN THE PROVIDER EXACTLY.
+; DIFFERENCES FROM THE CONSOLE INF, and why:
 ;
-;    remote-IDD guidance: due to lock contention, each session's remote IDD must
-;    be in its own host process. Any DeviceGroupId directive must be absent for
-;    the same reason -- there is none here.
+;   Bare hardware ID, no Root\ prefix
+;       The remote-desktop stack creates the devnode, not devcon and not
+;       SwDeviceCreate. A Root\ ID would be a root-enumerated device, which is
+;       the wrong shape -- and IddCxAdapterInitAsync FAILS if
+;       REMOTE_SESSION_DRIVER is set on a device the RD stack did not create.
+;       There is no way to test this variant with devcon or devgen; it only
+;       comes up through HydraProto.
 ;
-; 3. Its own CatalogFile, service name and device description, so the remote and
-;    console packages can both sit in the driver store without colliding. They
-;    are mutually exclusive at runtime anyway -- console and remote adapter
-;    flags cannot both be set -- but two packages claiming one service name is
-;    the kind of thing that fails confusingly rather than loudly.
+;   UmdfHostProcessSharing = ProcessSharingDisabled
+;       One host process per session. Remote IDDs are per-session by nature and
+;       a shared host defeats the isolation.
 ;
-; The DLL is the SAME FILENAME but a DIFFERENT BUILD: build-driver.ps1 -Remote
-; compiles with /DHYDRA_REMOTE_IDD, which sets REMOTE_SESSION_DRIVER and the
-; mandatory USE_SMALLEST_MODE, and enables the IddCxAdapterDisplayConfigUpdate2
-; call without which a remote session's paths never activate. Keep the two
-; builds in SEPARATE OUTPUT DIRECTORIES or one will silently sign the other --
-; exactly the failure that hid three build bugs until 2026-08-11.
+;   NO DeviceGroupId
+;       Grouping is the opposite of what ProcessSharingDisabled asks for. The
+;       console INF sets one; this must not.
 ;
-; Development: test-signing on, self-signed .cat via sign-driver.ps1.
-; There is no unsigned load path for a display-class driver.
+;   Its own service name and CatalogFile
+;       So console and remote packages can sit in the driver store together.
+;       They are mutually exclusive at runtime -- console and remote adapter
+;       flags cannot both be set -- but two packages claiming one service name
+;       fails confusingly rather than loudly.
+;
+; The DRIVER differences are in iddseat.cpp under /DHYDRA_REMOTE_IDD:
+; IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER plus the mandatory
+; USE_SMALLEST_MODE, and the IddCxAdapterDisplayConfigUpdate2 call without
+; which a remote session's display paths never activate.
+;
+; THE THREE FIXES THAT MADE THE CONSOLE BUILD WORK apply here automatically --
+; they are in build-driver.ps1 and iddseat.cpp, which this variant shares:
+;   1. /DUMDF_VERSION_MAJOR=2 /DUMDF_VERSION_MINOR=<minor> at compile time.
+;      Without them WDF_BIND_INFO is malformed and the framework rejects the
+;      driver at load level 0 with 0xD000000D, before DriverEntry.
+;   2. EndPointDiagnostics.pFirmwareVersion / pHardwareVersion must be non-null
+;      or IddCxAdapterInitAsync returns STATUS_INVALID_PARAMETER.
+;   3. FillSignal must set totalSize == activeSize. An indirect display has no
+;      blanking interval, and IddCxMonitorArrival rejects a mode that has one.
+;
+; UmdfExtensions = IddCx0102 is not a guess. The registry names it:
+;   HKLM\SYSTEM\CurrentControlSet\Control\Wdf\UMDF\IddCx\Versions\1\2
+;     Service = IddCx0102
+;
 
 [Version]
-Signature   = "$WINDOWS NT$"
-Class       = Display
-ClassGuid   = {4d36e968-e325-11ce-bfc1-08002be10318}
-Provider    = %ManufacturerName%
-CatalogFile = iddseat-remote.cat
-PnpLockdown = 1
-; stampinf overwrites this with the real date + version at build time.
-DriverVer   = 01/01/2026,1.0.0.0
+PnpLockdown=1
+Signature="$Windows NT$"
+ClassGUID = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Class = Display
+ClassVer = 2.0
+Provider=%ManufacturerName%
+CatalogFile=iddseat-remote.cat
+DriverVer = 08/20/2026,1.6.0.0
 
 [Manufacturer]
-%ManufacturerName% = Standard,NT$ARCH$.10.0...17134
+%ManufacturerName%=Standard,NTamd64
 
-; IddCx needs Windows 10 1709 (build 16299) or later. Remote IDD support arrived
-; in IddCx 1.4 (19H1), which is comfortably above that floor; the decorated
-; section is kept identical to the console package for consistency.
-[Standard.NT$ARCH$.10.0...17134]
-%DeviceName% = IddseatRemote_Install, HydraSeat_RemoteIDD_v1
+[Standard.NTamd64]
+; Bare ID only -- the RD stack creates this devnode. See the note above.
+%DeviceName%=MyDevice_Install, HydraSeat_RemoteIDD_v1
 
 [SourceDisksFiles]
-iddseat.dll = 1
+iddseat.dll=1
 
 [SourceDisksNames]
 1 = %DiskName%
 
-; ---- UMDF / IddCx install ----
-[IddseatRemote_Install.NT]
-CopyFiles = UMDriverCopy
-Include   = WUDFRD.inf
-Needs     = WUDFRD.NT
+; =================== UMDF Device ==================================
 
-[IddseatRemote_Install.NT.hw]
-Include = WUDFRD.inf
-Needs   = WUDFRD.NT.HW
-AddReg  = Iddseat_HwSettings
+[MyDevice_Install.NT]
+CopyFiles=UMDriverCopy
 
-[IddseatRemote_Install.NT.Services]
-Include = WUDFRD.inf
-Needs   = WUDFRD.NT.Services
+[MyDevice_Install.NT.hw]
+AddReg = MyDevice_HardwareDeviceSettings
 
-[IddseatRemote_Install.NT.Wdf]
-UmdfService                = iddseatremote, IddseatRemote_Service_Inst
-UmdfServiceOrder           = iddseatremote
-UmdfFileObjectPolicy       = AllowNullAndUnknownFileObjects
-UmdfFsContextUsePolicy     = CannotUseFsContexts
-UmdfHostProcessSharing     = ProcessSharingDisabled
-; REQUIRED for remote IDDs -- one host process per session. See note 2 above.
+[MyDevice_HardwareDeviceSettings]
+; IndirectKmd is the kernel-mode half of the indirect display stack -- the
+; partner the IddCx class extension binds to. Every working IddCx INF has it.
+; NO DeviceGroupId here: see the note above.
+HKR,, "UpperFilters",  %REG_MULTI_SZ%, "IndirectKmd"
 
-[IddseatRemote_Service_Inst]
-UmdfLibraryVersion = 2.15.0
-; REQUIRED. iddcxstub.lib routes every IddCx* call into the IddCx class
-; extension, and UMDF only loads that extension if the INF asks for it. Without
-; this line the host is handed a driver whose imports cannot be satisfied and
-; refuses it at level 0 with 0xD000000D, before DriverEntry -- identically on
-; the console and remote builds, and immune to every UMDF and IddCx version
-; tried. Microsoft's own IddCx sample has it (as IddCx0102 for 1.2); ours never
-; did. Must match the iddcx version build-driver.ps1 links.
+[MyDevice_Install.NT.Services]
+AddService=WUDFRd,0x000001fa,WUDFRD_ServiceInstall
+
+[MyDevice_Install.NT.Wdf]
+UmdfService=iddseatremote,iddseatremote_Install
+UmdfServiceOrder=iddseatremote
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+UmdfHostProcessSharing = ProcessSharingDisabled
+
+[iddseatremote_Install]
+UmdfLibraryVersion=$UMDFVERSION$
+ServiceBinary=%12%\UMDF\iddseat.dll
 UmdfExtensions = IddCx0102
-ServiceBinary      = %13%\iddseat.dll
+
+[WUDFRD_ServiceInstall]
+DisplayName = %WudfRdDisplayName%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
 
 [UMDriverCopy]
 iddseat.dll
 
-[DestinationDirs]
-UMDriverCopy = 13   ; driver store package dir
+; =================== Generic ==================================
 
 [Strings]
-ManufacturerName = "Hydra"
-DiskName         = "Hydra Virtual Seat (Remote) Installation Disk"
-DeviceName       = "Hydra Virtual Seat Display (Remote Session)"
+ManufacturerName="Hydra"
+DiskName = "Hydra Seat Display Installation Disk"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
+DeviceName="Hydra Virtual Seat Display (Remote Session)"
 
-; REQUIRED for IddCx. IndirectKmd is the kernel-mode half of the indirect
-; display stack -- the partner the IddCx class extension binds to. Without it on
-; the devnode, UMDF is handed a driver whose class extension has nothing to
-; attach to below it, and refuses at level 0 with 0xD000000D before DriverEntry.
-; Microsoft's IddCx sample has it; ours never did. UmdfExtensions alone is not
-; enough -- both are needed.
-[Iddseat_HwSettings]
-HKR,, "UpperFilters", 0x00010000, "IndirectKmd"
-HKR,, Security, , "D:P(A;;GA;;;WD)"
+REG_MULTI_SZ  = 0x00010000
+REG_SZ        = 0x00000000
+REG_EXPAND_SZ = 0x00020000
+REG_DWORD     = 0x00010001
