@@ -40,7 +40,7 @@ $libs = @(
     "$kitRoot\Lib\$sdkVer\um\x64\dxgi.lib",
     "$kitRoot\Lib\$sdkVer\um\x64\avrt.lib",
     "$kitRoot\Lib\$sdkVer\um\x64\advapi32.lib",   # InitializeSecurityDescriptor / SetSecurityDescriptorDacl
-    "$kitRoot\Lib\$sdkVer\um\x64\kernel32.lib",
+    "$kitRoot\Lib\$sdkVer\um\x64\mincore.lib",
     "$kitRoot\Lib\$sdkVer\um\x64\ole32.lib"
 )
 
@@ -106,8 +106,9 @@ Write-Host "  compiled OK" -ForegroundColor Green
 
 Write-Host "linking iddseat.dll ..." -ForegroundColor Cyan
 # /DLL, no default libs pulled that clash with UMDF; entry is the WDF stub.
-$link = @('/nologo','/DLL',"/OUT:$dll",$obj) + $libs +
-        @('/NODEFAULTLIB:kernel32.lib') # UMDF stub provides its own; re-add via our explicit list
+$res = Join-Path $outdir 'iddseat.res'; & rc.exe /nologo /fo $res (Join-Path $root 'iddseat\iddseat.rc')
+$link = @('/nologo','/DLL',"/OUT:$dll",$obj,$res) + $libs +
+        @('/NODEFAULTLIB:kernel32.lib','/SUBSYSTEM:WINDOWS,10.0') # UMDF stub provides its own; re-add via our explicit list
 $out = & link.exe @link 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "LINK FAILED:" -ForegroundColor Red

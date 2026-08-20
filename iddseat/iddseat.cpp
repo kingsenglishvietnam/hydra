@@ -400,7 +400,7 @@ static void ReadSeatProperties(PWDFDEVICE_INIT init, std::wstring& seatOut,
 static void IddSeatLog(const char* fmt, ...)
 {
     FILE* f = nullptr;
-    if (fopen_s(&f, "C:\\\\Windows\\\\Temp\\\\iddseat.log", "a") != 0 || !f)
+    if (fopen_s(&f, "C:\\HydraLog\\iddseat.log", "a") != 0 || !f)
         return;
 
     SYSTEMTIME st;
