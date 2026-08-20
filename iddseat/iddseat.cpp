@@ -508,10 +508,19 @@ extern "C" NTSTATUS IddSeatDeviceD0Entry(WDFDEVICE device, WDF_POWER_DEVICE_STAT
 #endif
     caps.EndPointDiagnostics.Size = sizeof(caps.EndPointDiagnostics);
     caps.EndPointDiagnostics.GammaSupport = IDDCX_FEATURE_IMPLEMENTATION_NONE;
-    caps.EndPointDiagnostics.TransmissionType = IDDCX_TRANSMISSION_TYPE_OTHER;
+    caps.EndPointDiagnostics.TransmissionType = IDDCX_TRANSMISSION_TYPE_WIRED_OTHER;
     caps.EndPointDiagnostics.pEndPointFriendlyName = L"Hydra Virtual Seat";
     caps.EndPointDiagnostics.pEndPointManufacturerName = L"Hydra";
     caps.EndPointDiagnostics.pEndPointModelName = L"Seat";
+
+    /* REQUIRED -- the WDK sample comments them "(required)" and leaving them
+     * null makes IddCxAdapterInitAsync return STATUS_INVALID_PARAMETER. Must
+     * outlive the call, which is fine: IddCx copies the caps synchronously. */
+    IDDCX_ENDPOINT_VERSION endpointVersion{};
+    endpointVersion.Size = sizeof(endpointVersion);
+    endpointVersion.MajorVer = 1;
+    caps.EndPointDiagnostics.pFirmwareVersion = &endpointVersion;
+    caps.EndPointDiagnostics.pHardwareVersion = &endpointVersion;
 
     IDARG_IN_ADAPTER_INIT init{};
     init.WdfDevice = device;
