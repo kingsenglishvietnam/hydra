@@ -23,35 +23,33 @@ using namespace Microsoft::WRL;
  * =========================================================================== */
 namespace hydra
 {
-    static void FillSignal(DISPLAYCONFIG_VIDEO_SIGNAL_INFO& sig, const SeatMode& m)
+    /* Matches the WDK IddCx sample's FillSignalInfo EXACTLY. An indirect display
+     * has no real signal, so there is NO BLANKING -- totalSize must EQUAL
+     * activeSize. Adding blanking here made IddCxMonitorArrival return
+     * STATUS_INVALID_PARAMETER. vSyncFreqDivider also differs between monitor
+     * and target modes, which is why the sample passes a flag. */
+    static void FillSignal(DISPLAYCONFIG_VIDEO_SIGNAL_INFO& sig, const SeatMode& m, bool monitorMode)
     {
-        /* Same blanking convention as the EDID DTD so the reported timing matches
-         * what the EDID advertised. */
-        const UINT hblank = 160, vblank = 40;
-        sig.totalSize.cx = m.width + hblank;
-        sig.totalSize.cy = m.height + vblank;
-        sig.activeSize.cx = m.width;
-        sig.activeSize.cy = m.height;
+        sig.totalSize.cx = sig.activeSize.cx = m.width;
+        sig.totalSize.cy = sig.activeSize.cy = m.height;
 
-        UINT64 pixelRate = (UINT64)sig.totalSize.cx * sig.totalSize.cy * m.vsync;
-        sig.pixelRate = pixelRate;
+        sig.AdditionalSignalInfo.vSyncFreqDivider = monitorMode ? 0 : 1;
+        sig.AdditionalSignalInfo.videoStandard    = 255;
 
-        sig.hSyncFreq.Numerator   = (UINT32)pixelRate;
-        sig.hSyncFreq.Denominator = sig.totalSize.cx;
-        sig.vSyncFreq.Numerator   = (UINT32)pixelRate;
-        sig.vSyncFreq.Denominator = (UINT32)((UINT64)sig.totalSize.cx * sig.totalSize.cy);
+        sig.vSyncFreq.Numerator   = m.vsync;
+        sig.vSyncFreq.Denominator = 1;
+        sig.hSyncFreq.Numerator   = m.vsync * m.height;
+        sig.hSyncFreq.Denominator = 1;
 
         sig.scanLineOrdering = DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE;
-        sig.AdditionalSignalInfo.videoStandard    = 255; /* Other */
-        sig.AdditionalSignalInfo.vSyncFreqDivider = 0;
+        sig.pixelRate = (UINT64)m.vsync * (UINT64)m.width * (UINT64)m.height;
     }
-
     IDDCX_MONITOR_MODE MakeMonitorMode(const SeatMode& m, IDDCX_MONITOR_MODE_ORIGIN origin)
     {
         IDDCX_MONITOR_MODE mode{};
         mode.Size = sizeof(mode);
         mode.Origin = origin;
-        FillSignal(mode.MonitorVideoSignalInfo, m);
+        FillSignal(mode.MonitorVideoSignalInfo, m, true);
         return mode;
     }
 
@@ -59,7 +57,7 @@ namespace hydra
     {
         IDDCX_TARGET_MODE mode{};
         mode.Size = sizeof(mode);
-        FillSignal(mode.TargetVideoSignalInfo.targetVideoSignalInfo, m);
+        FillSignal(mode.TargetVideoSignalInfo.targetVideoSignalInfo, m, false);
         return mode;
     }
 }
@@ -553,6 +551,7 @@ _Use_decl_annotations_
 extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
                                                const IDARG_IN_ADAPTER_INIT_FINISHED* args)
 {
+    IddSeatLog("AdapterInitFinished: entered, AdapterInitStatus=0x%08X", args->AdapterInitStatus);
     if (!NT_SUCCESS(args->AdapterInitStatus)) return STATUS_SUCCESS;
 
     /* Reach the seat's identity/mode/EDID via the adapter context populated in
@@ -569,6 +568,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     info.MonitorDescription.DataSize = HYDRA_EDID_SIZE;
     info.MonitorDescription.pData = actx->Edid;
     /* Deterministic container id from the seat name keeps monitor identity stable
+    IddSeatLog("EDID[0..7]=%02X %02X %02X %02X %02X %02X %02X %02X size=%u", actx->Edid[0],actx->Edid[1],actx->Edid[2],actx->Edid[3],actx->Edid[4],actx->Edid[5],actx->Edid[6],actx->Edid[7], (unsigned)HYDRA_EDID_SIZE);
      * across arrivals without colliding between seats. */
     CoCreateGuid(&info.MonitorContainerId);
 
@@ -581,6 +581,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
 
     IDARG_OUT_MONITORCREATE createOut{};
     NTSTATUS status = IddCxMonitorCreate(adapter, &createIn, &createOut);
+    IddSeatLog("IddCxMonitorCreate -> 0x%08X", status);
     if (!NT_SUCCESS(status)) return status;
 
     auto* mctx = WdfObjectGet_IndirectMonitorContext(createOut.MonitorObject);
@@ -592,6 +593,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
      * struct. The OS returns the adapter LUID / target id for companion apps. */
     IDARG_OUT_MONITORARRIVAL arrivalOut{};
     NTSTATUS arrivalStatus = IddCxMonitorArrival(createOut.MonitorObject, &arrivalOut);
+    IddSeatLog("IddCxMonitorArrival -> 0x%08X", arrivalStatus);
     if (!NT_SUCCESS(arrivalStatus)) return arrivalStatus;
 
 #ifdef HYDRA_REMOTE_IDD
@@ -686,6 +688,7 @@ extern "C" NTSTATUS IddSeatParseMonitorDescription(const IDARG_IN_PARSEMONITORDE
         hydra_edid_read_mode((const uint8_t*)in->MonitorDescription.pData, &w, &h, &hz);
         if (w && h && hz) { m.width = w; m.height = h; m.vsync = hz; }
     }
+    IddSeatLog("ParseMonitorDescription: type=%u dataSize=%u -> %ux%u@%u", (unsigned)in->MonitorDescription.Type, (unsigned)in->MonitorDescription.DataSize, m.width, m.height, m.vsync);
 
     out->MonitorModeBufferOutputCount = 1;
     if (in->MonitorModeBufferInputCount == 0)
