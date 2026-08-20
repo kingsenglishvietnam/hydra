@@ -1,0 +1,34 @@
+MODE 4 CLOSED: not blocked, not worth it
+
+The driver works. caps.Flags=0x5 accepted, IddCxAdapterInitAsync 0,
+IddCxMonitorArrival 0, monitor presented, three clean cycles. Remote-session
+IddCx drivers ARE reachable on 24H2 build 26100.
+
+What remains is GetInputHandles, and the documentation is explicit:
+pKeyboardHandle is "a handle to an I8042prt keyboard driver", pMouseHandle "a
+handle to a Mouclass driver". Only pBeepHandle may be NULL. The WDK sample
+returns 0 for all three with a //TODO, which is what produces PreDisconnect
+reason 18 about 400ms after the shell starts -- termsrv and win32k send input
+IOCTLs to those handles immediately and the null handles fail.
+
+So a protocol provider is expected to ship its own virtual keyboard and mouse
+miniports. Two more kernel drivers, signed, on the teaching machine.
+
+AND MODE 4'S REMAINING VALUE IS ONE USER-MODE PROCESS. Modes 3 and 7 already do
+exactly what mode 4 would: an RDP client holds the session lifecycle while
+agent:B injects input via SendInput. Mode 7 uses a fullscreen client on the
+seat's own panel; mode 3 uses a headless one. Both work. Seat B still gets
+software rendering either way -- that is a property of a remote session, not of
+the protocol carrying it, so mode 4 would not change it.
+
+Two KMDF drivers to remove one process is not a trade worth making.
+
+WHAT THE MODE 4 WORK PRODUCED ANYWAY, and it was worth it:
+- 0xD000000D solved: missing UMDF_VERSION_MAJOR/MINOR compile defines
+- Mode 5 works: our own IddCx driver presents a real display
+- The DXGI bypass tested and closed: RdpIdd is destroyed with the connection
+- The three IddCx required-field bugs, all applicable to any future IDD work
+
+Reopen only if someone answers the NTDEV question and says the input handles can
+be stubbed without kernel drivers. COMMUNITY-QUESTIONS-3.md is written and ready
+if that ever seems worth asking.
