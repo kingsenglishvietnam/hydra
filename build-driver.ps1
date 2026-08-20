@@ -24,7 +24,7 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 $kitRoot = 'C:\Program Files (x86)\Windows Kits\10'
 $sdkVer  = '10.0.26100.0'                 # headers/libs version present on this box
 $iddcx   = '1.2'                          # newest IddCx headers/stub present
-$umdf    = '2.33'                          # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2), whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse the driver before DriverEntry runs
+$umdf    = '2.25'                          # 2.35 ships with WDK 28000 but this OS is build 26100 (24H2), whose runtime is 2.33 -- requesting 2.35 makes WUDFHost refuse the driver before DriverEntry runs
 
 $inc = @(
     "$kitRoot\Include\$sdkVer\um",
@@ -79,6 +79,12 @@ $cldefs = @(
     '/D_UNICODE','/DUNICODE',
     '/D_WIN32_WINNT=0x0A00',
     '/DUMDF_USING_NTSTATUS',
+    # WDF_BIND_INFO is built from these at compile time and handed to the
+    #
+    #
+    # framework by FxDriverEntryUm BEFORE DriverEntry.
+    '/DUMDF_VERSION_MAJOR=2',
+    "/DUMDF_VERSION_MINOR=$($umdf.Split('.')[1])",
     '/DWIN32_NO_STATUS',
     '/DNTDDI_VERSION=0x0A000010',
     '/DIDDCX_VERSION_MAJOR=1',
