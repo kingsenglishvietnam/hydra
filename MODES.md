@@ -139,3 +139,25 @@ Seat B CAN be unlocked with teacher's password from the wireless keyboard --
 agent:B re-attaches on the desktop switch ('input desktop changed; re-attached
 and recovered' in agent_B.log). The Winlogon-by-name fallback added 2026-08-21
 has never needed to fire; OpenInputDesktop with GENERIC_ALL succeeds.
+
+
+## Mode 6 vs mode 7 for video
+
+Mode 6 tears less than mode 7 on video playback. Tested 2026-08-21, same clip,
+same panel.
+
+WHY. Mode 7's client presents straight to the panel from an SDL window -- no
+vsync, no swapchain, no frame pacing. It blits whenever a frame arrives off the
+RDP stream, which is not paced to the display.
+
+Mode 6 goes client -> virtual display -> DDA -> seqlock ring -> mirror, and
+mirror presents through a DXGI SWAPCHAIN, which is vsynced. The ring also
+decouples producer from consumer, so mirror presents complete frames at the
+panel's rate rather than at the stream's.
+
+So the machinery mode 7 removed was doing something after all: it is a frame
+buffer with a real presentation stage on the end.
+
+PRACTICAL: mode 7 for ordinary lessons -- simpler, one command, nothing to go
+wrong. Mode 6 for video-heavy lessons. Both are one command and both work.
+Remember display_mode: 'off' for mode 7, 'capture' for mode 6.

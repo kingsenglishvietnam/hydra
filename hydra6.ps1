@@ -97,6 +97,16 @@ if ($svc -notmatch 'WIN32_OWN_PROCESS') {
 # FIRST. It creates the shared sections and binds the router's listener. A
 # mirror started before this gets refused and STAYS refused -- that is what
 # made input forwarding look broken.
+$dm = (Select-String -Path "$Root\dist\seats.toml" -Pattern '^display_mode' | Select-Object -First 1).Line
+if ($dm -notmatch '"capture"') {
+    Say "display_mode is not `"capture`" -- currently: $dm" Red
+    Say "Mode 6 needs it, or hydrad starts no capture agent, nothing fills the ring," Red
+    Say "and the wait-for-frames loop spins forever. Mode 7 leaves it at `"off`"." Red
+    Say "  (Get-Content seats.toml -Raw) -replace '(?m)^display_mode = `".*`"', 'display_mode = `"capture`"' | Set-Content seats.toml -NoNewline" Yellow
+    Say "  .\setup.ps1" Yellow
+    return
+}
+
 Say "starting Hydra service ..." Cyan
 Start-Service Hydra
 for ($i = 0; $i -lt 20; $i++) {
