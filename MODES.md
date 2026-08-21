@@ -101,3 +101,41 @@ belongs to the console session and follows the console's own setting.
 
 If a mouse comes out backwards, one layer is compensating twice. Remove the
 Windows setting first; it is per-profile and easy to lose track of.
+
+
+## Smart App Control
+
+On 2026-08-21 Smart App Control began blocking sdl-freerdp.exe with
+'An Application Control policy has blocked this file'. The binary had not
+changed -- PowerShell had updated from 7.6.4.0 to 7.6.5.0 and SAC re-evaluated
+what it was launching. CodeIntegrity/Operational events 3033/3077/3118, policy
+ID {0283ac0f-fff1-49ae-ada1-8a933130cad6}.
+
+SAC will never accept an unsigned FreeRDP build or our own binaries, so it has
+to be OFF. Settings > Privacy & security > Windows Security > App & browser
+control > Smart App Control > Off.
+
+TURNING IT OFF IS PERMANENT -- it cannot be re-enabled without reinstalling
+Windows. Defender is unaffected.
+
+Check with:
+  Get-CimInstance Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard | Select UsermodeCodeIntegrityPolicyEnforcementStatus
+0 = off, 1 = audit, 2 = enforced.
+
+
+## Locking
+
+Seat B locking affects only seat B. Sessions are independent.
+
+Locking the CONSOLE takes both seats down. That is not a Hydra bug: the
+Winlogon secure desktop is a machine-wide state, and while it is the input
+desktop nothing else renders or receives input. Seat B's session keeps running
+underneath, but its display and input are suspended until the console unlocks.
+
+Practical: do not lock the console mid-lesson. Lock seat B instead, or use a
+screensaver on the console panel only.
+
+Seat B CAN be unlocked with teacher's password from the wireless keyboard --
+agent:B re-attaches on the desktop switch ('input desktop changed; re-attached
+and recovered' in agent_B.log). The Winlogon-by-name fallback added 2026-08-21
+has never needed to fire; OpenInputDesktop with GENERIC_ALL succeeds.
