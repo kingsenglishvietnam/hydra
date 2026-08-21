@@ -35,6 +35,11 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+# PS 7.4 made native-command stderr honour ErrorActionPreference. Several tools
+# here write PROGRESS to stderr -- hydractl's 'not reachable' while it waits,
+# mirror's 'pixel transport opened' -- and 2>&1 under 'Stop' turned those
+# SUCCESS lines into terminating errors. This broke hydra-start.ps1 on 2026-08-21.
+$PSNativeCommandUseErrorActionPreference = $false
 Set-Location $Root
 function Say($m, $c = 'Gray') { Write-Host $m -ForegroundColor $c }
 
@@ -136,7 +141,7 @@ Say "  and codec warnings appear. Leave it open." DarkGray
 # output is READABLE. Start-Process on the exe directly swallows everything --
 # no ERRCONNECT reason, no rdpsnd backend line, no codec warnings. Same approach
 # hydra-view.ps1 uses for hydrardp.
-$clientArgs = "/v:127.0.0.2 /u:$User /d: /cert:ignore /sound -suppress-output /scale:140 +auto-reconnect /f /monitors:$Monitor"
+$clientArgs = "/v:127.0.0.2 /u:$User /d: /cert:ignore /sound -suppress-output /scale:140 +auto-reconnect /gfx:rfxc /network:lan /f /monitors:$Monitor"
 $cmd = "`$host.UI.RawUI.WindowTitle = 'Hydra seat $Seat -- client log'; " +
        "& '$Root\dist\freerdp\sdl-freerdp.exe' $clientArgs"
 Start-Process powershell -ArgumentList '-NoExit', '-Command', $cmd

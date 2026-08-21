@@ -70,6 +70,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# PS 7.4 made native-command stderr honour ErrorActionPreference. Several tools
+# here write PROGRESS to stderr -- hydractl's 'not reachable' while it waits,
+# mirror's 'pixel transport opened' -- and 2>&1 under 'Stop' turned those
+# SUCCESS lines into terminating errors. This broke hydra-start.ps1 on 2026-08-21.
+$PSNativeCommandUseErrorActionPreference = $false
 # Providers by GUID -- names are unreliable across builds, GUIDs are not.
 $providers = @(
     @{ Name = 'TerminalServices-RemoteConnectionManager'; Guid = '{C76BAA63-AE81-421C-B425-340B4B24157F}' }

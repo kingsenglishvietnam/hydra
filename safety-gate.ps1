@@ -43,6 +43,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# PS 7.4 made native-command stderr honour ErrorActionPreference. Several tools
+# here write PROGRESS to stderr -- hydractl's 'not reachable' while it waits,
+# mirror's 'pixel transport opened' -- and 2>&1 under 'Stop' turned those
+# SUCCESS lines into terminating errors. This broke hydra-start.ps1 on 2026-08-21.
+$PSNativeCommandUseErrorActionPreference = $false
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
         ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     throw "must run elevated"

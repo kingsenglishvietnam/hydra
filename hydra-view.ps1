@@ -35,7 +35,12 @@ param(
     [int]$TimeoutSec = 90
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
+# PS 7.4 made native-command stderr honour ErrorActionPreference. Several tools
+# here write PROGRESS to stderr -- hydractl's 'not reachable' while it waits,
+# mirror's 'pixel transport opened' -- and 2>&1 under 'Stop' turned those
+# SUCCESS lines into terminating errors. This broke hydra-start.ps1 on 2026-08-21.
+$PSNativeCommandUseErrorActionPreference = $false
 $root   = $PSScriptRoot
 $client = Join-Path $root 'dist\hydrardp.exe'
 $mirror = Join-Path $root 'dist\mirror.exe'

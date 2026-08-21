@@ -30,6 +30,11 @@ param(
 )
 
 $ErrorActionPreference = 'Continue'
+# PS 7.4 made native-command stderr honour ErrorActionPreference. Several tools
+# here write PROGRESS to stderr -- hydractl's 'not reachable' while it waits,
+# mirror's 'pixel transport opened' -- and 2>&1 under 'Stop' turned those
+# SUCCESS lines into terminating errors. This broke hydra-start.ps1 on 2026-08-21.
+$PSNativeCommandUseErrorActionPreference = $false
 function Say($m, $c = 'Gray') { Write-Host $m -ForegroundColor $c }
 
 # ------------------------------------------------------------ find the stick --
@@ -113,12 +118,13 @@ foreach ($k in $exports.Keys) {
 @"
 Hydra machine state -- captured $(Get-Date -Format 'yyyy-MM-dd HH:mm')
 
-TermService type        : $((& sc.exe qc TermService | Select-String 'TYPE').ToString().Trim())
+TermService type        : $(((& sc.exe qc TermService | Select-String 'TYPE') | Select-Object -First 1).ToString().Trim())
 ServiceDll              : $((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\TermService\Parameters' ServiceDll -EA SilentlyContinue).ServiceDll)
 fDenyTSConnections      : $((Get-ItemProperty 'HKLM:\System\CurrentControlSet\Control\Terminal Server' fDenyTSConnections -EA SilentlyContinue).fDenyTSConnections)
 testsigning             : $((bcdedit /enum "{current}" | Select-String 'testsigning').ToString().Trim())
 PromptOnSecureDesktop   : $((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' PromptOnSecureDesktop -EA SilentlyContinue).PromptOnSecureDesktop)
 SearchOrderConfig       : $((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching' SearchOrderConfig -EA SilentlyContinue).SearchOrderConfig)
+Smart App Control       : $((Get-CimInstance Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard).UsermodeCodeIntegrityPolicyEnforcementStatus)  (0 off, 1 audit, 2 enforced -- MUST be 0 or unsigned binaries are blocked)
 
 Interception UpperFilters
   keyboard : $((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4D36E96B-E325-11CE-BFC1-08002BE10318}' UpperFilters -EA SilentlyContinue).UpperFilters -join ',')
