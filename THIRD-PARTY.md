@@ -141,3 +141,28 @@ stick before any driver operation. Use it.
 
 This software is provided without warranty of any kind, as stated in the AGPL.
 Read `MODES.md` and `REBUILD.md` before running anything.
+
+
+---
+
+## IMPORTANT: Interception is dual-licensed
+
+Interception is LGPL for NON-COMMERCIAL use, with explicit permission to
+distribute its drivers and installers so long as your code talks to the driver
+only through the library API -- which is how seat_router uses it.
+
+For COMMERCIAL use it requires one of two paid licences from the author,
+francisco@oblita.com. See the licenses/ directory in the Interception
+repository.
+
+SO: Hydra is AGPL-3.0 and you may use IT commercially. But Hydra depends on
+Interception for input isolation, and a commercial deployment would need a
+commercial Interception licence separately. That is between you and the
+Interception author; it is not something this project can grant.
+
+Non-commercial use -- a school, a home, personal use -- is covered by the LGPL
+terms at no cost.
+
+Source: https://github.com/oblitum/Interception
+
+
