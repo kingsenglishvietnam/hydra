@@ -115,6 +115,11 @@ for ($i = 0; $i -lt 20; $i++) {
 }
 & "$Root\dist\hydractl.exe" status 2>&1 | Out-String | Write-Host -ForegroundColor DarkGray
 
+# NO AUDIO PIN HERE. audio-pin.ps1 routes sdl-freerdp's OWN playback, and with
+# /sound:sys:fake the client plays nothing. audio_bridge decides the output
+# device via seats.toml's audio_bridge GUID (currently 3012a3df = the 2770).
+# Mode 7 DOES need the pin -- there the client's playback is the audio path.
+
 # -------------------------------------------------------- monitor index ----
 # FreeRDP's own enumeration, 1-based, and NOT the Windows DISPLAY number. It
 # shifts between boots -- it has been 3, 4 and 5 within one day. Never hardcode.
@@ -145,7 +150,8 @@ Say "starting the client on the virtual display -- LOG IN AS $User" Cyan
 Say "  (echo is off; a typo shows as ERRCONNECT_LOGON_FAILURE)" DarkGray
 Start-Process "$Root\dist\freerdp\sdl-freerdp.exe" -ArgumentList @(
     "/v:127.0.0.2", "/u:$User", "/d:", "/cert:ignore",
-    "/sound", "-suppress-output", "/scale:140", "+auto-reconnect",
+    "/sound:sys:fake", "-suppress-output", "/scale:140", "+auto-reconnect",
+    "/gfx:rfxc", "/network:lan",
     "/f", "/monitors:$idx"
 )
 
