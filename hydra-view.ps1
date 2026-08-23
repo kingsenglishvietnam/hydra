@@ -77,7 +77,7 @@ Say "A window will open and ask for $User's password." 'Cyan'
 Say "Type it there -- echo is off, so a typo shows as ERRCONNECT_LOGON_FAILURE." 'Cyan'
 Say ""
 
-Start-Process powershell -ArgumentList @(
+Start-Process powershell -WindowStyle Minimized -ArgumentList @(
     '-NoExit', '-Command',
     "cd '$root'; .\dist\hydrardp.exe $Seat $User"
 )

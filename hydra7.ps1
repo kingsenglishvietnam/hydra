@@ -144,7 +144,7 @@ Say "  and codec warnings appear. Leave it open." DarkGray
 $clientArgs = "/v:127.0.0.2 /u:$User /d: /cert:ignore /sound -suppress-output /scale:140 +auto-reconnect /gfx:rfxc /network:lan /f /monitors:$Monitor"
 $cmd = "`$host.UI.RawUI.WindowTitle = 'Hydra seat $Seat -- client log'; " +
        "& '$Root\dist\freerdp\sdl-freerdp.exe' $clientArgs"
-Start-Process powershell -ArgumentList '-NoExit', '-Command', $cmd
+Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit', '-Command', $cmd
 
 Say "waiting for the seat session ..." Yellow
 $ok = $false

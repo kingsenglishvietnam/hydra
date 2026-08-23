@@ -148,12 +148,13 @@ Say "VDD is FreeRDP monitor $idx" Green
 Say ""
 Say "starting the client on the virtual display -- LOG IN AS $User" Cyan
 Say "  (echo is off; a typo shows as ERRCONNECT_LOGON_FAILURE)" DarkGray
-Start-Process "$Root\dist\freerdp\sdl-freerdp.exe" -ArgumentList @(
-    "/v:127.0.0.2", "/u:$User", "/d:", "/cert:ignore",
-    "/sound:sys:fake", "-suppress-output", "/scale:140", "+auto-reconnect",
-    "/gfx:rfxc", "/network:lan",
-    "/f", "/monitors:$idx"
-)
+# In a -NoExit window rather than detached, so ERRCONNECT reasons, the rdpsnd
+# backend line and codec warnings are readable. Minimized -- it is for reading
+# when something goes wrong, not for looking at.
+$clientArgs = "/v:127.0.0.2 /u:$User /d: /cert:ignore /sound:sys:fake -suppress-output /scale:140 +auto-reconnect /gfx:rfxc /network:lan /f /monitors:$idx"
+$cmd = "`$host.UI.RawUI.WindowTitle = 'Hydra seat $Seat -- client log'; " +
+       "& '$Root\dist\freerdp\sdl-freerdp.exe' $clientArgs"
+Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit', '-Command', $cmd
 
 Say "waiting for the seat session ..." Yellow
 $ok = $false

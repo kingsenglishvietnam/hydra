@@ -180,18 +180,18 @@ if (-not $NoModeSwitch) { SetDisplayMode 'capture' }   # client mode leaves meta
 switch ($Mode) {
   1 {
         Say "MODE 1 -- mstsc via hydra-start.ps1." Cyan
-        Start-Process powershell -ArgumentList '-NoExit','-Command',"cd '$Root'; .\hydra-start.ps1 -Client mstsc"
+        Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit','-Command',"cd '$Root'; .\hydra-start.ps1 -Client mstsc"
     }
   2 {
         Say "MODE 2 -- sdl-freerdp via hydra-start.ps1 (with /sound, -suppress-output, /scale:140)." Cyan
-        Start-Process powershell -ArgumentList '-NoExit','-Command',"cd '$Root'; .\hydra-start.ps1"
+        Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit','-Command',"cd '$Root'; .\hydra-start.ps1"
     }
   3 {
         Say "MODE 3 -- hydrardp headless via hydra-view.ps1, HYDRA_GFX=$Gfx." Cyan
         Say "  never HYDRA_GFX=1 -- the server picks H.264 and this VAAPI build crashes" Yellow
         Get-Process session_capture -EA SilentlyContinue | Stop-Process -Force
         $set = if ($Gfx -eq 'none') { 'Remove-Item Env:HYDRA_GFX -EA SilentlyContinue' } else { "`$env:HYDRA_GFX='$Gfx'" }
-        Start-Process powershell -ArgumentList '-NoExit','-Command',"cd '$Root'; $set; .\hydra-view.ps1"
+        Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit','-Command',"cd '$Root'; $set; .\hydra-view.ps1"
     }
 }
 
