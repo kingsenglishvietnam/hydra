@@ -1,256 +1,207 @@
-# multiseat input router (v3)
+# Hydra
 
-The missing piece of neo_multiseat: **per-device input isolation**. Your
-RDP-Wrapper setup already gives you extra logged-in sessions displayed on
-extra monitors. What it can't do is bind one physical keyboard/mouse to each
-of those sessions and the rest to the console. This does exactly that, and
-nothing else.
+**Two seats, one Windows machine.** A second person gets their own monitor,
+keyboard, mouse and audio, working in their own Windows session, on hardware
+that only came with one.
 
-It does **not** replace RDP for *display* — an extra seat's pixels still come
-through its mstsc window (that's how a second session reaches monitor 2 on a
-one-display GPU). It replaces RDP for *input*, so each seat owns its own
-keyboard and pointer with no shared cursor. Net result: properly
-input-isolated seats. Good for multi-person productivity; the extra seats'
-displays keep RDP's latency, so it's not for twitch gaming.
+Built for a two-student classroom in Ho Chi Minh City, where buying a second
+computer was not an option and the software the lessons needed was
+Windows-shaped.
 
-```
-   seat A devices ─┐                         ┌─ console session (seat A)
-                   │   ┌─────────────────┐   │   pointer + keyboard, native
-   [Interception]──┼──▶│  seat_router.c  │───┘
-   seat B devices ─┤   │  (console sess) │──────┐ loopback TCP per seat
-   seat C devices ─┘   └─────────────────┘      │ (9-byte records,
-                                                │  non-blocking,
-                        one port + one agent    │  200 ms keepalive)
-                        per extra seat          ▼
-                       ┌─────────────────┐   ┌─────────────────┐
-                       │ seatB_agent.exe │   │ seatB_agent.exe │  ...
-                       │  (seat B sess)  │   │  (seat C sess)  │
-                       └─────────────────┘   └─────────────────┘
-                          SendInput ▼            SendInput ▼
-                         seat B session         seat C session
-```
+**Status: working, and shelved.** It has run real lessons. Development has
+stopped — the remaining ambitions need kernel drivers, and the alternatives cost
+less than writing them. Published so anyone who wants a second seat on a Windows
+machine has somewhere to start.
 
-`seat_router.c` sees every stroke. Seat A's strokes pass through (console
-works normally). Each extra seat's strokes are **captured and dropped** — so
-they never reach the console — and forwarded to that seat's agent, which
-replays them with `SendInput` *inside* the seat's session. Because
-`SendInput` targets the calling thread's session, each seat's input lands in
-that seat and only that seat. That is the trick that removes the
-shared-cursor problem: an extra seat no longer depends on its mstsc window
-holding focus.
+---
 
-All components are native C. No Python in the runtime path.
-
-## What's new in v3
-
-v2 made the system survive unattended operation (non-blocking drop-on-full
-sockets, 200 ms keepalive + 800 ms stall detection, clamp rehook watchdog,
-topology tracking, `respawn.exe`). v3 closes the gaps v2 documented:
-
-- **Multi-seat.** The router takes `<kbd> <mouse> <port>` triples and drives
-  up to four extra seats (B, C, …), each with its own agent, port, and
-  independent backpressure state. The old two-argument form still works.
-- **Hung-agent recovery.** The v2 keepalive detects a dead *router*
-  connection, but an agent wedged inside its own process (e.g. a hung
-  `SendInput`) isn't reading the socket at all, so no recv timeout can fire —
-  and it looks alive to a plain supervisor. A cross-session kill from the
-  router would need privileges (seats run as different users), so the fix
-  lives where none are needed: each agent runs a watchdog **thread inside
-  itself** that checks the pump keeps making progress (the heartbeat
-  guarantees a tick at least every ~800 ms on a healthy link) and, after 5 s
-  of stillness, terminates its own process nonzero — which `respawn.exe`
-  *can* see, and restarts. The router and clamp carry the same pattern for
-  their own wedge-able paths.
-- **Instant secure-desktop recovery.** The clamp registers a WinEvent hook
-  for `EVENT_SYSTEM_DESKTOPSWITCH`: the moment a UAC prompt / lock screen /
-  Ctrl-Alt-Del returns to the normal desktop, the hook is reasserted and the
-  cursor snapped back inside — milliseconds instead of v2's up-to-2 s
-  watchdog tick.
-- **Absolute pointing devices.** Interception's absolute-move flags (tablets,
-  some touchpads; 0..65535 normalized coordinates) now travel in spare high
-  bits of the wire record and replay as `MOUSEEVENTF_ABSOLUTE`
-  [+`VIRTUALDESK`]. Absolute moves coalesce by replacement (newest position
-  wins) and never fold across modes.
-- **Horizontal wheel.** State bit 0x800 has ridden the wire since v1 but was
-  silently ignored on replay; it now maps to `MOUSEEVENTF_HWHEEL`.
-- **Stuck-modifier cleanup.** On every (re)connect the agent injects keyups
-  for both Shifts, Ctrls, Alts and Win keys — a dropped or lost keyup can no
-  longer strand a modifier past the next reconnect, and keyups for keys
-  already up are no-ops.
-- **Exit-code contract.** `0` = deliberate stop, `2` = configuration error —
-  `respawn.exe` restarts *neither* (restarting can't fix a wrong command
-  line; v2 would have retried a bad monitor index forever). Anything else is
-  a fault and restarts. The hang watchdogs exit `3`.
-- **QuickEdit disabled** on the router/agent/clamp consoles. Selecting text
-  in a QuickEdit console blocks every write to it; the router logs under the
-  same lock its input loop takes, so one accidental drag-select in that
-  window would have frozen every extra seat's input until a keypress.
-
-## Prerequisites
-
-- Concurrent sessions already working (RDP-Wrapper / neo_multiseat), with
-  each extra seat logged into its own account and shown fullscreen on its
-  monitor.
-- **Interception** driver installed + reboot: https://github.com/oblitum/Interception
-  (`install-interception.exe /install`, then reboot).
-- A C compiler (MSVC `cl` shown below). Only the router needs the
-  Interception SDK; the agent, clamp and supervisor are pure Win32.
-
-## Build
-
-From an **x64 Native Tools Command Prompt** (Interception SDK unpacked for
-the router):
+## What it does
 
 ```
-cl /O2 seat_router.c /I <sdk>\include <sdk>\library\x64\interception.lib
-cl /O2 seatB_agent.c
-cl /O2 clip_console.c
-cl /O2 respawn.c
+   Surface Book 3, one Windows install
+   │
+   ├── console session   →  laptop panel   +  wired keyboard/mouse
+   └── seat B session    →  external 2770  +  wireless keyboard/mouse  +  monitor audio
 ```
 
-## Run order
+Seat B is a genuine second Windows session — its own desktop, its own logged-in
+user, its own programs. Not a shared screen, not a remote view.
 
-Run components directly for bring-up; wrap them in `respawn.exe` for
-unattended use. Bring-up first — get device numbers and the monitor index
-sorted before supervising anything.
+**Input** is captured at kernel level by Interception, matched by USB hardware
+ID, and injected into the seat's session. The two seats never see each other's
+keystrokes.
 
-1. **Start an agent in each extra seat.** Inside that seat's session:
-   ```
-   seatB_agent.exe                     (seat B, default port 56789)
-   seatB_agent.exe 127.0.0.1 56790     (seat C, matching its router triple)
-   ```
-   Agents retry until the router is up, so order isn't critical.
+**Display** comes from a loopback RDP client running fullscreen on the seat's
+own monitor.
 
-2. **Identify each seat's device numbers** (console session):
-   ```
-   seat_router.exe --learn
-   ```
-   Press keys on each keyboard, wiggle each mouse, note the `dev=` numbers.
-   Interception numbers keyboards 1–10 and mice 11–20. Ctrl-C when done.
+**Audio** is routed per-seat, so the student's sound comes out of their monitor
+and yours does not.
 
-3. **Run the router** (console session):
-   ```
-   seat_router.exe <kbd> <mouse> [port]                  (one extra seat)
-   seat_router.exe <kbd1> <mouse1> <port1> [<kbd2> <mouse2> <port2> ...]
-   e.g.  seat_router.exe 2 12 56789
-         seat_router.exe 2 12 56789 3 13 56790
-   ```
-   Each listed seat's keyboard/mouse now drive that seat; everything else
-   stays on the console. Duplicate devices/ports are rejected (exit 2).
+---
 
-4. **(Optional) Confine seat A's cursor** so it can't drift onto the other
-   monitors (console session):
-   ```
-   clip_console.exe            # prints monitors + rectangles + device names
-   clip_console.exe 0          # confine seat A to monitor 0
-   ```
-   `WH_MOUSE_LL` clamp: out-of-bounds moves are blocked inside the input path
-   and the pointer is parked at the nearest in-bounds point, so it slides
-   along the edge exactly like ClipCursor feels — no reassert gap, no idle
-   CPU, no fighting apps that clip the cursor themselves. Per-Monitor-V2 DPI
-   aware (correct boundaries on mixed-DPI setups). The rect follows display
-   changes automatically; the chosen monitor is tracked by device name, so it
-   survives replug and rescale, and a UAC/lock-screen excursion is retrieved
-   the instant the desktop switches back.
+## What it costs
 
-### Unattended
+Honest numbers, measured:
 
-Wrap each component and autostart *that* (Startup folder / logon Scheduled
-Task, in the matching session):
+| | |
+|---|---|
+| seat B video playback | ~25–28 fps, about **4.2 of 8 processors** |
+| seat B documents, browsing, slides | fine |
+| console seat | unaffected |
 
+A loopback RDP session composes its desktop in **software** — Windows only gives
+a session GPU composition when a display is bound to that session, which is not
+reachable on a client SKU. Every frame is then composed, encoded and decoded on
+the CPU.
+
+**So: excellent for documents, browsing and slides. Poor for video.** Play video
+on the console seat, or look at ASTER or Linux multiseat if a video-capable
+second seat is what you need. `MODES.md` explains why and what the alternatives
+are.
+
+---
+
+## Requirements
+
+- Windows 11 (developed on 24H2, build 26100)
+- A second monitor, keyboard and mouse
+- A second local user account for the seat
+- Test-signing enabled if you build the optional display driver
+- **Smart App Control OFF** — it blocks unsigned builds, and turning it off is
+  permanent
+
+Third-party components — FreeRDP, Interception, RDP-Wrapper, and optionally the
+Virtual Display Driver — are **not** included. See `THIRD-PARTY.md` for what to
+fetch and from where.
+
+**Check your Windows licensing.** RDP-Wrapper enables concurrent sessions on a
+client SKU. Hydra was built for a single-user machine where both seats are the
+same person. Your situation may differ.
+
+---
+
+## Getting started
+
+**Start with [`INSTALL.md`](INSTALL.md)** — a start-to-finish guide written for
+someone who has never seen this project. Prerequisites, the seat account, the
+third-party components, building, finding your own hardware IDs and audio
+endpoint, first run, and how to back it all up.
+
+Then:
+
+1. [`MODES.md`](MODES.md) — the seven modes, which to use, and every failure
+   with its cause. The most useful document here.
+2. [`THIRD-PARTY.md`](THIRD-PARTY.md) — what Hydra depends on and under what
+   terms.
+3. [`REBUILD.md`](REBUILD.md) — rebuilding the machine after a Windows reset.
+
+
+```powershell
+.\hydra7.ps1          # up
+.\hydra7.ps1 -Stop    # down
 ```
-Console session (seat A):
-   respawn.exe seat_router.exe 2 12 56789
-   respawn.exe clip_console.exe 0
 
-Seat B session:
-   respawn.exe seatB_agent.exe
+Panic, any time: type `Stop-Service Hydra` and press Enter — works blind, and
+releases the captured input in about two seconds.
 
-Seat C session (if present):
-   respawn.exe seatB_agent.exe 127.0.0.1 56790
-```
+---
 
-`respawn.exe` restarts on faults with capped backoff (500 ms → 15 s; a run
-that stayed up ≥10 s resets it) and honors the exit-code contract: `0`
-(deliberate stop) and `2` (config error) stay stopped, everything else — a
-crash, or a hang watchdog's self-kill — comes back.
+## The modes
 
-## Wire format
+Seven approaches to getting seat B's pixels onto its monitor, kept because each
+teaches something and the older ones still work as fallbacks.
 
-9 bytes, little-endian, packed — identical in `seat_router.c` (`WireEvent`),
-`seatB_agent.c` (`WireEvent`) and `seatB_agent.py` (`struct "<BHHhh"`):
+**Mode 7** is the one to use: the RDP client runs fullscreen on the seat's own
+panel and *is* the seat's screen. No capture, no shared memory, no compositing.
+Best picture, less than half the CPU of the alternatives.
 
-| field | type | keyboard            | mouse                                  |
-|-------|------|---------------------|----------------------------------------|
-| kind  | u8   | `'K'`               | `'M'`                                  |
-| a     | u16  | scancode            | Interception state bits + move flags   |
-| b     | u16  | key state flags     | wheel `rolling` (as u16)               |
-| dx    | i16  | 0                   | relative dx, or absolute x (u16 bits)  |
-| dy    | i16  | 0                   | relative dy, or absolute y (u16 bits)  |
+**Mode 6** puts the client on a virtual display and mirrors it to the panel. More
+expensive, but it is the shape needed for a third seat.
 
-Interception button/wheel state occupies bits 0x001–0x800 of `a`; v3 uses the
-spare high bits for move mode: `0x1000` = absolute (dx/dy are 0..65535
-coordinates, bit-preserved through the i16 fields), `0x2000` = absolute
-coordinates span the virtual desktop rather than the primary monitor.
+**Modes 1–3** are earlier designs — mstsc, FreeRDP with Desktop Duplication, and
+a headless client. All still work.
 
-A third `kind`, `'H'`, is the keepalive: the router sends one every 200 ms
-with all other fields zero. The layout is unchanged — `'H'` is just a new
-value in the `kind` byte — and the agent skips any non-`'K'`/`'M'` kind
-explicitly. (A literal zero-*length* send isn't used because TCP delivers no
-event for it; the 9-byte no-op record is what actually reaches the peer.)
+**Mode 5** is a working IddCx virtual display driver of our own.
 
-## Known limits (what v3 deliberately does not fix)
+**Mode 4** would have given the seat's session its own display with no client at
+all. The driver works. It is closed anyway — see below.
 
-- **Display latency on the extra seats is unchanged** — it's still RDP. This
-  tool only fixes input. Fixing display too means a kernel/indirect display
-  driver (IddCx territory) presenting each session to a physical output —
-  which is, more or less, the product ASTER sells. Out of scope here.
-- **A hang inside `interception_wait()` isn't self-detected.** From outside,
-  a blocked driver wait is indistinguishable from two idle seats, so the
-  router's hang watchdog covers only the socket path (heartbeat thread). If
-  the driver call itself ever wedges, input for the extra seats stops until
-  the router is restarted by hand. Never observed; noted for honesty.
-- **Secure-desktop crossing is retrieved, not prevented.** LL hooks don't run
-  on the UAC/lock desktop — by design, so that nothing like this tool can
-  interfere with it. The pointer can sit on the wrong monitor for the
-  duration of the prompt; it's recovered the instant the desktop switches
-  back.
-- **Backpressure drops, it doesn't buffer.** If an agent can't keep up, the
-  router discards the overflow (counted, logged at most once a second) rather
-  than growing an unbounded queue and adding latency. Right trade for a human
-  at a keyboard. A mid-connection dropped keyup can stick a non-modifier key
-  until it's pressed again; modifiers are cleared on every reconnect.
-- **Toggle-key LEDs can lie.** Each seat's NumLock/CapsLock/ScrollLock
-  *state* is internally consistent — it's driven entirely by that seat's
-  replayed events — but the physical LEDs on a captured keyboard are driven
-  by the console session, which never sees those keypresses. Functional
-  impact: none; the light is just wrong. Fixing it would mean
-  `IOCTL_KEYBOARD_SET_INDICATORS` on the right `KeyboardClass` device with
-  admin rights and a fragile device-number mapping — not worth it for a
-  cosmetic LED.
-- **Absolute-device support is untested by definition** until a tablet or
-  absolute touchpad is actually plugged in; the mapping mirrors the kernel's
-  `MOUSE_MOVE_ABSOLUTE`/`MOUSE_VIRTUAL_DESKTOP` semantics onto
-  `SendInput`'s, which are documented as equivalent.
-- **AV may flag the Interception driver** (true of any input filter driver),
-  and the RDP-Wrapper concurrent-session licensing caveat still applies —
-  Windows client is licensed for one session; this rides on top of your
-  existing setup.
-- **Untested in the environment it was written in** (no Windows/Interception/
-  devices there). Written against the real Interception and Win32 APIs; the
-  three pure-Win32 binaries cross-compile clean under MinGW `-Wall -Wextra`
-  and the router compiles clean against the SDK headers. Treat the first run
-  as a bring-up, not a finished build.
+`MODES.md` has the detail.
 
-## Python prototypes
+---
 
-`seatB_agent.py` and `clip_console.py` are the original v1 prototypes, kept
-because they're short and readable — but the C versions are the ones to run.
-They lack everything since (coalescing, keepalive/stall detection, watchdogs,
-topology tracking, backpressure handling, absolute devices, hwheel), and
-`clip_console.py` additionally has a mixed-DPI coordinate-space bug the C
-version fixes (`python.exe` is DPI-unaware). The Python agent ignores the
-router's `'H'` keepalives and the v3 move-mode flag bits harmlessly, but
-can't act on either. If you'd rather keep the *capture* side in Python, the
-`interception-python` package wraps the same driver; the router loop maps
-1:1 onto the C.
+## What is documented here that might be useful elsewhere
+
+The debugging notes are, in places, the most valuable part of this repository.
+Several of these cost days.
+
+**`0xD000000D` — UMDF refusing to load a driver before `DriverEntry`.** The
+cause was two missing compile defines, `UMDF_VERSION_MAJOR` and
+`UMDF_VERSION_MINOR`, which the WDK's MSBuild targets supply automatically and a
+hand-driven `cl` line does not. `WDF_BIND_INFO` is built from them and handed to
+the framework by `FxDriverEntryUm` *before* `DriverEntry`, so the bind was
+malformed. Five days, two defines.
+
+**IddCx required fields that produce a bare `STATUS_INVALID_PARAMETER`.**
+`EndPointDiagnostics.pFirmwareVersion` and `pHardwareVersion` must be non-null.
+`totalSize` must equal `activeSize` in the signal info — an indirect display has
+no blanking interval, and `IddCxMonitorArrival` rejects a mode that claims one.
+
+**`WUDFHost` runs as LOCAL SERVICE.** A driver logging to `C:\Windows\Temp` will
+silently write nothing, and the missing log file looks exactly like the driver
+never running. That misread cost five days on its own.
+
+**RDP's own indirect display is destroyed with the connection.** Tested
+directly: kill the client and `EnumOutputs` returns nothing within seconds. A
+disconnected session has no display, so there is no way to capture one.
+
+**Windows recycles `oemNN.inf` numbers.** A stale class instance key can end up
+referencing a number that now belongs to a different driver, and the resulting
+failures look like driver bugs.
+
+`INCIDENT-2026-08-12.md` documents a boot loop that cost an OS reinstall, and
+what to do differently. `safety-gate.ps1` was written the day after.
+
+---
+
+## Why mode 4 is closed
+
+Mode 4 would give seat B's session a display directly, removing the RDP client
+from the pixel path entirely. **The driver works** — a remote-session IddCx
+driver that loads, initialises with
+`IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER`, and presents a monitor.
+
+What remains is `GetInputHandles`, documented as returning a handle to an
+I8042prt keyboard driver and a Mouclass driver. A protocol provider is expected
+to ship its own virtual input miniports.
+
+**Two more kernel drivers, to remove one user-mode process that modes 3, 6 and 7
+already handle.** Not a trade worth making. `MODE4-PROVIDER.md` has the full
+state if anyone wants to finish it.
+
+---
+
+## Licence
+
+**AGPL-3.0.** See `LICENSE`.
+
+Use it for anything, including commercially, in a company or a school, with no
+obligation to publish. If you distribute a modified version or offer it as a
+network service, publish your source under AGPL-3.0 too.
+
+Freely available. Not closable.
+
+---
+
+## Warning
+
+Hydra manipulates kernel input filters, installs display drivers, and modifies
+Terminal Services configuration. **It has broken the machine it was developed
+on, twice.**
+
+Do not develop against a machine you cannot afford to lose. Use
+`safety-gate.ps1`, which requires a tested bootable recovery stick before any
+driver operation, and `hydra-backup.ps1`, which puts everything needed for a
+rebuild somewhere a Windows reset cannot reach.
+
+No warranty. Read `MODES.md` first.
