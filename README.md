@@ -4,9 +4,8 @@
 keyboard, mouse and audio, working in their own Windows session, on hardware
 that only came with one.
 
-Built for a two-student classroom in Ho Chi Minh City, where buying a second
-computer was not an option and the software the lessons needed was
-Windows-shaped.
+Built for a classroom in Ho Chi Minh City, to get two working seats out of one
+machine at a single table.
 
 **Status: working, and shelved.** It has run real lessons. Development has
 stopped — the remaining ambitions need kernel drivers, and the alternatives cost
