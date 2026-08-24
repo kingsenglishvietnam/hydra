@@ -1,3 +1,8 @@
+> **HISTORICAL.** This describes the pre-Hydra input router and predates
+> everything since — the display, audio and session work, and modes 1 through 7.
+> Kept because it is where the project started. For the current project see
+> [README.md](README.md) and [INSTALL.md](INSTALL.md).
+
 # multiseat input router (v3)
 
 The missing piece of neo_multiseat: **per-device input isolation**. Your
