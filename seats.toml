@@ -86,7 +86,7 @@ audio_bridge = "3012a3df"
 #      mstsc is only a session holder; mirror draws DISPLAY2 and DDA composites
 #      the cursor. Same path mode 2 uses. CURRENT.
 # Switching only one of the two gives a broken hybrid.
-display_mode = "capture"
+display_mode = "off"
 
 # AUDIO ROUTING -- VERIFIED WORKING 2026-07-30.
 #
