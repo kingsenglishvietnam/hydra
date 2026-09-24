@@ -60,3 +60,9 @@ logs/
 
 
 * (*).*
+
+# termsrv-guard: runtime files and archived Microsoft DLLs, never commit
+/termsrv-archive/
+/state/termsrv-guard.json
+/state/termsrv-UNPATCHED
+/logs/termsrv-guard.log
