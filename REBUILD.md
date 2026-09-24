@@ -18,9 +18,9 @@ comes *after* the machine boots again.
 |---|---|
 | `C:\Programs\hydra` (source **and** `dist\` binaries) | VS Build Tools |
 | `C:\Scripts` | git, MSYS2, Notepad++, Python |
-| `C:\msys64` tree (files stay, registration goes) | RDP-Wrapper |
+| `C:\msys64` tree (files stay, registration goes) | termsrv-guard boot task; `termsrv.dll` back to stock |
 | PowerShell 7 (per-user install) | Interception |
-| PowerShell profiles (OneDrive-synced) | `sc config TermService type= own` |
+| PowerShell profiles (OneDrive-synced) | Remote Desktop switched on (`fDenyTSConnections`) |
 | User documents | Audio endpoint GUIDs (reissued) |
 | | Display arrangement / scaling |
 | | `C:\Windows\Logs`, `setupapi.dev.log`, CBS logs |
@@ -63,49 +63,61 @@ Notes earned the hard way:
 
 ---
 
-## 2. RDP-Wrapper — **`type= own` is the thing everyone forgets**
+## 2. termsrv-guard — two sessions at once
+
+A reset puts back a stock `termsrv.dll`, switches Remote Desktop off, and removes
+the guard's boot task. The guard itself, its archive and its state live in
+`C:\Programs\hydra` and survive. **Do not reinstall RDP-Wrapper**: see
+`retired/RDPWRAP.md` for why. The old `sc config TermService type= own` step
+was for the wrapper and is not needed.
 
 ```powershell
-Add-MpPreference -ExclusionPath 'C:\Program Files\RDP Wrapper'
-mkdir C:\Temp\rdpwrap -Force; cd C:\Temp\rdpwrap
-Invoke-WebRequest 'https://github.com/stascorp/rdpwrap/releases/download/v1.6.2/RDPWrap-v1.6.2.zip' -OutFile RDPWrap.zip
-Expand-Archive RDPWrap.zip -DestinationPath . -Force
-.\install.bat
-Invoke-WebRequest 'https://raw.githubusercontent.com/sebaxakerhtc/rdpwrap.ini/master/rdpwrap.ini' -OutFile 'C:\Program Files\RDP Wrapper\rdpwrap.ini'
-sc.exe config TermService type= own
-Restart-Computer -Force
+Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' `
+    -Name fDenyTSConnections `
+    -Value 0
+Set-Location C:\Programs\hydra\tools\termsrv-guard
+Unblock-File .\hydra-termsrv-guard.ps1
+.\hydra-termsrv-guard.ps1 -DryRun
+.\hydra-termsrv-guard.ps1
 ```
 
-**`sc config TermService type= own` is mandatory and is silently undone by the
-reset.** Without it `TermService` runs in a shared `svchost` and the replaced
-`ServiceDll` is never loaded — correct files, correct registry, stock
-single-session behaviour. Symptom is `ERRCONNECT_ACTIVATION_TIMEOUT` after ~14s.
-Space after `type=` is required by `sc.exe`.
+The dry run must show exactly one pattern with `find-hits=1`. The state file
+still records the old patched hash; a different hash is what makes the guard
+search and patch again, so that is expected. If it reports `UNKNOWN BUILD`, the
+reset landed on a build no pattern knows yet: stop, and see
+`tools/termsrv-guard/README.md` for adding one.
 
-Never append a single build section to an existing `rdpwrap.ini`. Recent
-`termsrv` builds need new patchcodes; replace the whole file.
-
-### Verifying it — RDPConf lies
-
-**RDPConf's "Service state: running" does not say whether the wrapper is
-loaded.** Do not read it as a diagnostic. The ground truth:
+Re-register the boot task with the in-box PowerShell (not `-Install`, which may
+pick up a Store-installed `pwsh` whose path changes on update):
 
 ```powershell
-Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\TermService\Parameters' ServiceDll
-$p = (Get-CimInstance Win32_Service -Filter "Name='TermService'").ProcessId
-Get-Process -Id $p -Module | Where-Object ModuleName -match 'rdpwrap|termsrv' | Select-Object ModuleName, FileName
+$action = New-ScheduledTaskAction `
+    -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+    -Argument '-NoProfile -ExecutionPolicy Bypass -File "C:\Programs\hydra\tools\termsrv-guard\hydra-termsrv-guard.ps1"'
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$princ   = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -RunLevel Highest
+Register-ScheduledTask -TaskName 'Hydra termsrv guard' `
+    -Action $action `
+    -Trigger $trigger `
+    -Principal $princ `
+    -Force
 ```
 
-Both `rdpwrap.dll` and `termsrv.dll` loaded = working. rdpwrap loads the real
-termsrv behind itself, so seeing both is correct, not a conflict.
+Leave the Remote Desktop firewall rules disabled. Hydra connects over loopback.
 
-`PathName` stays `svchost.exe -k TerminalService` wrapped or not. It is not a test.
+### Verifying it
 
-RDPConf itself renders unreadably on the 200%-scaled Surface panel. Properties →
-Compatibility → high-DPI → override scaling by **Application** (System does not work).
+```powershell
+(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\TermService\Parameters').ServiceDll
+Get-Service TermService
+Get-NetTCPConnection -LocalPort 3389 -State Listen
+Get-Content C:\Programs\hydra\logs\termsrv-guard.log -Tail 3
+```
 
-Verified working: **termsrv 10.0.26100.8115**, supported by the sebaxakerhtc ini
-since 2026-04-03.
+`ServiceDll` must be `%SystemRoot%\System32\termsrv.dll`, TermService
+`Running`, port 3389 listening, and the log must end in `Patched OK`
+(or `already patched`). The real
+proof, once a seat is up: `query session` shows two `Active` sessions.
 
 ---
 
