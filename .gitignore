@@ -66,3 +66,4 @@ logs/
 /state/termsrv-guard.json
 /state/termsrv-UNPATCHED
 /logs/termsrv-guard.log
+/script_browser_profile/
