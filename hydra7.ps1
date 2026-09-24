@@ -83,6 +83,25 @@ if ($dm -notmatch '"off"') {
 # ------------------------------------------------------------- service -----
 # Still needed: it runs seat_router and agent:B, which are what actually give
 # the student their keyboard and mouse.
+# --- termsrv preflight (see tools\termsrv-guard) -------------------------
+# Fail fast with the real cause instead of a seat that times out or is
+# logged off ten seconds in.
+$tsFlag = Join-Path $PSScriptRoot 'state\termsrv-UNPATCHED'
+if (Test-Path $tsFlag) {
+    Write-Host "termsrv.dll is NOT patched (build $(Get-Content $tsFlag -Raw)) -- seat B would be logged off." -ForegroundColor Red
+    Write-Host 'See tools\termsrv-guard\README.md, "Adding a pattern".' -ForegroundColor Red
+    exit 1
+}
+$tsKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
+if ((Get-ItemProperty $tsKey).fDenyTSConnections -eq 1) {
+    Write-Host 'Remote Desktop is switched off (fDenyTSConnections=1) -- see INSTALL.md, termsrv-guard section.' -ForegroundColor Red
+    exit 1
+}
+if ((Get-Service TermService).Status -ne 'Running') {
+    Write-Host 'TermService not running -- starting it ...'
+    Start-Service TermService
+}
+# --- end termsrv preflight -----------------------------------------------
 Say "starting Hydra service ..." Cyan
 Start-Service Hydra
 for ($i = 0; $i -lt 20; $i++) {

@@ -38,11 +38,18 @@ two `rdp-tcp#` sessions, register the boot task (see below).
 | `-Restore`   | Put back the archived original for the current build |
 | `-Install`   | Register the boot-time scheduled task (see note below) |
 | `-Uninstall` | Remove the scheduled task |
+| `-Root <path>` | Where `termsrv-archive\`, `state\` and `logs\` live. Defaults to the repo root (two levels up, where `hydra7.ps1` is), else `C:\Programs\hydra` |
 
 ## Boot task
 
-The task runs the script as SYSTEM at startup. Register it pointing at the
-in-box Windows PowerShell 5.1, which has a fixed path:
+The task runs the script as SYSTEM at startup, under the in-box Windows
+PowerShell 5.1, which has a fixed path:
+
+```powershell
+.\hydra-termsrv-guard.ps1 -Install
+```
+
+or, by hand:
 
 ```powershell
 $action = New-ScheduledTaskAction `
@@ -57,10 +64,9 @@ Register-ScheduledTask -TaskName 'Hydra termsrv guard' `
     -Force
 ```
 
-> **Known issue:** the script's own `-Install` switch prefers `pwsh.exe` when it
-> is found. If PowerShell 7 came from the Microsoft Store, that path contains
-> the version number and breaks on the next Store update. Until this is fixed,
-> register the task with the commands above.
+> Versions before 2026-09-24 had `-Install` prefer `pwsh.exe`. A Store-installed
+> PowerShell 7 has its version number in its path, so the task broke on the next
+> Store update. Fixed; if you registered with an old copy, run `-Install` again.
 
 Test it without rebooting:
 
@@ -69,6 +75,16 @@ Start-ScheduledTask 'Hydra termsrv guard'
 Start-Sleep 5
 Get-Content C:\Programs\hydra\logs\termsrv-guard.log -Tail 3
 ```
+
+## Prerequisite warnings
+
+Every run also checks two things the patch can't fix, and logs a `WARN` line
+without changing either:
+
+- **Remote Desktop switched off** (`fDenyTSConnections = 1`): TermService won't
+  start and seats fail with error 10061.
+- **`ServiceDll` not pointing at `termsrv.dll`**: usually RDP Wrapper is still
+  installed (see below).
 
 ## How it decides
 

@@ -22,13 +22,19 @@ param(
     [switch]$Install,
     [switch]$Uninstall,
     [switch]$Restore,
-    [switch]$Force
+    [switch]$Force,
+    [string]$Root
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
-$Root     = 'C:\Programs\hydra'
+# Repo root: two levels up when run from tools\termsrv-guard (where hydra7.ps1 lives);
+# otherwise the historical default. Override with -Root.
+if (-not $Root) {
+    $up2  = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+    $Root = if (Test-Path (Join-Path $up2 'hydra7.ps1')) { $up2 } else { 'C:\Programs\hydra' }
+}
 $Dll      = "$env:SystemRoot\System32\termsrv.dll"
 $Archive  = Join-Path $Root 'termsrv-archive'
 $StateDir = Join-Path $Root 'state'
@@ -121,7 +127,8 @@ function Write-SystemDll([byte[]]$Bytes) {
 # ---------------------------------------------------------------- task install
 
 if ($Install) {
-    $exe = if (Get-Command pwsh.exe -ErrorAction SilentlyContinue) { (Get-Command pwsh.exe).Source } else { 'powershell.exe' }
+    # In-box Windows PowerShell: fixed path, unlike a Store-installed pwsh whose path carries its version.
+    $exe = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
     $action  = New-ScheduledTaskAction -Execute $exe `
         -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     $trigger = New-ScheduledTaskTrigger -AtStartup
@@ -146,6 +153,16 @@ if ($Uninstall) {
 $info  = Get-DllInfo
 $state = if (Test-Path $StateF) { Get-Content $StateF -Raw | ConvertFrom-Json } else { $null }
 Write-Log "termsrv.dll $($info.Version) sha256 $($info.Sha.Substring(0,16))..."
+
+# Prerequisites the patch can't fix: warn only, never change them silently.
+$tsKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
+if ((Get-ItemProperty $tsKey -ErrorAction SilentlyContinue).fDenyTSConnections -eq 1) {
+    Write-Log 'Remote Desktop is switched off (fDenyTSConnections=1): seats will fail with error 10061' 'WARN'
+}
+$svcDll = (Get-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Services\TermService\Parameters).ServiceDll
+if ($svcDll -notmatch '\\System32\\termsrv\.dll$') {
+    Write-Log "ServiceDll is '$svcDll', not termsrv.dll (RDP Wrapper still installed?)" 'WARN'
+}
 
 if ($Restore) {
     if (-not $state -or $state.PatchedSha -ne $info.Sha) {
