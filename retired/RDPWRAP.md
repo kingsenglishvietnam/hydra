@@ -1,3 +1,9 @@
+> **Retired 2026-09-24.** Hydra no longer uses RDP Wrapper. Build 10.0.26100.9549
+> shipped before the community ini had offsets for it, and seat B stopped working.
+> Concurrent sessions now come from `tools/termsrv-guard`, which patches
+> `termsrv.dll` by code pattern and re-applies the patch at every boot. See
+> [tools/termsrv-guard/README.md](../tools/termsrv-guard/README.md).
+> Kept for history, and for anyone who prefers the wrapper's no-patching approach.
 # RDP-Wrapper — install and maintain
 
 Last rebuilt: 2026-08-13, after the reset documented in `INCIDENT-2026-08-12.md`.
