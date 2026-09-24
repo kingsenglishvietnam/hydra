@@ -47,7 +47,7 @@ part; Risk #2 is now resolved (see its entry).
 
 Windows client is architecturally single-interactive-user. The *only* mechanism
 that produces a second logged-in interactive session is Terminal Services; that
-is exactly what RDP-Wrapper patches `termsrv.dll` to permit. There is no
+is exactly what patching `termsrv.dll` unlocks (Hydra uses `tools/termsrv-guard`). There is no
 supported or unsupported alternative that yields an independent session with its
 own desktop, cursor, focus and input queue.
 
@@ -56,7 +56,7 @@ Consequences:
 - **"Bypass RDP altogether" is only half-true.** You can delete the RDP
   *protocol* (mstsc encode → loopback → decode). You cannot delete the RDP
   *session*: the extra seat is, and remains, a TS session. Hydra still depends on
-  RDP-Wrapper (or equivalent) to *create* the session; it just stops using RDP to
+  Terminal Services, with the session limit patched, to *create* the session; it just stops using RDP to
   *display* it.
 - **`CreateDesktop` is not a shortcut.** A second desktop object lives in the same
   session and does have its own input queue and cursor — but `SwitchDesktop` is
@@ -219,7 +219,7 @@ Monitors are addressed by **device name**, not index — same decision as
    device per extra seat (software-device install, e.g. via the SWDevice API or a
    bundled `devcon`/`nefcon`), each advertising that seat's configured mode.
 2. **Ensure sessions exist and are logged in.** Still TS. Hydra can trigger the
-   session (RDP-Wrapper must be present) but *does not* pretend to replace it.
+   session (the `termsrv.dll` patch must be in place) but *does not* pretend to replace it.
    This step is the softest — see risks.
 3. **Bind each virtual monitor to its seat's session** so that session renders
    into it. This is the fiddliest step in the whole design (integration risk #1).
@@ -313,7 +313,7 @@ That is strictly better than today even without the mirror.
   presenter can never stall the driver's swap-chain thread. This is the one risk
   the original design flagged that is now closed in code.
 - **Session creation is still TS.** Hydra triggers it; it does not replace it.
-  RDP-Wrapper's Windows-client concurrent-session licensing caveat is inherited
+  The Windows-client concurrent-session licensing caveat is inherited
   unchanged — this is your call, as it was in v1–v3.
 - **Driver signing.** IddCx/UMDF still loads through the kernel graphics stack and
   requires a signed driver package. Development means **test-signing** (enable test

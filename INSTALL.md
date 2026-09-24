@@ -29,7 +29,7 @@ Budget an afternoon. Most of it is waiting for installers.
 
 **Licensing, read this**
 
-Hydra uses RDP-Wrapper to allow two simultaneous sessions on a client SKU of
+Hydra patches `termsrv.dll` (see `tools/termsrv-guard`) to allow two simultaneous sessions on a client SKU of
 Windows. **Whether that is permitted by your Windows licence is your
 responsibility.** This project was built for a single-user machine where both
 seats are the same person. Your situation may be different. Check before
@@ -151,45 +151,54 @@ extract to `C:\Programs\Interception`.
 **Interception is dual-licensed:** free under LGPL for non-commercial use, paid
 for commercial. If you are deploying this in a business, contact the author.
 
-### RDP-Wrapper — two sessions at once
+### termsrv-guard — two sessions at once
 
-Download from https://github.com/stascorp/rdpwrap (latest release).
+Windows 11 client editions allow one interactive session. `tools/termsrv-guard`
+patches `termsrv.dll` to lift that limit, and re-applies the patch at every boot
+after Windows Update replaces the file. Full detail, including what to do when a
+new build doesn't match: [`tools/termsrv-guard/README.md`](tools/termsrv-guard/README.md).
 
-Defender flags it, which is expected — it patches Terminal Services:
-
-```powershell
-Add-MpPreference -ExclusionPath 'C:\Program Files\RDP Wrapper'
-```
-
-Run `install.bat` as administrator.
-
-Then replace the bundled `rdpwrap.ini` with the current one from
-https://github.com/sebaxakerhtc/rdpwrap.ini — the original has not been updated
-for recent Windows builds and RDP-Wrapper will not work without a matching one.
-
-**Then the single most important command in this guide:**
+Remote Desktop must be switched on (Settings > System > Remote Desktop, or):
 
 ```powershell
-sc.exe config TermService type= own
+Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' `
+    -Name fDenyTSConnections `
+    -Value 0
 ```
 
-Without it RDP-Wrapper's `ServiceDll` never loads, you get one session only, and
-the symptom is `ERRCONNECT_ACTIVATION_TIMEOUT` — which looks like a network
-fault and is not. A Windows reset silently undoes this.
+Leave the Remote Desktop firewall rules disabled. Hydra connects over loopback,
+so nothing else on the network needs port 3389.
 
-**Reboot**, then verify:
+From an elevated prompt:
 
 ```powershell
-sc.exe qc TermService | Select-String 'TYPE'
+Set-Location C:\Programs\hydra\tools\termsrv-guard
+Unblock-File .\hydra-termsrv-guard.ps1
+.\hydra-termsrv-guard.ps1 -DryRun
+.\hydra-termsrv-guard.ps1
 ```
 
-Must read `TYPE : 10 WIN32_OWN_PROCESS`.
+The dry run must show exactly one pattern with `find-hits=1`. If it reports
+`UNKNOWN BUILD`, stop and see the guard's README for adding a pattern.
+
+Then register the boot task using the commands in the guard's README ("Boot
+task"). Don't use `-Install` if PowerShell 7 came from the Microsoft Store.
+
+Verify:
 
 ```powershell
-$p=(Get-CimInstance Win32_Service -Filter "Name='TermService'").ProcessId; (Get-Process -Id $p -Module).ModuleName | Where-Object { $_ -match 'rdpwrap|termsrv' }
+Get-Service TermService
+Get-NetTCPConnection -LocalPort 3389 -State Listen
 ```
 
-Both names must appear.
+TermService must be `Running` and port 3389 listening. The real proof comes once
+a seat is up: `query session` must show two `Active` sessions.
+
+**Coming from RDP-Wrapper?** Uninstall it first (`RDPWInst.exe -u`), then switch
+Remote Desktop back on as above, because the uninstall switches it off. The old
+`sc.exe config TermService type= own` step existed so the wrapper's `ServiceDll`
+would load; it is no longer needed, and leaving it set is harmless.
+`retired/RDPWRAP.md` has the history.
 
 ---
 
@@ -438,9 +447,10 @@ Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearchin
 ```
 
 - **Locking the console mid-lesson.** Takes the student's screen with it.
-- **Leaving a seat session disconnected** rather than logged off. RDP-Wrapper
-  holds it until a reboot.
-- **A Windows reset or feature update.** Reverts `type= own`, the audio endpoint
+- **Leaving a seat session disconnected** rather than logged off. TermService holds it until a reboot.
+- **A Windows reset or feature update.** Replaces `termsrv.dll` (after a feature update the boot guard re-patches it
+  if a pattern still matches; a reset removes the guard's task too) and reverts the
+  audio endpoint
   GUIDs, Interception's filters and Smart App Control. `MACHINE-STATE.txt` on
   your recovery stick is the record of what to put back; `REBUILD.md` is the
   procedure.

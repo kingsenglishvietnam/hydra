@@ -83,7 +83,7 @@ Only matters if mode 3 stays in use. Mode 7 retired it from daily work.
 
 ### 1.5 PROBLEM 5 — the reboot tax
 
-A client dying leaves RDP-Wrapper holding a session that only a reboot clears.
+A client dying leaves TermService holding a session that only a reboot clears.
 `hydra7.ps1 -Stop` handles the normal case; this is for crashes.
 
 ~40 lines: an external watcher that runs `logoff <id>` on *any* client exit.

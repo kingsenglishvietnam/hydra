@@ -1,3 +1,5 @@
+> **2026-09-24: RDP Wrapper is uninstalled.** Commands below that point `ServiceDll` at `rdpwrap.dll` will stop TermService from starting. Keep `ServiceDll` at `%SystemRoot%\System32\termsrv.dll`; see `tools/termsrv-guard`.
+
 Read `C:\Programs\hydra\SESSION-2026-08-14.md` first. Then `MODES.md`, and
 `git log --oneline -20`. The commit messages run ahead of every .md in the repo —
 three documents were wrong about mode 4 for a full day because nobody read the

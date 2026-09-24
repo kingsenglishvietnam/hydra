@@ -36,9 +36,9 @@ and a signed catalog — its own section below.
   Put the header on `INCLUDE` and the lib on `LIB`, or drop both beside
   `input\seat_router.c`. The interception driver (`install-interception.exe /install`)
   must also be installed on the target machine for input capture to work.
-- **RDP-Wrapper** (or equivalent) installed and configured to allow the extra
-  concurrent session(s). Hydra does **not** create sessions — Wall 1 in the
-  architecture doc — it drives sessions RDP-Wrapper makes possible.
+- **Concurrent sessions enabled**: `tools/termsrv-guard` on this machine (RDP-Wrapper or
+  equivalent elsewhere). Hydra does **not** create sessions (Wall 1 in the
+  architecture doc); it drives the sessions Terminal Services makes possible.
 - For the driver: the machine must be in **test-signing mode** (dev) or the
   package must be **EV + attestation signed** (shipping). There is no unsigned
   load path for a Display-class driver.

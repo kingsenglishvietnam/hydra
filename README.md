@@ -69,11 +69,11 @@ are.
 - **Smart App Control OFF** — it blocks unsigned builds, and turning it off is
   permanent
 
-Third-party components — FreeRDP, Interception, RDP-Wrapper, and optionally the
+Third-party components — FreeRDP, Interception, and optionally the
 Virtual Display Driver — are **not** included. See `THIRD-PARTY.md` for what to
 fetch and from where.
 
-**Check your Windows licensing.** RDP-Wrapper enables concurrent sessions on a
+**Check your Windows licensing.** `tools/termsrv-guard` patches `termsrv.dll` to allow concurrent sessions on a
 client SKU. Hydra was built for a single-user machine where both seats are the
 same person. Your situation may differ.
 
@@ -92,7 +92,7 @@ Then:
    with its cause. The most useful document here.
 2. [`THIRD-PARTY.md`](THIRD-PARTY.md) — what Hydra depends on and under what
    terms.
-3. [`REBUILD.md`](REBUILD.md) — rebuilding the machine after a Windows reset.
+3. [`REBUILD.md`](REBUILD.md) — $14. [`tools/termsrv-guard`](tools/termsrv-guard/README.md) — keeps the second session working across Windows updates.
 
 
 ```powershell
@@ -194,8 +194,8 @@ Freely available. Not closable.
 
 ## Warning
 
-Hydra manipulates kernel input filters, installs display drivers, and modifies
-Terminal Services configuration. **It has broken the machine it was developed
+Hydra manipulates kernel input filters, installs display drivers, and patches
+`termsrv.dll`. **It has broken the machine it was developed
 on, twice.**
 
 Do not develop against a machine you cannot afford to lose. Use
