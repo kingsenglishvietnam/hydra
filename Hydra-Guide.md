@@ -1,5 +1,9 @@
 # Hydra — Rebuild & Operations
 
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 **Rev 2026-08-03.** Supersedes every earlier guide. Where something was tested and rejected, it says so — the dead ends cost days, and re-walking them is the main risk.
 
 ---
@@ -232,7 +236,7 @@ Get-ChildItem 'HKCU:\Software\Microsoft\Internet Explorer\LowRegistry\Audio\Poli
 **Display**
 - D3D11 shared textures across sessions — `E_INVALIDARG`, any flags. Shared memory is the transport.
 - Remote-session IDD — `REMOTE_SESSION_DRIVER` can't be software-enumerated (`CM_PROB_REINSTALL`), and RDP-Wrapper never enumerates one. Tested both arms.
-- `cursor_overlay` — always loses z-order to the Start menu. Compositing into the frame is the fix.
+- `cursor_overlay` — always loses z-order to the Start menu. Compositing into the frame is the fix. *(Inside the seat, yes. Since 2026-10-10 mode 7 runs it in seat mode from the console session, over the client window, where the seat's Start menu can't reach it — see `VIDEO-H264.md`.)*
 - mirror as a service child — no interactive token, empty log, nothing on the panel.
 - mirror as a scheduled task or Startup shortcut — starts too early, ends up stuck.
 - Hiding mstsc — minimizing, off-screen, and inactive virtual desktops all freeze the panel.
@@ -247,5 +251,5 @@ Get-ChildItem 'HKCU:\Software\Microsoft\Internet Explorer\LowRegistry\Audio\Poli
 # STILL OPEN
 
 - Seat B logging teacher in from the lock screen — the SYSTEM agent should allow it; untested.
-- Whether the mstsc audio assignment survives reboots now the registry is clean.
+- ~~Whether the mstsc audio assignment survives reboots now the registry is clean.~~ It does — and so does a per-app *mute*, which silenced seat B under `hydra7-avc.ps1` in October (`VIDEO-H264.md`, trap 7).
 - `smart sizing:i:1` in `teacher.rdp` — added, not yet confirmed.

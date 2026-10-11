@@ -13,6 +13,28 @@ does, and they are where every "why didn't you just…" question terminates.
 
 ---
 
+## Current shape (2026-10-11)
+
+This document is the v4 design: virtual displays, capture and a mirror. What
+runs day to day is simpler — mode 7, where the RDP client *is* the seat's
+screen:
+
+```
+   seat B session                dwm on the Iris Plus
+      │  H.264, Quick Sync       loopback 127.0.0.2, TCP only
+      ▼
+   mstsc, full-screen on the 2770        console session, GPU decode
+      + seat_router → agent:B            input: SendInput inside the session
+      + agent:B → Global\HydraSeat_B_cursor → cursor_overlay_seat.exe
+                                         the seat's pointer, drawn over the panel
+      + mstsc audio                      pinned to the 2770's endpoint
+```
+
+The capture and mirror machinery below is still what modes 1–3 and 6 use.
+`VIDEO-H264.md` has the measurements behind mode 7's codec and cursor.
+
+---
+
 ## Implementation status (this build)
 
 The scaffold this document described has been completed. What changed:

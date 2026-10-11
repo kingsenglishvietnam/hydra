@@ -70,8 +70,16 @@ audio_prime = "chime"
 # Set to the MONITOR endpoint id substring to enable:
 #   audio_bridge = "3012a3df"
 #
-# THEN MUTE mstsc.exe in the console session's volume mixer, or the same audio
-# also arrives the slow way and you hear it twice, slightly apart.
+# THEN, WITH display_mode = "capture" ONLY, mute the RDP client in the console
+# session's volume mixer, or the same audio also arrives the slow way and you
+# hear it twice, slightly apart.
+#
+# NOT with display_mode = "off" (mode 7: hydra7.ps1, hydra7-avc.ps1). There the
+# bridge carries nothing -- abren sits at "waiting for the shared ring" -- and
+# the client's own audio IS seat B's sound. Windows remembers a per-app mute
+# indefinitely: mstsc.exe muted for mode 1 in August silenced hydra7-avc.ps1 in
+# October. Check Settings > System > Sound > Volume mixer > Remote Desktop
+# Connection if seat B goes quiet.
 #
 # The bridge resamples, so the two endpoints need not share a rate (44100 in the
 # seat's session and 48000 on the monitor is the normal case here).

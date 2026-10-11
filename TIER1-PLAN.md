@@ -254,6 +254,10 @@ lower CPU, less latency.
 — no GPU acceleration in the session, because that is a property of a remote
 session, not of the protocol carrying it. Video playback is limited either way.
 
+> **Correction, 2026-10-08:** wrong. Measured, the seat's session is
+> GPU-composed on 25H2 — its `dwm` draws on the Iris Plus. The limit was
+> RemoteFX on the CPU; H.264 on Quick Sync fixed it. See `VIDEO-H264.md`.
+
 Only tier 2 (kernel driver, partitioning one session's input and display stacks)
 or GPU passthrough per VM, or Linux, fixes that.
 

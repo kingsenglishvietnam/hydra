@@ -1,5 +1,9 @@
 # Hydra — next steps, from `gfx-working` (2026-08-11)
 
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 PROBLEM 2 is closed. Three faults, all in the `/gfx` path, all fixed and
 confirmed by a student on seat B: `update->DesktopResize` NULL was the crash,
 the late throttle check was the CPU, and blind-timer sampling was the glitching.

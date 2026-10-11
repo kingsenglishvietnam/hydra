@@ -253,6 +253,9 @@ console volume mixer** or you get feedback / double audio.
 
 ## 6. Display — mstsc is not the seat display
 
+> In the capture modes. Under `hydra7-avc.ps1` — mode 7 on H.264 — mstsc *is* the
+> seat display, full-screen on the panel. See section 12.
+
 **`display_mode = "capture"` composites the cursor into the shared-memory ring.
 `mirror` draws the ring. mstsc does not read the ring at all.**
 
@@ -482,3 +485,24 @@ Check what is present:
 Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Include' -Directory | Select-Object Name
 Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Include\*\um\iddcx' -Directory
 ```
+
+---
+
+## 12. Mode 7 on H.264 — after everything above (added 2026-10-11)
+
+`VIDEO-H264.md` is the reference; on a rebuilt machine, in this order:
+
+1. **The registry recipe.** `.\hydra-gpu-probe.ps1 -Apply`, then reboot. It sets
+   H.264 4:4:4 with hardware encoding, TCP-only for mstsc and the 60 fps cap, and
+   removes `bEnumerateHWBeforeSW` — which, if present, crashes `RdpIdd.dll`.
+2. **The seat cursor overlay.** Build `dist\cursor_overlay_seat.exe` (`BUILD.md`).
+3. **First start**, `.\hydra7-avc.ps1`. Then the one-time audio pin it prints,
+   saved to `audio-pin-mstsc.json`. If seat B is silent, unmute *Remote Desktop
+   Connection* in the Volume mixer.
+4. **Seat B's browsers block AV1**: the Iris Plus can't decode it.
+5. **Seat B's pointer** — size and colour in the seat's own Settings →
+   Accessibility → Mouse pointer and touch. The overlay draws whatever is set
+   there.
+
+Hyper-V is **not** needed for any of this; it was only switched on to check the
+VM route.

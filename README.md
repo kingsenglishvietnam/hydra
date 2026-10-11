@@ -7,10 +7,11 @@ that only came with one.
 Built for a classroom in Ho Chi Minh City, to get two working seats out of one
 machine at a single table.
 
-**Status: working, and shelved.** It has run real lessons. Development has
-stopped — the remaining ambitions need kernel drivers, and the alternatives cost
-less than writing them. Published so anyone who wants a second seat on a Windows
-machine has somewhere to start.
+**Status: working, and in active development.** It has run real lessons, and
+October 2026 brought H.264 video on the iGPU and the seat's own pointer drawn
+over its panel. Work continues — [`ROADMAP.md`](ROADMAP.md) has what's next.
+Published so anyone who wants a second seat on a Windows machine has somewhere
+to start.
 
 ---
 
@@ -33,6 +34,11 @@ keystrokes.
 **Display** comes from a loopback RDP client running fullscreen on the seat's
 own monitor: mstsc, with the seat's desktop drawn on the iGPU and encoded to
 H.264 by Quick Sync (`hydra7-avc.ps1`).
+
+**Cursor** is drawn by Hydra itself. An RDP client never learns where the seat's
+pointer is, so the seat's agent publishes its position and the seat's own pointer
+files, and an overlay draws that pointer over the panel — at the size and colour
+chosen in the seat's mouse settings.
 
 **Audio** is routed per-seat, so the student's sound comes out of their monitor
 and yours does not.
@@ -70,9 +76,10 @@ measurements, the recipe and the traps.
 - **Smart App Control OFF** — it blocks unsigned builds, and turning it off is
   permanent
 
-Third-party components — FreeRDP, Interception, and optionally the
-Virtual Display Driver — are **not** included. See `THIRD-PARTY.md` for what to
-fetch and from where.
+Third-party components — Interception, FreeRDP for the `hydra7.ps1` fallback,
+and optionally the Virtual Display Driver — are **not** included. See
+`THIRD-PARTY.md` for what to fetch and from where. The H.264 client, mstsc, is
+part of Windows.
 
 **Check your Windows licensing.** `tools/termsrv-guard` patches `termsrv.dll` to allow concurrent sessions on a
 client SKU. Hydra was built for a single-user machine where both seats are the
@@ -98,6 +105,8 @@ Then:
    session working across Windows updates.
 5. [`VIDEO-H264.md`](VIDEO-H264.md) — the one-time setup that makes video on
    seat B cheap.
+6. [`STATE.md`](STATE.md) — where things stand right now.
+7. [`ROADMAP.md`](ROADMAP.md) — what's being worked on next.
 
 ```powershell
 .\hydra7-avc.ps1          # up -- H.264; see VIDEO-H264.md for the one-time setup

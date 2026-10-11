@@ -1,5 +1,9 @@
 # Rebuild list — switching the Hydra Shell from VS 2026 to VS 2022
 
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 Everything below was built with the **2026** toolset (`\18\Community`), because
 the Hydra Shell shortcut calls its `vcvars64.bat` and every build script picks
 up whatever `cl.exe` is on PATH.

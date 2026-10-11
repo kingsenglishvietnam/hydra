@@ -8,6 +8,11 @@ teach on** — `sdl-freerdp` fullscreen on the seat's own panel, one command via
 works, but `GetInputHandles` needs kernel input miniports, and the only thing it
 would buy is removing one user-mode process that modes 3 and 7 already handle.
 
+**Update 2026-10-11.** Development is active again. Mode 7 now runs on H.264
+(`hydra7-avc.ps1`) with the seat's pointer drawn by Hydra, and video — 1.2 below
+— is answered. The near-term plan lives in `ROADMAP.md`; this file keeps the
+longer-range ideas.
+
 ---
 
 ## PART 1 — REFINING WHAT WORKS
@@ -31,23 +36,13 @@ Three options, in order of preference:
 
 Worth doing when the daily command starts to grate, not before.
 
-### 1.2 Video playback under real lesson conditions
+### 1.2 Video playback under real lesson conditions — DONE 2026-10-08
 
-**Still untested, and it is the one unknown that could affect a lesson.**
-
-RDP does software rendering in the seat session. A full-screen YouTube lesson
-may hold up fine or may not. Ten minutes with a real video answers it.
-
-If it struggles, the knobs in order:
-
-- `/gfx:RFX` on the client — enables the RemoteFX codec path
-- `/network:lan` — changes the bandwidth heuristics
-- Lower `/scale:` — fewer pixels to push
-- **Never `/gfx:h264` or `HYDRA_GFX=1`** — this FreeRDP build is
-  `WITH_VAAPI_H264_ENCODING=ON` and crashes
-
-If nothing helps, that is a real finding: video-heavy lessons run on the console
-seat and seat B does everything else.
+Measured rather than guessed, and the premise was wrong: the seat's session was
+never software-rendered — its `dwm` draws on the Iris Plus. The cost was RemoteFX
+on the CPU at both ends, about two processors for full-screen video. mstsc with
+H.264 encoded on Quick Sync brought it to under half a processor. `VIDEO-H264.md`
+has the runs, the recipe and seven traps.
 
 ### 1.3 Make the launchers survive PowerShell updates
 
@@ -213,10 +208,9 @@ arrangement documented in a snapshot folder's `seats.toml` comments.
 
 ## RECOMMENDED ORDER
 
-1. **Use mode 7 for the term.** Let it prove itself in real lessons before
-   changing anything.
-2. **Test video playback** (1.2). Ten minutes, and it is the only unknown that
-   could affect a lesson.
+1. **Use mode 7 on H.264 (`hydra7-avc.ps1`) for the term.** `ROADMAP.md` has
+   the near-term list.
+2. ~~Test video playback (1.2).~~ Done — `VIDEO-H264.md`.
 3. **Fix the `2>&1` patterns** (1.3). They are latent breakage on the next
    PowerShell update.
 4. **Autostart** (1.1) when the daily command starts to grate.

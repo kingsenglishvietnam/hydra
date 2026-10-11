@@ -1,3 +1,7 @@
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 > **2026-09-24: RDP Wrapper is uninstalled.** Commands below that point `ServiceDll` at `rdpwrap.dll` will stop TermService from starting. Keep `ServiceDll` at `%SystemRoot%\System32\termsrv.dll`; see `tools/termsrv-guard`.
 
 Read `C:\Programs\hydra\SESSION-2026-08-14.md` first. Then `MODES.md`, and

@@ -1,5 +1,9 @@
 # HANDOFF.md — everything needed to start from zero
 
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 Assembled 2026-08-13 by walking back through every session on this project. If
 you are a new assistant, a new machine, or Nathan in six months, **read this
 before touching anything.**

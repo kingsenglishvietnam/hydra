@@ -69,6 +69,12 @@ constraint — no network — and that makes it interesting to answer.
 If any of that is reachable, it would fix the one real limitation of every mode
 Hydra has — and it costs nothing to ask.
 
+**Answered 2026-10-08, by measurement, before anyone was asked.** On 25H2 the
+seat's session is already GPU-composed with no policy set — its `dwm` draws on
+the Iris Plus. Setting the policy made things worse: it moved the session onto
+the 1660 Ti, whose H.264 encoder crashed `RdpIdd.dll`. The real limit was
+RemoteFX on the CPU; H.264 on Quick Sync fixed it. See `VIDEO-H264.md`.
+
 ---
 
 ## 3. Mode 6 scaling — how many seats before it falls over

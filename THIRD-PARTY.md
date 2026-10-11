@@ -16,17 +16,23 @@ Some of these are kernel-level components on Windows and the terms matter.
 
 ## Required
 
+### Remote Desktop Connection (mstsc)
+The client for mode 7 on H.264 (`hydra7-avc.ps1`). Part of Windows; nothing to
+fetch. It decodes H.264 on the GPU, which this FreeRDP build does on the CPU.
+
 ### FreeRDP
-The RDP client. `sdl-freerdp.exe` and its DLLs are the pixel and audio path for
-modes 1–3, 6 and 7.
+The RDP client for `hydra7.ps1` and the capture modes. `sdl-freerdp.exe` and its
+DLLs are the pixel and audio path for modes 1–3, 6 and the RemoteFX mode 7.
 
 - Source: https://github.com/FreeRDP/FreeRDP
 - Obtained via: MSYS2's `mingw-w64-x86_64-freerdp` package, then copied into
   `dist\freerdp\` by `vendor-freerdp.ps1`
 - Licence: Apache-2.0 (verify — FreeRDP has components under other terms)
 
-**Note:** the MSYS2 build is compiled `WITH_VAAPI_H264_ENCODING=ON`. VA-API is a
-Linux path and `/gfx:h264` crashes on Windows. Use `/gfx:rfxc`.
+**Note:** the MSYS2 build is compiled `WITH_VAAPI_H264_ENCODING=ON`, and
+`/gfx:h264` crashes. 3.30.0 *does* decode H.264 with `/gfx:avc444` — on the CPU,
+about 55 CPU-seconds per minute of video — while `/gfx:avc420` silently falls back
+to no H.264 at all. `hydra7.ps1` uses `/gfx:rfxc`.
 
 ### Interception
 Kernel-level input capture. `seat_router` uses it to take the wireless keyboard
@@ -38,13 +44,11 @@ and mouse away from the console and route them to the seat.
   they are not ours to redistribute
 - Licence: **verify before redistributing** — this is a kernel driver
 
-### RDP-Wrapper
-Allows more than one concurrent session on a client SKU of Windows.
-
-- Source: https://github.com/stascorp/rdpwrap
-- The `rdpwrap.ini` that matches current Windows builds comes from
-  https://github.com/sebaxakerhtc/rdpwrap.ini
-- Licence: Apache-2.0 (verify)
+### Concurrent sessions — `tools/termsrv-guard` (formerly RDP-Wrapper)
+Allows more than one concurrent session on a client SKU of Windows, by patching
+`termsrv.dll` and re-patching it after Windows updates. It is in this repository;
+RDP-Wrapper (https://github.com/stascorp/rdpwrap) was retired for it on
+2026-09-24.
 
 **This is the component with the clearest licensing question for end users.**
 Running two interactive sessions on a client SKU of Windows may not be permitted

@@ -62,6 +62,20 @@ have no external dependency beyond the Windows SDK.
 > if you want to smoke-test them off a Windows box — that's how the input stack
 > was verified. `hydrad`/`mirror` are SDK/D3D and need `cl`.
 
+### The seat cursor overlay (mode 7)
+
+`build.ps1` builds `seatB_agent.exe`, which publishes the seat's cursor. The
+overlay that draws it over the panel is built separately — **without** the
+uiAccess manifest `build-overlay.ps1` adds — as a second executable:
+
+```
+cl /nologo /O2 /W3 /MT /EHsc overlay\cursor_overlay.cpp /Fo:dist\ /Fe:dist\cursor_overlay_seat.exe
+```
+
+`hydra7-avc.ps1` starts it with the seat. Stop the seat first (`-Stop`) when
+rebuilding either: the shared cursor block must be gone before a new agent can
+create it. See `VIDEO-H264.md`, "The seat's cursor".
+
 ## 2. Build the driver (`iddseat.dll`)
 
 The reliable path is a **WDK "User Mode Driver (UMDF V2)" project** in Visual

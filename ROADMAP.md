@@ -1,60 +1,71 @@
 # ROADMAP.md
 
-Rewritten 2026-08-18, after mode 7 came up.
+Rewritten 2026-10-11, after mode 7 moved to H.264. **Hydra is in active
+development.**
 
-**Mode 7 works and is the one to teach on.** The client runs fullscreen on the
-seat's own panel — no virtual display, no capture, no shared ring, no mirror.
-One command: `.\hydra7.ps1`.
+**Mode 7 on H.264 is the one to teach on**: `.\hydra7-avc.ps1`. mstsc runs
+full-screen on the seat's own panel; the seat's desktop is drawn on the Iris Plus
+and encoded by Quick Sync; the seat's pointer is drawn over the panel from the
+console. `.\hydra7.ps1` — FreeRDP and RemoteFX — is the fallback.
 
-Modes 1, 2, 3 and 6 also work and are kept as fallbacks. Mode 4 is blocked,
+Modes 1, 2, 3 and 6 also work and are kept as fallbacks. Mode 4 is closed,
 mode 5 is dropped.
 
 ---
 
 ## What is actually left
 
-Mode 7 is essentially finished. These are the remaining rough edges, smallest
-first.
+Smallest first.
+
+### Check text sharpness under H.264
+
+H.264 is a video codec; RemoteFX on a loopback is close to lossless. Video has
+been checked, text hasn't. A dense document, a spreadsheet and a slide, side by
+side under both launchers, settles whether 4:4:4 is enough.
+
+### Scope TCP-only to the seat
+
+`fClientDisableUDP = 1` fixed seat B's drops, but it applies to every mstsc
+connection from this laptop, including remote desktops over the internet, where
+UDP helps. Set it in `hydra7-avc.ps1` and clear it on `-Stop` instead.
+
+### Guard against minimizing
+
+mstsc stops drawing when minimized. Win+D on your keyboard hides seat B until
+something restores it. `client-watchdog.ps1` already restores a minimized mstsc;
+start it with the seat.
+
+### Put the cursor overlay under `hydrad`
+
+`hydra7-avc.ps1` starts `cursor_overlay_seat.exe` once, in a minimized
+PowerShell. `hydrad` supervises agent:B; it could supervise the overlay the same
+way — restarted if it dies, and no window of its own.
+
+### Sharper application pointers
+
+Standard pointers come from the seat's own 256 px scheme files. Pointers that
+apps draw themselves only exist as the 32 px live image, enlarged. Rendering them
+at size would need `DrawIconEx` into the larger image.
 
 ### Autostart at logon
 
-`hydra7.ps1` is one command but still a command. A scheduled task at logon —
-your account, highest privileges — makes the seat come up with the machine.
-
-The obstacle is `teacher`'s password. Options:
-
-- accept one prompt per boot (simplest, probably fine)
-- store it the way `rdsprov-register.ps1` does, in a registry value
-- use `/p:` on the FreeRDP command line, which puts the password in the process
-  command line where any user can read it — **don't**
-
-### Video playback under lesson conditions
-
-Untested. RDP does software rendering in the seat session, so a full-screen
-YouTube lesson may or may not hold up. Worth ten minutes with a real video
-before promising it to a class.
-
-If it struggles, `/gfx:RFX` or `/network:lan` on the client are the knobs. Never
-H.264 — this FreeRDP build is `WITH_VAAPI_H264_ENCODING=ON` and crashes.
+`hydra7-avc.ps1` is one command but still a command. A scheduled task at logon —
+your account, highest privileges — brings the seat up with the machine. Ticking
+**Remember me** in mstsc's password prompt removes the last interaction.
 
 ### Mouse handedness
 
-Now compensated in two places — `MOUSE_MAP` in `seatB_agent.c` and
+Compensated in two places — `MOUSE_MAP` in `seatB_agent.c` and
 `SwapMouseButtons` in the seat's profile. If a mouse ever comes out backwards,
 one layer is doing it twice. Remove the Windows setting first; it is per-profile
 and easy to lose track of.
 
 ### Retire what mode 7 does not use
 
-`session_capture`, the shared ring and `mirror` are no longer in the daily path.
-They are still needed by modes 1, 2, 3 and 6, so don't delete them — but nothing
-in mode 7 depends on them working, which means their open bugs stop mattering:
-
-- mode 3's cursor blink (~124 fps against ~61 positions/sec)
-- the publish-rate discrepancy (throttle claims 60/s, measured 124)
-- PROBLEM 1's capture stall
-
-None of these block anything now.
+`session_capture`, the shared ring and `mirror` are not in the daily path. Modes
+1, 2, 3 and 6 still need them, so don't delete them — but nothing in mode 7
+depends on them, which means their open bugs (mode 3's cursor blink, the
+publish-rate discrepancy, PROBLEM 1's capture stall) block nothing.
 
 ---
 
@@ -155,15 +166,14 @@ better engineering and it is a config exercise rather than a driver project.
 
 ## Recommended order
 
-1. **Use mode 7 for the term.** It works. Let it prove itself in real lessons
-   before changing anything.
-2. **Test video playback** — ten minutes, and it is the one unknown that could
-   affect a lesson.
-3. **Autostart at logon** if the daily command becomes annoying.
-4. **Post the mode 4 question** to VDD Discussions or OSR. Costs nothing while
-   you do other things.
-5. **Seat C via mode 6** if and when a third student needs one.
-6. **Linux multiseat** in a quiet week, as the real answer.
+1. **Use mode 7 on H.264 for the term** (`hydra7-avc.ps1`).
+2. **Check text sharpness** — the one H.264 question still open.
+3. **Scope TCP-only to the seat** before it surprises a remote session.
+4. **The minimize guard and the overlay under `hydrad`** — small, and they remove
+   the last ways a lesson can lose seat B's screen or pointer.
+5. **Autostart at logon** if the daily command becomes annoying.
+6. **Seat C via mode 6** if and when a third student needs one.
+7. **Linux multiseat** in a quiet week, as the real answer.
 
 Mode 4 stays in `MODE4-STEP2.md` for whoever picks it up — you, or someone else,
 or a future assistant who reads the repo before theorising.

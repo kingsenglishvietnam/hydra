@@ -112,6 +112,14 @@ prunes them. `-Save` captured a stale Realtek entry beside the monitor's, `-Appl
 restored both, and seat B played nowhere. Keep only the entry naming `intcdaud`;
 `hydra7-avc.ps1` warns when there are others.
 
+**7. mstsc may still be muted from mode 1.** `seats.toml`'s audio-bridge note
+told you to mute `mstsc.exe` -- right for the capture modes, where the bridge
+carries the sound. Windows remembers a per-app mute indefinitely, so in October
+seat B under `hydra7-avc.ps1` was silent while sdl-freerdp, a different program,
+never had been muted. Unmuting Remote Desktop Connection in the Volume mixer
+fixes it, and that sticks just as the mute did. The note is now scoped to
+`display_mode = "capture"`.
+
 ---
 
 ## Running it

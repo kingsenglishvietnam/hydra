@@ -1,5 +1,9 @@
 # Hydra — The Dummy's Guide, A to Z
 
+> **Historical — August 2026.** Kept as a record of how Hydra got here; parts of
+> it no longer describe the current setup. For that, read `STATE.md` (where things
+> stand), `ROADMAP.md` (what's next), `INSTALL.md` and `VIDEO-H264.md`.
+
 What to do next, in order, with every command spelled out. Three phases:
 **measure** (tonight, free), **decide** (one table), then **one of two paths** —
 ASTER (D–H) or Hydra bring-up (I–Z). You cannot do this wrong by following the

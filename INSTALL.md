@@ -240,6 +240,17 @@ Get-ChildItem C:\Programs\hydra\dist\*.exe | Select-Object Name
 Expect `hydrad`, `hydractl`, `seat_router`, `seatB_agent`, `session_capture`,
 `mirror`, `audio_bridge`, `route_endpoint`, `clip_console` and others.
 
+### The seat cursor overlay
+
+Mode 7 draws the seat's pointer itself, because an RDP client can't. `build.ps1`
+builds the agent that publishes it; build the overlay that draws it separately,
+in the same prompt:
+
+```powershell
+cl /nologo /O2 /W3 /MT /EHsc overlay\cursor_overlay.cpp /Fo:dist\ `
+    /Fe:dist\cursor_overlay_seat.exe
+```
+
 ---
 
 ## 6. Configure your machine's specifics
@@ -311,19 +322,25 @@ that are simply wrong.
 
 ## 8. First run
 
+Do the one-time video setup in [`VIDEO-H264.md`](VIDEO-H264.md) first. In short:
+`.\hydra-gpu-probe.ps1 -Apply` sets the registry part, then reboot; block AV1 in
+the seat's browsers. Then:
+
 ```powershell
-.\hydra7.ps1
+.\hydra7-avc.ps1
 ```
 
-A window opens asking for the seat account's password. **Echo is off** — a typo
-shows as `ERRCONNECT_LOGON_FAILURE`, not as a wrong-password message.
+mstsc asks for the seat account's password. Tick **Remember me** if you don't
+want to type it at every start.
 
 After logging in you should have:
 
 - the seat's desktop full-screen on its monitor
-- the seat's keyboard and mouse driving only that screen
+- the seat's keyboard and mouse driving only that screen, with its pointer drawn
+  over the panel
 - your own keyboard and mouse unaffected
-- the seat's audio from the monitor's speakers
+- the seat's audio from the monitor's speakers — on the very first run, follow
+  the one-time audio-pin steps the launcher prints
 
 ```powershell
 .\dist\hydractl.exe status
@@ -335,7 +352,7 @@ mode 7.
 To stop:
 
 ```powershell
-.\hydra7.ps1 -Stop
+.\hydra7-avc.ps1 -Stop
 ```
 
 **If anything goes wrong**, type this and press Enter — it works even if you
@@ -397,14 +414,17 @@ skipping it cost a working machine, twice.
 
 ```powershell
 cd C:\Programs\hydra
-.\hydra7.ps1
+.\hydra7-avc.ps1
 ```
 
 **Stop:**
 
 ```powershell
-.\hydra7.ps1 -Stop
+.\hydra7-avc.ps1 -Stop
 ```
+
+**The fallback** is `.\hydra7.ps1` — mode 7 with FreeRDP and RemoteFX instead of
+mstsc and H.264. Same seat, about five times the CPU for video.
 
 **Panic:** type `Stop-Service Hydra` and press Enter. Works blind.
 
@@ -475,10 +495,13 @@ version of this guide blamed software composition; measured, there is none.
 
 ## Where to go next
 
+- **`STATE.md`** — where things stand right now.
+- **`VIDEO-H264.md`** — the video setup, its measurements and its traps.
 - **`MODES.md`** — all seven modes, every failure with its cause. The most
   useful document here.
+- **`ROADMAP.md`** — what's being worked on next.
 - **`REBUILD.md`** — rebuilding the machine from scratch after a reset.
-- **`FUTURE.md`** — what is unfinished and what might be worth doing.
+- **`FUTURE.md`** — longer-range ideas: a third seat, a VM per seat, Linux.
 - **`INCIDENT-2026-08-12.md`** — how a driver install cost an OS reinstall, and
   what to do differently.
 - **`THIRD-PARTY.md`** — what Hydra depends on and under what terms.

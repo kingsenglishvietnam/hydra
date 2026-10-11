@@ -1,16 +1,61 @@
 # Hydra — current state.  Read this first after any reboot.
 
-Written because this conversation gets COMPACTED: earlier hours become a summary
-and details are lost. The file on your disk is the record; my memory is not.
-Update it as things change.
+Updated 2026-10-11. **Hydra is in active development.** Update this file as
+things change; the August notes it used to hold are kept below as an archive.
 
-**When in doubt, read the source, not this file:**
-
-```powershell
-Select-String -Path .\rdp\hydrardp.c -Pattern "<thing>" -Context 0,10
-```
+**When in doubt, read the source and `git log`, not this file.**
 
 ---
+
+## Where things stand
+
+| | |
+|---|---|
+| Daily use | `.\hydra7-avc.ps1` — mode 7: mstsc full-screen on the 2770, H.264 encoded on Quick Sync. `-Stop` to end; `Stop-Service Hydra` in a panic, works blind |
+| Fallback | `.\hydra7.ps1` — the same seat with FreeRDP and RemoteFX, about five times the CPU for video |
+| Seat B's pointer | `dist\cursor_overlay_seat.exe`, started by the launcher, draws it over the panel from your session, fed by agent:B with the seat's own 256 px pointer files. Size = `-OverlayScale` × the seat's 32 px on-screen pointer; x8 is the original 1:1 |
+| Seat B's sound | mstsc plays it, pinned to the 2770 by `audio-pin-mstsc.json`. Silent? Check *Remote Desktop Connection* isn't muted in the Volume mixer |
+| Machine settings | The H.264 recipe in `VIDEO-H264.md`, set by `.\hydra-gpu-probe.ps1 -Apply`. AV1 blocked in seat B's browsers. Hyper-V is on, but only for checking the VM route |
+| Windows | Build 26300 at the last check; termsrv-guard re-patched it on its own |
+
+## Is it healthy?
+
+With a clip playing full-screen on seat B:
+
+```powershell
+.\hydra-gpu-probe.ps1
+```
+
+Seat B composes on the Iris Plus; event 170 names Intel's Quick Sync encoder;
+the browser's `videodecode` is on the Iris Plus; the RDPClient line shows 0 UDP
+attempts and 0 drops.
+
+## Open
+
+- Text sharpness under H.264 against RemoteFX — not compared yet.
+- TCP-only applies to every mstsc connection from this laptop, not just seat B's.
+- mstsc stops drawing when minimized: Win+D on your keyboard hides seat B.
+- Pointers that apps draw themselves come through at 32 px, enlarged.
+- The overlay is started by the launcher, not supervised by `hydrad`.
+
+`ROADMAP.md` has the order these get done in.
+
+## Do not
+
+- Set `bEnumerateHWBeforeSW`. It moves seat B onto the 1660 Ti, whose H.264
+  encoder crashes `RdpIdd.dll` about 14 seconds in.
+- Mute mstsc in mode 7. That old instruction belongs to the capture modes.
+- Run two clients on one session. It wedges the RDP stack, and that costs a
+  reboot.
+- Start a new seat straight after a failed connection. `-Stop`, wait ten
+  seconds, then start.
+
+---
+
+# Archive — August 2026: mode 3 and the gfx investigation
+
+Kept as written. Everything below was done on FreeRDP's RemoteFX path, before
+H.264 and before mode 7.
 
 ## Three modes
 
