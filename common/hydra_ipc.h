@@ -218,6 +218,85 @@ static inline void hydra_surface_name(wchar_t* out, size_t cch, const char* seat
     if (i < cch) out[i] = 0;
 }
 
+/* ---------------------------------------------------------------- cursor ---
+ * An extra seat's cursor, for cursor_overlay running in the CONSOLE session over
+ * that seat's panel (mode 7, whichever RDP client draws the panel).
+ *
+ * The RDP client never learns where the seat's pointer is -- the server sends a
+ * position only when an application warps the cursor (see HydraSeatPixels) --
+ * and the pointer image it does get becomes the client's LOCAL cursor, which
+ * belongs to the console mouse. So the seat's own agent publishes position,
+ * visibility and shape here, and the overlay draws them over the client window,
+ * out of reach of the seat's Start menu, Task View and virtual desktops.
+ *
+ * agent:<seat> is SYSTEM and creates the section itself: readable by
+ * Administrators and interactive users, writable by SYSTEM only.
+ * seq is a seqlock -- odd = write in flight, even = stable, 0 = never published.
+ * x/y are PHYSICAL pixels of the seat's session. */
+enum {
+    HYDRA_CUR_ARROW = 0, HYDRA_CUR_IBEAM, HYDRA_CUR_HAND, HYDRA_CUR_WAIT,
+    HYDRA_CUR_APPSTARTING, HYDRA_CUR_SIZEWE, HYDRA_CUR_SIZENS, HYDRA_CUR_SIZENWSE,
+    HYDRA_CUR_SIZENESW, HYDRA_CUR_SIZEALL, HYDRA_CUR_NO, HYDRA_CUR_CROSS,
+    HYDRA_CUR_COUNT
+};
+
+#define HYDRA_CUR_MAX 512u      /* largest cursor image carried, per side */
+
+typedef struct HydraSeatCursor {
+    volatile uint32_t seq;
+    volatile int32_t  x;
+    volatile int32_t  y;
+    volatile uint32_t visible;   /* 1 = CURSOR_SHOWING inside the seat */
+    volatile uint32_t shape;     /* HYDRA_CUR_*; anything unrecognised = ARROW */
+    /* The pointer IMAGE as the seat draws it -- its scheme, colour and size, and
+     * any application cursor -- so the overlay shows the seat's own pointer, not
+     * the console's idea of one. Its own seqlock (odd = writing, 0 = none yet):
+     * it changes only when the pointer's look does. Premultiplied BGRA,
+     * row-major, imgW x imgH of the HYDRA_CUR_MAX square used. */
+    volatile uint32_t imgSeq;
+    volatile uint32_t imgW;
+    volatile uint32_t imgH;
+    volatile int32_t  hotX;
+    volatile int32_t  hotY;
+    /* The size the seat shows the pointer at. The image can be larger: when the
+     * seat's scheme has a big file (Windows writes a 256 px arrow_eoa.cur for a
+     * maximum-size custom-colour pointer) the agent sends that, while the live
+     * cursor handle reads back 32 px. The overlay draws at nomW x scale. */
+    volatile uint32_t nomW;
+    volatile uint32_t nomH;
+    uint32_t          bgra[HYDRA_CUR_MAX * HYDRA_CUR_MAX];
+} HydraSeatCursor;
+
+/* The standard cursor resource for a HYDRA_CUR_* value: MAKEINTRESOURCE() it and
+ * LoadCursor(NULL, ...) -- the same numbers as IDC_ARROW, IDC_IBEAM, ... */
+static inline unsigned short hydra_cursor_idc(unsigned shape) {
+    switch (shape) {
+    case HYDRA_CUR_IBEAM:       return 32513;
+    case HYDRA_CUR_HAND:        return 32649;
+    case HYDRA_CUR_WAIT:        return 32514;
+    case HYDRA_CUR_APPSTARTING: return 32650;
+    case HYDRA_CUR_SIZEWE:      return 32644;
+    case HYDRA_CUR_SIZENS:      return 32645;
+    case HYDRA_CUR_SIZENWSE:    return 32642;
+    case HYDRA_CUR_SIZENESW:    return 32643;
+    case HYDRA_CUR_SIZEALL:     return 32646;
+    case HYDRA_CUR_NO:          return 32648;
+    case HYDRA_CUR_CROSS:       return 32515;
+    default:                    return 32512;   /* IDC_ARROW */
+    }
+}
+
+static inline void hydra_cursor_name(wchar_t* out, size_t cch, const char* seat) {
+    /* e.g. Global\HydraSeat_B_cursor */
+    size_t i = 0;
+    const wchar_t* p = L"Global\\HydraSeat_";
+    while (*p && i + 1 < cch) out[i++] = *p++;
+    while (seat && *seat && i + 1 < cch) out[i++] = (wchar_t)(unsigned char)*seat++;
+    const wchar_t* s2 = L"_cursor";
+    while (*s2 && i + 1 < cch) out[i++] = *s2++;
+    if (i < cch) out[i] = 0;
+}
+
 /* hydrad's control pipe (hydractl <-> hydrad). Single instance, message mode. */
 #define HYDRA_CONTROL_PIPE L"\\\\.\\pipe\\hydra_control"
 

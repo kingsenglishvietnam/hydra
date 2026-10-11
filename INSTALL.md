@@ -462,13 +462,14 @@ Set-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearchin
 **Good:** documents, browsing, slides, typing, anything static. The seat feels
 like a normal Windows machine.
 
-**Poor:** video. Around 25–28 fps and roughly half the CPU of a four-core
-laptop, because a loopback RDP session composes its desktop in software — Windows
-only gives a session GPU composition when a display is bound to it, which is not
-reachable on a client SKU.
+**Video:** good with `hydra7-avc.ps1`. The seat's desktop is drawn on the iGPU
+and encoded to H.264 by Quick Sync — under half a processor for full-screen
+1080p. It needs a one-time setup: three registry policies, TCP only, and AV1
+blocked in the seat's browsers. [`VIDEO-H264.md`](VIDEO-H264.md) has it.
 
-Play video on the console seat. If you need a video-capable second seat, look at
-ASTER or Linux multiseat; `MODES.md` explains why and compares them honestly.
+The original `hydra7.ps1` (FreeRDP, RemoteFX) manages 25–28 fps at about two
+processors, because every frame is encoded and decoded on the CPU. An earlier
+version of this guide blamed software composition; measured, there is none.
 
 ---
 

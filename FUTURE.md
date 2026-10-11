@@ -153,6 +153,14 @@ desktop with two GPUs.
 
 If the classroom machine is ever replaced, this changes the calculus entirely.
 
+**2026-10-08: half wrong.** Passthrough is out on this hardware; partitioning is
+not. With Hyper-V on, `Get-VMHostPartitionableGpu` lists both the Iris Plus and
+the 1660 Ti. A Windows guest with a GPU-P slice of the Iris Plus, a virtual
+display inside it and a streaming client on the panel would be mode 10 without a
+second GPU. Not pursued: H.264 on Quick Sync (`VIDEO-H264.md`) removed the
+reason. Easy-GPU-PV notes that NVIDIA laptop GPUs don't work in practice, so the
+Iris Plus is the one to try.
+
 ### Mode 11 — Linux multiseat
 
 `systemd-logind` does this natively. `loginctl attach seat1 <sysfs-path>`, one

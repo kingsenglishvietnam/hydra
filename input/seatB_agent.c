@@ -59,6 +59,9 @@
 #include <winsock2.h>   /* must precede windows.h */
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <sddl.h>       /* ConvertStringSecurityDescriptorToSecurityDescriptorW */
+#include <wtsapi32.h>   /* WTSQueryUserToken: the seat user, for their pointer scheme */
+#include <userenv.h>    /* ExpandEnvironmentStringsForUserW */
 #include "../common/hydra_ipc.h"
 #include <mmsystem.h>   /* timeBeginPeriod / timeEndPeriod */
 #include <stdio.h>
@@ -69,6 +72,10 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "gdi32.lib")      /* GetDIBits: the seat's pointer image */
+#pragma comment(lib, "wtsapi32.lib")
+#pragma comment(lib, "userenv.lib")
 
 #ifndef MOUSEEVENTF_HWHEEL
 #define MOUSEEVENTF_HWHEEL 0x1000
@@ -518,6 +525,276 @@ static DWORD WINAPI cursor_pos_thread(LPVOID arg) {
     return 0;
 }
 
+/* The current pointer's image as THIS seat draws it -- its scheme, colour,
+ * size, application cursors -- as premultiplied BGRA. Colour cursors keep their
+ * alpha (or take it from the AND mask when they have none); monochrome ones map
+ * AND/XOR to black, white and transparent, with inverting pixels drawn black.
+ * 0 = no image (no cursor, or larger than max per side). */
+static int capture_cursor(HCURSOR hc, uint32_t *out, unsigned max,
+                          unsigned *pw, unsigned *ph, int *phx, int *phy)
+{
+    ICONINFO ii;
+    if (!hc || !GetIconInfo(hc, &ii)) return 0;
+    int ok = 0;
+    BITMAP bm;
+    HBITMAP probe = ii.hbmColor ? ii.hbmColor : ii.hbmMask;
+    if (probe && GetObject(probe, sizeof(bm), &bm)) {
+        unsigned w = (unsigned)bm.bmWidth;
+        unsigned h = ii.hbmColor ? (unsigned)bm.bmHeight : (unsigned)bm.bmHeight / 2;
+        if (w && h && w <= max && h <= max) {
+            HDC dc = GetDC(NULL);
+            uint32_t *mask = (uint32_t *)malloc((size_t)w * h * 2 * 4);
+            BITMAPINFO bi;
+            memset(&bi, 0, sizeof(bi));
+            bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            bi.bmiHeader.biWidth = (LONG)w;
+            bi.bmiHeader.biPlanes = 1;
+            bi.bmiHeader.biBitCount = 32;
+            bi.bmiHeader.biCompression = BI_RGB;
+            unsigned mh = ii.hbmColor ? h : h * 2;    /* mono: AND rows, then XOR rows */
+            bi.bmiHeader.biHeight = -(LONG)mh;        /* top-down */
+            if (dc && mask && GetDIBits(dc, ii.hbmMask, 0, mh, mask, &bi, DIB_RGB_COLORS) == (int)mh) {
+                if (ii.hbmColor) {
+                    bi.bmiHeader.biHeight = -(LONG)h;
+                    if (GetDIBits(dc, ii.hbmColor, 0, h, out, &bi, DIB_RGB_COLORS) == (int)h) {
+                        int anyAlpha = 0;
+                        for (unsigned i = 0; i < w * h; i++)
+                            if (out[i] >> 24) { anyAlpha = 1; break; }
+                        for (unsigned i = 0; i < w * h; i++) {
+                            uint32_t c = out[i];
+                            uint32_t a = anyAlpha ? (c >> 24) : ((mask[i] & 0xFFFFFFu) ? 0u : 255u);
+                            uint32_t r = ((c >> 16) & 0xFFu) * a / 255u;
+                            uint32_t g = ((c >> 8) & 0xFFu) * a / 255u;
+                            uint32_t b = (c & 0xFFu) * a / 255u;
+                            out[i] = (a << 24) | (r << 16) | (g << 8) | b;
+                        }
+                        ok = 1;
+                    }
+                } else {
+                    for (unsigned i = 0; i < w * h; i++) {
+                        int andb = (mask[i] & 0xFFFFFFu) != 0;
+                        int xorb = (mask[w * h + i] & 0xFFFFFFu) != 0;
+                        out[i] = andb ? (xorb ? 0xFF000000u : 0u)
+                                      : (xorb ? 0xFFFFFFFFu : 0xFF000000u);
+                    }
+                    ok = 1;
+                }
+            }
+            free(mask);
+            if (dc) ReleaseDC(NULL, dc);
+            if (ok) { *pw = w; *ph = h; *phx = (int)ii.xHotspot; *phy = (int)ii.yHotspot; }
+        }
+    }
+    if (ii.hbmColor) DeleteObject(ii.hbmColor);
+    if (ii.hbmMask) DeleteObject(ii.hbmMask);
+    return ok;
+}
+
+/* The seat user's pointer FILE for a standard shape, from their scheme
+ * (HKU\<sid>\Control Panel\Cursors), expanded in their environment. Windows
+ * writes these at the chosen size and colour -- a 256 px arrow_eoa.cur for a
+ * maximum-size custom-colour pointer -- while the session's live cursor handle
+ * reads back at 32 px. Loaded at full size, the overlay can shrink it cleanly
+ * instead of blowing a 32 px bitmap up. 0 = no file for this shape. */
+static const wchar_t *const CURSOR_VALUE[HYDRA_CUR_COUNT] = {
+    L"Arrow", L"IBeam", L"Hand", L"Wait", L"AppStarting", L"SizeWE", L"SizeNS",
+    L"SizeNWSE", L"SizeNESW", L"SizeAll", L"No", L"Crosshair"
+};
+
+static void wcat(wchar_t *dst, size_t cch, const wchar_t *src) {
+    size_t i = 0;
+    while (i + 1 < cch && dst[i]) i++;
+    while (i + 1 < cch && *src) dst[i++] = *src++;
+    if (i < cch) dst[i] = 0;
+}
+
+static int seat_scheme_file(unsigned shape, wchar_t *out, DWORD cch) {
+    static HANDLE tok = NULL;
+    static wchar_t sid[128];
+    if (shape >= HYDRA_CUR_COUNT) return 0;
+    if (!tok) {
+        DWORD sess = 0;
+        HANDLE t = NULL;
+        BYTE buf[256];
+        DWORD len = 0;
+        wchar_t *ss = NULL;
+        if (!ProcessIdToSessionId(GetCurrentProcessId(), &sess) || !WTSQueryUserToken(sess, &t))
+            return 0;
+        if (!GetTokenInformation(t, TokenUser, buf, sizeof(buf), &len) ||
+            !ConvertSidToStringSidW(((TOKEN_USER *)buf)->User.Sid, &ss)) {
+            CloseHandle(t);
+            return 0;
+        }
+        sid[0] = 0;
+        wcat(sid, 128, ss);
+        LocalFree(ss);
+        tok = t;                                  /* the seat's user for this agent's life */
+    }
+    wchar_t key[192];
+    key[0] = 0;
+    wcat(key, 192, sid);
+    wcat(key, 192, L"\\Control Panel\\Cursors");
+    HKEY k;
+    if (RegOpenKeyExW(HKEY_USERS, key, 0, KEY_READ, &k) != ERROR_SUCCESS) return 0;
+    wchar_t raw[MAX_PATH];
+    DWORD type = 0, sz = sizeof(raw) - sizeof(wchar_t);
+    LONG rc = RegQueryValueExW(k, CURSOR_VALUE[shape], NULL, &type, (LPBYTE)raw, &sz);
+    RegCloseKey(k);
+    if (rc != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)) return 0;
+    raw[sz / sizeof(wchar_t)] = 0;
+    if (!raw[0]) return 0;
+    return ExpandEnvironmentStringsForUserW(tok, raw, out, cch) ? 1 : 0;
+}
+
+/* Publish this seat's cursor for cursor_overlay in the CONSOLE session -- see
+ * HydraSeatCursor in hydra_ipc.h for why the RDP client can't draw it itself.
+ * Position, visibility and shape, ~120 Hz, seqlocked. PHYSICAL coordinates:
+ * the seat runs scaled (desktopscalefactor) and this process is DPI-unaware,
+ * so GetCursorPos here would report logical ones. When the seat's desktop
+ * switches (lock screen, UAC) this thread follows it on its own, closing the
+ * desktop handle it held before -- it owns no windows, so it may. */
+static DWORD WINAPI cursor_share_thread(LPVOID arg) {
+    const char *seat = (const char *)arg;
+    wchar_t name[128];
+    hydra_cursor_name(name, 128, seat);
+
+    /* Per-monitor aware THIS thread only, so the pointer image comes at the
+     * size the seat really draws it, not scaled back to 96 DPI. Looked up at
+     * run time: the API is Windows 10 1607+, this file targets Windows 7. */
+    {
+        typedef HANDLE (WINAPI *SetThreadDpiCtx)(HANDLE);
+        SetThreadDpiCtx setCtx = (SetThreadDpiCtx)(void *)GetProcAddress(
+            GetModuleHandleW(L"user32.dll"), "SetThreadDpiAwarenessContext");
+        if (setCtx) setCtx((HANDLE)(LONG_PTR)-4);   /* PER_MONITOR_AWARE_V2 */
+    }
+    static uint32_t img[HYDRA_CUR_MAX * HYDRA_CUR_MAX];     /* the live pointer   */
+    static uint32_t big[HYDRA_CUR_MAX * HYDRA_CUR_MAX];     /* its scheme file    */
+    static wchar_t lastFile[MAX_PATH];
+    HCURSOR lastImg = NULL;
+    DWORD lastImgTick = 0;
+
+    PSECURITY_DESCRIPTOR sd = NULL;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = FALSE;
+    if (ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            L"D:(A;;GA;;;SY)(A;;GR;;;BA)(A;;GR;;;IU)", SDDL_REVISION_1, &sd, NULL))
+        sa.lpSecurityDescriptor = sd;
+
+    HCURSOR known[HYDRA_CUR_COUNT];
+    for (unsigned i = 0; i < HYDRA_CUR_COUNT; i++)
+        known[i] = LoadCursor(NULL, MAKEINTRESOURCE(hydra_cursor_idc(i)));
+
+    HydraSeatCursor *c = NULL;
+    HDESK desk = NULL;
+    DWORD lastAttach = 0;
+    for (;;) {
+        if (!c) {
+            HANDLE map = CreateFileMappingW(INVALID_HANDLE_VALUE, &sa, PAGE_READWRITE,
+                                            0, sizeof(HydraSeatCursor), name);
+            if (map) {
+                c = (HydraSeatCursor *)MapViewOfFile(map, FILE_MAP_ALL_ACCESS, 0, 0,
+                                                     sizeof(HydraSeatCursor));
+                if (!c) CloseHandle(map);     /* else held for the process lifetime */
+            }
+            if (!c) {
+                fprintf(stderr, "[agent] cursor section unavailable (err %lu); retrying\n",
+                        GetLastError());
+                fflush(stderr);
+                Sleep(2000);
+                continue;
+            }
+            fprintf(stderr, "[agent] publishing cursor for the console overlay\n");
+            fflush(stderr);
+        }
+        CURSORINFO ci;
+        ci.cbSize = sizeof(ci);
+        POINT pt;
+        if (GetCursorInfo(&ci) && GetPhysicalCursorPos(&pt)) {
+            unsigned shape = HYDRA_CUR_ARROW;
+            int standard = 0;                     /* a system cursor, so it has a scheme file */
+            for (unsigned i = 0; i < HYDRA_CUR_COUNT; i++)
+                if (ci.hCursor && ci.hCursor == known[i]) { shape = i; standard = 1; break; }
+            InterlockedIncrement((volatile LONG *)&c->seq);   /* odd: writing */
+            MemoryBarrier();
+            c->x = (int32_t)pt.x;
+            c->y = (int32_t)pt.y;
+            c->visible = (ci.flags & CURSOR_SHOWING) ? 1u : 0u;
+            c->shape = shape;
+            MemoryBarrier();
+            InterlockedIncrement((volatile LONG *)&c->seq);   /* even: stable */
+
+            /* The image: on every pointer change, and once a second besides --
+             * a scheme or colour change keeps the handle and swaps the look.
+             * The live pointer gives the on-screen size and the fallback image;
+             * a standard pointer's scheme file, loaded at 256 px, gives the
+             * sharp one. */
+            DWORD now = GetTickCount();
+            if (ci.hCursor != lastImg || now - lastImgTick > 1000) {
+                unsigned nw = 0, nh = 0, w = 0, h = 0;
+                int nhx = 0, nhy = 0, hx = 0, hy = 0;
+                int live = capture_cursor(ci.hCursor, img, HYDRA_CUR_MAX, &nw, &nh, &nhx, &nhy);
+                int sharp = 0;
+                wchar_t file[MAX_PATH];
+                if (live && standard && seat_scheme_file(shape, file, MAX_PATH)) {
+                    HCURSOR hc = (HCURSOR)LoadImageW(NULL, file, IMAGE_CURSOR, 256, 256,
+                                                     LR_LOADFROMFILE);
+                    if (hc) {
+                        sharp = capture_cursor(hc, big, HYDRA_CUR_MAX, &w, &h, &hx, &hy);
+                        DestroyCursor(hc);
+                    }
+                    if (sharp && wcscmp(file, lastFile) != 0) {
+                        lastFile[0] = 0;
+                        wcat(lastFile, MAX_PATH, file);
+                        fprintf(stderr, "[agent] pointer from %ls: %ux%u, shown at %ux%u\n",
+                                file, w, h, nw, nh);
+                        fflush(stderr);
+                    }
+                }
+                const uint32_t *src = sharp ? big : img;
+                if (!sharp) { w = nw; h = nh; hx = nhx; hy = nhy; }
+                if (live &&
+                    (w != c->imgW || h != c->imgH || hx != c->hotX || hy != c->hotY ||
+                     nw != c->nomW || nh != c->nomH ||
+                     memcmp(src, c->bgra, (size_t)w * h * 4) != 0)) {
+                    InterlockedIncrement((volatile LONG *)&c->imgSeq);   /* odd */
+                    MemoryBarrier();
+                    c->imgW = w;
+                    c->imgH = h;
+                    c->hotX = hx;
+                    c->hotY = hy;
+                    c->nomW = nw;
+                    c->nomH = nh;
+                    memcpy(c->bgra, src, (size_t)w * h * 4);
+                    MemoryBarrier();
+                    InterlockedIncrement((volatile LONG *)&c->imgSeq);   /* even */
+                }
+                lastImg = ci.hCursor;
+                lastImgTick = now;
+            }
+        } else {
+            /* Not on the input desktop any more. Follow it, at most once a
+             * second; until then the overlay sees seq stand still and hides. */
+            DWORD now = GetTickCount();
+            if (now - lastAttach > 1000) {
+                lastAttach = now;
+                HDESK d = OpenInputDesktop(0, FALSE, GENERIC_ALL);
+                if (d) {
+                    if (SetThreadDesktop(d)) {
+                        if (desk) CloseDesktop(desk);
+                        desk = d;
+                    } else {
+                        CloseDesktop(d);
+                    }
+                }
+            }
+        }
+        Sleep(8);
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
     const char *port = (argc > 2) ? argv[2] : "56789";
@@ -572,6 +849,9 @@ int main(int argc, char **argv) {
 
     /* Cursor position publisher for hydrardp -- harmless when nothing reads it. */
     { static char seatName[8] = "B"; CreateThread(NULL, 0, cursor_pos_thread, seatName, 0, NULL); }
+
+    /* Cursor for the console-side overlay (mode 7) -- harmless when nothing reads it. */
+    { static char seatName2[8] = "B"; CreateThread(NULL, 0, cursor_share_thread, seatName2, 0, NULL); }
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
