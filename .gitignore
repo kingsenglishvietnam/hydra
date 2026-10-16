@@ -67,3 +67,4 @@ logs/
 /state/termsrv-UNPATCHED
 /logs/termsrv-guard.log
 /script_browser_profile/
+/state/local-clients/

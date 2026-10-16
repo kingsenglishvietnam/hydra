@@ -53,6 +53,8 @@
 #include <mutex>
 
 #include "hydra_config.h"
+#include "hydra_config_json.h"
+#include "../common/hydra_session.h"
 #include "../common/hydra_devprops.h"
 #include "../common/hydra_ipc.h"
 
@@ -202,19 +204,20 @@ static DWORD resolve_session(const std::string& spec)
         return found;
     }
     if (spec == "auto") {
-        /* First Active session that is not the console. Falls back to console. */
+        /* Only an unambiguous Active non-console session. Never fall back to
+         * the console: that would inject an extra seat's input into seat A. */
         DWORD con = console_session();
-        WTS_SESSION_INFOW* si = nullptr; DWORD cnt = 0; DWORD pick = 0xFFFFFFFF;
+        WTS_SESSION_INFOW* si = nullptr; DWORD cnt = 0;
+        std::vector<HydraSessionCandidate> candidates;
         if (WTSEnumerateSessionsW(WTS_CURRENT_SERVER_HANDLE, 0, 1, &si, &cnt)) {
             for (DWORD i = 0; i < cnt; ++i) {
-                if (si[i].State == WTSActive && si[i].SessionId != con && si[i].SessionId != 0) {
-                    std::wstring u;
-                    if (session_username(si[i].SessionId, u)) { pick = si[i].SessionId; break; }
-                }
+                std::wstring u;
+                candidates.push_back({si[i].SessionId, si[i].State == WTSActive,
+                                      session_username(si[i].SessionId, u)});
             }
             WTSFreeMemory(si);
         }
-        return (pick != 0xFFFFFFFF) ? pick : con;
+        return hydra_auto_session(candidates, con);
     }
     /* numeric id */
     return (DWORD)strtoul(spec.c_str(), nullptr, 10);
@@ -684,7 +687,7 @@ static std::vector<Proc> plan_procs(const HydraCfg& cfg)
         }
 
         Proc a; a.tag = L"agent:" + seatW; a.exe = helper_path(L"seatB_agent.exe");
-        a.args = L"127.0.0.1 " + std::to_wstring(s.port); a.sessionSpec = s.session;
+        a.args = hydra_build_agent_args(s); a.sessionSpec = s.session;
         v.push_back(std::move(a));
 
         /* GOAL 3 -- "no RDP window": if displayMode == "capture", run
@@ -1263,6 +1266,10 @@ static std::wstring dispatch(const std::wstring& cmd)
     while (!verb.empty() && (verb.back() == L'\r' || verb.back() == L'\n')) verb.pop_back();
 
     if (verb == L"status")  return cmd_status();
+    if (verb == L"live-config") {
+        std::lock_guard<std::mutex> lk(g_planMx);
+        return widen(hydra_config_json(g_cfg)) + L"\r\n";
+    }
     if (verb == L"reload")  return load_and_apply() ? L"reloaded\r\n" : L"reload failed (see log)\r\n";
     if (verb == L"restart") return cmd_restart(arg.empty() ? L"all" : arg);
     if (verb == L"learn")   return cmd_learn();

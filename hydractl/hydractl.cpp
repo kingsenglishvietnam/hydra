@@ -25,6 +25,10 @@
 #include <windows.h>
 #include <stdio.h>
 #include <string>
+#include <fstream>
+#include <filesystem>
+#include <iostream>
+#include "../hydrad/hydra_config_json.h"
 
 #include "../common/hydra_ipc.h"   /* HYDRA_CONTROL_PIPE */
 
@@ -32,6 +36,8 @@ static int usage()
 {
     wprintf(L"usage: hydractl <command>\n"
             L"  status            show virtual monitors and helper processes\n"
+            L"  config <path>     validate a config offline and print its seat map (JSON)\n"
+            L"  live-config       print the daemon's applied seat map (JSON)\n"
             L"  reload            re-read seats.toml and apply changes\n"
             L"  restart <seat>    restart one seat's mirror + agent (e.g. B)\n"
             L"  restart all       restart all supervised helpers\n"
@@ -40,9 +46,33 @@ static int usage()
     return 2;
 }
 
+/* No pipe, service, driver, registry or session changes on this path. */
+static int print_config(const wchar_t* path)
+{
+    std::ifstream file(std::filesystem::path(path), std::ios::binary | std::ios::ate);
+    if (!file) { std::cerr << "cannot open config\n"; return 1; }
+    const auto size = file.tellg();
+    if (size < 0 || size > 1024 * 1024) {
+        std::cerr << "config must be at most 1 MiB\n"; return 2;
+    }
+    std::string text((size_t)size, '\0');
+    file.seekg(0);
+    if (!text.empty() && !file.read(&text[0], (std::streamsize)text.size())) {
+        std::cerr << "cannot read complete config\n"; return 1;
+    }
+    HydraCfg cfg; std::string error;
+    if (!hydra_parse_config(text, cfg, error)) { std::cerr << error << '\n'; return 2; }
+    std::cout << hydra_config_json(cfg) << '\n';
+    return 0;
+}
+
 int wmain(int argc, wchar_t** argv)
 {
     if (argc < 2) return usage();
+    if (wcscmp(argv[1], L"config") == 0) {
+        if (argc != 3) return usage();
+        return print_config(argv[2]);
+    }
 
     /* Reassemble the args into one command line for the daemon. */
     std::wstring cmd;
@@ -73,7 +103,9 @@ int wmain(int argc, wchar_t** argv)
     for (;;) {
         wchar_t buf[2048]; DWORD rd = 0;
         BOOL ok = ReadFile(pipe, buf, sizeof(buf) - sizeof(wchar_t), &rd, nullptr);
-        if (ok && rd) {
+        /* ERROR_MORE_DATA still returns the first part of the message. A live
+         * multi-seat config can exceed this buffer; never discard that part. */
+        if (rd) {
             buf[rd / sizeof(wchar_t)] = 0;
             fwprintf(stdout, L"%s", buf);
         }

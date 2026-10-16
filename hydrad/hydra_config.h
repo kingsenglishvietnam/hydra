@@ -16,17 +16,19 @@
 #include <vector>
 #include <cstdlib>
 #include <cctype>
+#include <utility>
+#include <climits>
+#include "../common/hydra_seat.h"
 /* <string> above provides std::wstring/std::to_wstring for hydra_build_router_args */
 
 struct SeatCfg {
     std::string name;
     int         kbd     = 0;     /* Interception keyboard device number (1..10) */
     int         mouse   = 0;     /* Interception mouse device number   (11..20) */
-    /* Stable hardware-ID matching (preferred). Interception device NUMBERS drift
-     * across reboots/re-plugs; the hardware-ID string does not. If these are set
-     * (via kbd_id/mouse_id in seats.toml), seat_router matches on a substring of
-     * the device's hardware ID instead of the volatile number. Numbers remain
-     * supported for backward compatibility -- set one or the other. */
+    /* Model-ID matching. Use only when a substring identifies exactly one
+     * attached device. Identical physical devices share hardware IDs. Numbers
+     * distinguish them within a boot but drift after reboot/re-plug; the router
+     * checks the complete inventory before enabling capture. Set one or the other. */
     std::string kbdId;           /* substring of the keyboard's hardware ID */
     std::string mouseId;         /* substring of the mouse's hardware ID    */
     int         port    = 0;     /* loopback TCP port to the seat's agent       */
@@ -78,11 +80,17 @@ namespace hydra_detail {
         return s.substr(a, b - a);
     }
 
+    inline std::string lower(std::string s) {
+        for (char& c : s) c = (char)std::tolower((unsigned char)c);
+        return s;
+    }
+
     /* Strip a trailing # comment that is not inside a string. */
     inline std::string strip_comment(const std::string& s) {
         bool inS = false, inD = false;
         for (size_t i = 0; i < s.size(); ++i) {
             char c = s[i];
+            if (inD && c == '\\' && i + 1 < s.size()) { ++i; continue; }
             if (c == '\'' && !inD) inS = !inS;
             else if (c == '"' && !inS) inD = !inD;
             else if (c == '#' && !inS && !inD) return s.substr(0, i);
@@ -115,9 +123,11 @@ namespace hydra_detail {
 }
 
 /* Returns true on success. On failure, fills `err` with a line-numbered reason. */
-inline bool hydra_parse_config(const std::string& text, HydraCfg& out, std::string& err)
+inline bool hydra_parse_config(const std::string& text, HydraCfg& result, std::string& err)
 {
     using namespace hydra_detail;
+    HydraCfg out;                  /* do not partially replace a live config */
+    err.clear();
     enum { NONE, HOST, SEAT } ctx = NONE;
     int lineno = 0;
     std::string line;
@@ -165,8 +175,19 @@ inline bool hydra_parse_config(const std::string& text, HydraCfg& out, std::stri
             else if (key == "monitor")  seat.monitor = val;
             else if (key == "session")  seat.session = val;
             else if (key == "edid")     seat.edid = val;
-            else if (key == "kbd")      seat.kbd = std::atoi(val.c_str());
-            else if (key == "mouse")    seat.mouse = std::atoi(val.c_str());
+            else if (key == "kbd" || key == "mouse" || key == "port") {
+                int n = 0;
+                int min = key == "mouse" ? 11 : 1;
+                int max = key == "port" ? HYDRA_MAX_AGENT_PORT : key == "kbd" ? 10 : 20;
+                if (quoted || !hydra_parse_number(val.c_str(), min, max, &n)) {
+                    err = "line " + std::to_string(lineno) + ": " + key +
+                          " must be an integer in " + std::to_string(min) + ".." + std::to_string(max);
+                    return false;
+                }
+                if (key == "kbd") seat.kbd = n;
+                else if (key == "mouse") seat.mouse = n;
+                else seat.port = n;
+            }
             else if (key == "kbd_id")   seat.kbdId = val;    /* stable hardware-ID match */
             else if (key == "mouse_id") seat.mouseId = val;  /* stable hardware-ID match */
             else if (key == "audio_id") seat.audioId = val;  /* render-endpoint id substring */
@@ -174,13 +195,16 @@ inline bool hydra_parse_config(const std::string& text, HydraCfg& out, std::stri
             else if (key == "audio_bridge") seat.audioBridge = val; /* monitor endpoint substr */
             else if (key == "audio_route") seat.audioRoute = val;  /* session-based routing */
             else if (key == "display_mode") seat.displayMode = val;  /* idd | capture */
-            else if (key == "port")     seat.port = std::atoi(val.c_str());
         }
     }
 
     /* Validation: each seat needs name/port/monitor, and for BOTH keyboard and
      * mouse it needs EITHER a numeric index OR a hardware-ID string (id preferred
      * -- numbers drift across reboots). */
+    if (out.seats.size() > HYDRA_MAX_EXTRA_SEATS) {
+        err = "seat_router supports at most " + std::to_string(HYDRA_MAX_EXTRA_SEATS) + " extra seats";
+        return false;
+    }
     for (size_t i = 0; i < out.seats.size(); ++i) {
         const SeatCfg& c = out.seats[i];
         bool haveKbd   = (c.kbd   != 0) || !c.kbdId.empty();
@@ -191,7 +215,62 @@ inline bool hydra_parse_config(const std::string& text, HydraCfg& out, std::stri
                   "): needs name, (kbd or kbd_id), (mouse or mouse_id), port, monitor";
             return false;
         }
+        const std::string prefix = "seat " + c.name + ": ";
+        if (!hydra_valid_seat_name(c.name.c_str())) {
+            err = prefix + "name must be 1..32 ASCII letters, digits, underscores or hyphens";
+            return false;
+        }
+        int sessionNumber = 0;
+        const bool namedSession = c.session.rfind("user:", 0) == 0 && c.session.size() > 5;
+        const bool numberedSession = hydra_parse_number(c.session.c_str(), 1, INT_MAX, &sessionNumber) != 0;
+        if (c.session != "auto" && c.session != "console" && !namedSession && !numberedSession) {
+            err = prefix + "session must be auto, console, user:NAME or a positive numeric ID";
+            return false;
+        }
+        if (out.seats.size() > 1 && !namedSession && !numberedSession) {
+            err = prefix + "multiple extra seats require explicit, distinct user:NAME or numeric sessions";
+            return false;
+        }
+        if ((c.kbd && !c.kbdId.empty()) || (c.mouse && !c.mouseId.empty())) {
+            err = prefix + "choose a numeric device OR a hardware ID, not both";
+            return false;
+        }
+        for (const std::string* id : {&c.kbdId, &c.mouseId}) {
+            bool invalid = id->size() > 255 || (!id->empty() && id->back() == '\\');
+            for (unsigned char ch : *id) if (ch < 32 || ch > 126 || ch == '"') invalid = true;
+            if (invalid) {
+                err = prefix + "hardware ID is too long or contains unsupported command-line characters";
+                return false;
+            }
+        }
+        if (!out.confineMonitor.empty() && lower(c.monitor) == lower(out.confineMonitor)) {
+            err = prefix + "monitor is already assigned to the console";
+            return false;
+        }
+        for (size_t j = 0; j < i; ++j) {
+            const SeatCfg& other = out.seats[j];
+            std::string conflict;
+            if (lower(c.name) == lower(other.name)) conflict = "name";
+            else if (lower(c.monitor) == lower(other.monitor)) conflict = "monitor";
+            else if (hydra_ports_overlap(c.port, other.port)) conflict = "agent/injector port";
+            else if (c.kbd && c.kbd == other.kbd) conflict = "keyboard";
+            else if (c.mouse && c.mouse == other.mouse) conflict = "mouse";
+            else if (!c.kbdId.empty() && lower(c.kbdId) == lower(other.kbdId)) conflict = "keyboard hardware ID";
+            else if (!c.mouseId.empty() && lower(c.mouseId) == lower(other.mouseId)) conflict = "mouse hardware ID";
+            else if (c.session != "auto" && !c.session.empty() && lower(c.session) == lower(other.session))
+                conflict = "session";
+            else {
+                int otherSession = 0;
+                if (numberedSession && hydra_parse_number(other.session.c_str(), 1, INT_MAX, &otherSession) &&
+                    sessionNumber == otherSession) conflict = "session";
+            }
+            if (!conflict.empty()) {
+                err = prefix + conflict + " conflicts with seat " + other.name;
+                return false;
+            }
+        }
     }
+    result = std::move(out);
     return true;
 }
 
@@ -221,6 +300,13 @@ inline std::wstring hydra_build_router_args(const HydraCfg& cfg)
         else                    a += L" --mouse "     + std::to_wstring(s.mouse);
     }
     return a;
+}
+
+/* The final argument also selects the cursor's shared-memory namespace. */
+inline std::wstring hydra_build_agent_args(const SeatCfg& seat)
+{
+    return L"127.0.0.1 " + std::to_wstring(seat.port) + L" " +
+           std::wstring(seat.name.begin(), seat.name.end());
 }
 
 #endif /* HYDRA_CONFIG_H */

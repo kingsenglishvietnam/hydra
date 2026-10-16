@@ -1,0 +1,39 @@
+# Four users on one PC: console A plus B, C and D.
+# TEMPLATE ONLY: these device numbers/display names are NOT a hardware map.
+# Learn each device on the target machine; recheck numeric selectors each boot.
+# The two identical-model devices on a workstation cannot be distinguished by
+# a VID/PID substring. Persistent USB-port/instance binding is not implemented.
+# This file does not create Windows users, sessions or fullscreen clients.
+
+[hostA]
+confine_monitor = '\\.\DISPLAY1'
+
+[[seat]]
+name = 'B'
+kbd = 2
+mouse = 12
+port = 56789
+monitor = '\\.\DISPLAY2'
+session = 'user:seat-b'
+display_mode = 'off'
+audio_prime = 'off'
+
+[[seat]]
+name = 'C'
+kbd = 3
+mouse = 13
+port = 56790
+monitor = '\\.\DISPLAY3'
+session = 'user:seat-c'
+display_mode = 'off'
+audio_prime = 'off'
+
+[[seat]]
+name = 'D'
+kbd = 4
+mouse = 14
+port = 56791
+monitor = '\\.\DISPLAY4'
+session = 'user:seat-d'
+display_mode = 'off'
+audio_prime = 'off'

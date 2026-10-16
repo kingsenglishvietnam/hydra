@@ -73,6 +73,7 @@
 #include <string.h>
 #include <wctype.h>     /* towlower (case-insensitive hardware-ID match) */
 #include "interception.h"
+#include "hydra_input_binding.h"
 
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "user32.lib")
@@ -85,7 +86,7 @@
  * (nonzero exit) and let respawn bring up a fresh process. */
 #define HANG_MS      5000
 
-#define MAX_SEATS 4
+#define MAX_SEATS HYDRA_MAX_EXTRA_SEATS
 #define EXIT_CONFIG 2
 
 #pragma pack(push, 1)
@@ -112,6 +113,7 @@ typedef struct {
  * ------------------------------------------------------------------------- */
 typedef struct {
     int           kbd, mouse, port;
+    int           bound_kbd, bound_mouse;   /* validated, one owner per device */
     /* Stable hardware-ID matching. When kbdId/mouseId are non-empty, the seat
      * matches on a case-insensitive SUBSTRING of the device's Interception
      * hardware ID instead of the volatile device number -- surviving reboots
@@ -340,8 +342,6 @@ static DWORD WINAPI hang_watchdog(LPVOID arg) {
 /* Fetch a device's Interception hardware ID into buf (wide). Returns 1 on
  * success with a non-empty string, else 0. Stable across reboots/re-plugs,
  * unlike the device number. */
-static InterceptionContext g_ctx = NULL;
-
 static int get_hwid(InterceptionContext ctx, InterceptionDevice dev,
                     wchar_t *buf, size_t cap) {
     if (cap == 0) return 0;
@@ -353,41 +353,59 @@ static int get_hwid(InterceptionContext ctx, InterceptionDevice dev,
     return buf[0] != 0;
 }
 
-/* Case-insensitive substring test for wide strings. */
-static int wcontains_ci(const wchar_t *hay, const wchar_t *needle) {
-    if (!needle[0]) return 0;
-    for (const wchar_t *h = hay; *h; ++h) {
-        const wchar_t *a = h, *b = needle;
-        while (*a && *b && towlower(*a) == towlower(*b)) { ++a; ++b; }
-        if (!*b) return 1;
+/* Validate the complete inventory BEFORE installing any capture filters.
+ * Matching the first hardware ID is not safe: identical keyboards/mice have
+ * identical IDs, and unrelated substring selectors may overlap at runtime. */
+static int resolve_bindings(InterceptionContext ctx) {
+    wchar_t ids[INTERCEPTION_MAX_DEVICE][256];
+    HydraInputDevice devices[INTERCEPTION_MAX_DEVICE];
+    HydraInputSelector keys[MAX_SEATS], mice[MAX_SEATS];
+    int keyBindings[MAX_SEATS], mouseBindings[MAX_SEATS], bad = -1, rc;
+    for (int i = 0; i < INTERCEPTION_MAX_DEVICE; ++i) {
+        get_hwid(ctx, i + 1, ids[i], 256);
+        devices[i].number = i + 1;
+        devices[i].id = ids[i];
     }
-    return 0;
+    for (int i = 0; i < g_nseat; ++i) {
+        keys[i].number = g_seat[i].kbd; keys[i].id = g_seat[i].kbdId;
+        mice[i].number = g_seat[i].mouse; mice[i].id = g_seat[i].mouseId;
+    }
+    const char *kind = "keyboard";
+    rc = hydra_resolve_inputs(keys, g_nseat, devices, INTERCEPTION_MAX_DEVICE,
+                             1, 10, keyBindings, &bad);
+    if (rc == HYDRA_BIND_OK) {
+        kind = "mouse";
+        rc = hydra_resolve_inputs(mice, g_nseat, devices, INTERCEPTION_MAX_DEVICE,
+                                 11, 20, mouseBindings, &bad);
+    }
+    if (rc != HYDRA_BIND_OK) {
+        const char *why = rc == HYDRA_BIND_MISSING ? "device is not present" :
+                         rc == HYDRA_BIND_AMBIGUOUS ? "hardware ID matches multiple devices" :
+                         rc == HYDRA_BIND_SHARED ? "device is already assigned to another seat" :
+                         "invalid selector";
+        fprintf(stderr, "[router] seat %c %s: %s; input capture NOT enabled.\n",
+                bad >= 0 ? 'B' + bad : '?', kind, why);
+        fprintf(stderr, "[router] identical models need individually learned numeric selectors; "
+                        "those must be rechecked after every reboot/re-plug.\n");
+        return 0;
+    }
+    for (int i = 0; i < g_nseat; ++i) {
+        g_seat[i].bound_kbd = keyBindings[i];
+        g_seat[i].bound_mouse = mouseBindings[i];
+        fprintf(stderr, "[router] seat %c resolved: keyboard=%d mouse=%d\n",
+                'B' + i, keyBindings[i], mouseBindings[i]);
+    }
+    return 1;
 }
 
-/* Match a captured device to a seat: prefer stable hardware-ID substring when
- * the seat specifies an ID, else fall back to the numeric index. */
 static Seat *match_kbd(InterceptionDevice dev) {
-    wchar_t hwid[256];
-    int have = g_ctx && get_hwid(g_ctx, dev, hwid, 256);
-    for (int i = 0; i < g_nseat; i++) {
-        if (g_seat[i].kbdId[0]) {
-            if (have && wcontains_ci(hwid, g_seat[i].kbdId)) return &g_seat[i];
-        } else if (g_seat[i].kbd == dev) {
-            return &g_seat[i];
-        }
-    }
+    for (int i = 0; i < g_nseat; i++)
+        if (g_seat[i].bound_kbd == dev) return &g_seat[i];
     return NULL;
 }
 static Seat *match_mouse(InterceptionDevice dev) {
-    wchar_t hwid[256];
-    int have = g_ctx && get_hwid(g_ctx, dev, hwid, 256);
-    for (int i = 0; i < g_nseat; i++) {
-        if (g_seat[i].mouseId[0]) {
-            if (have && wcontains_ci(hwid, g_seat[i].mouseId)) return &g_seat[i];
-        } else if (g_seat[i].mouse == dev) {
-            return &g_seat[i];
-        }
-    }
+    for (int i = 0; i < g_nseat; i++)
+        if (g_seat[i].bound_mouse == dev) return &g_seat[i];
     return NULL;
 }
 
@@ -418,7 +436,7 @@ static SOCKET make_listener(int port) {
 static int usage(const char *argv0) {
     fprintf(stderr,
         "usage: %s --learn\n"
-        "       %s --seat <port> (--kbd <n> | --kbd-id \"<hwid>\")\n"
+        "       %s [--check] --seat <port> (--kbd <n> | --kbd-id \"<hwid>\")\n"
         "                        (--mouse <n> | --mouse-id \"<hwid>\") [--seat ...]\n"
         "       %s <kbd> <mouse> [port]                  (legacy, one seat)\n"
         "       %s <kbd1> <mouse1> <port1> [...]         (legacy, positional)\n",
@@ -426,18 +444,20 @@ static int usage(const char *argv0) {
     return EXIT_CONFIG;                     /* config error: respawn stops */
 }
 
-/* Narrow (UTF-8/ANSI) argv string -> wide, into a fixed seat ID buffer. */
-static void set_id_from_arg(wchar_t *dst, size_t cap, const char *src) {
-    int n = MultiByteToWideChar(CP_UTF8, 0, src, -1, dst, (int)cap);
-    if (n == 0) { /* fall back to ANSI if not valid UTF-8 */
-        n = MultiByteToWideChar(CP_ACP, 0, src, -1, dst, (int)cap);
-    }
-    if (n == 0 && cap) dst[0] = 0;
-    dst[cap - 1] = 0;
+/* Reject an invalid/oversized ID rather than silently changing its meaning. */
+static int set_id_from_arg(wchar_t *dst, size_t cap, const char *src) {
+    if (!src[0]) return 0;
+    return MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, src, -1, dst, (int)cap) > 0;
 }
 
 int main(int argc, char **argv) {
+    int check = (argc >= 2 && strcmp(argv[1], "--check") == 0);
+    if (check) {
+        for (int i = 1; i < argc - 1; ++i) argv[i] = argv[i + 1];
+        --argc;
+    }
     int learn = (argc >= 2 && strcmp(argv[1], "--learn") == 0);
+    if (check && learn) return usage(argv[0]);
 
     disable_quickedit();
 
@@ -453,17 +473,18 @@ int main(int argc, char **argv) {
                 if (strcmp(argv[i], "--seat") == 0 && i + 1 < argc) {
                     if (g_nseat >= MAX_SEATS) { return usage(argv[0]); }
                     cur = g_nseat++;
-                    g_seat[cur].port = atoi(argv[++i]);
+                    if (!hydra_parse_number(argv[++i], 1, HYDRA_MAX_AGENT_PORT, &g_seat[cur].port))
+                        return usage(argv[0]);
                 } else if (cur < 0) {
                     return usage(argv[0]);      /* flag before any --seat */
                 } else if (strcmp(argv[i], "--kbd") == 0 && i + 1 < argc) {
-                    g_seat[cur].kbd = atoi(argv[++i]);
+                    if (!hydra_parse_number(argv[++i], 1, 10, &g_seat[cur].kbd)) return usage(argv[0]);
                 } else if (strcmp(argv[i], "--mouse") == 0 && i + 1 < argc) {
-                    g_seat[cur].mouse = atoi(argv[++i]);
+                    if (!hydra_parse_number(argv[++i], 11, 20, &g_seat[cur].mouse)) return usage(argv[0]);
                 } else if (strcmp(argv[i], "--kbd-id") == 0 && i + 1 < argc) {
-                    set_id_from_arg(g_seat[cur].kbdId, 256, argv[++i]);
+                    if (!set_id_from_arg(g_seat[cur].kbdId, 256, argv[++i])) return usage(argv[0]);
                 } else if (strcmp(argv[i], "--mouse-id") == 0 && i + 1 < argc) {
-                    set_id_from_arg(g_seat[cur].mouseId, 256, argv[++i]);
+                    if (!set_id_from_arg(g_seat[cur].mouseId, 256, argv[++i])) return usage(argv[0]);
                 } else {
                     return usage(argv[0]);
                 }
@@ -472,21 +493,24 @@ int main(int argc, char **argv) {
             for (int i = 0; i < g_nseat; i++) {
                 int haveK = g_seat[i].kbd   || g_seat[i].kbdId[0];
                 int haveM = g_seat[i].mouse || g_seat[i].mouseId[0];
-                if (!g_seat[i].port || !haveK || !haveM) return usage(argv[0]);
+                if (!g_seat[i].port || !haveK || !haveM ||
+                    (g_seat[i].kbd && g_seat[i].kbdId[0]) ||
+                    (g_seat[i].mouse && g_seat[i].mouseId[0])) return usage(argv[0]);
             }
         } else {
             int n = argc - 1;
             if (n == 2) {                       /* back-compat: default port */
-                g_seat[0].kbd   = atoi(argv[1]);
-                g_seat[0].mouse = atoi(argv[2]);
+                if (!hydra_parse_number(argv[1], 1, 10, &g_seat[0].kbd) ||
+                    !hydra_parse_number(argv[2], 11, 20, &g_seat[0].mouse)) return usage(argv[0]);
                 g_seat[0].port  = 56789;
                 g_nseat = 1;
             } else if (n >= 3 && n % 3 == 0 && n / 3 <= MAX_SEATS) {
                 g_nseat = n / 3;
                 for (int i = 0; i < g_nseat; i++) {
-                    g_seat[i].kbd   = atoi(argv[1 + 3 * i]);
-                    g_seat[i].mouse = atoi(argv[2 + 3 * i]);
-                    g_seat[i].port  = atoi(argv[3 + 3 * i]);
+                    if (!hydra_parse_number(argv[1 + 3 * i], 1, 10, &g_seat[i].kbd) ||
+                        !hydra_parse_number(argv[2 + 3 * i], 11, 20, &g_seat[i].mouse) ||
+                        !hydra_parse_number(argv[3 + 3 * i], 1, HYDRA_MAX_AGENT_PORT, &g_seat[i].port))
+                        return usage(argv[0]);
                 }
             } else {
                 return usage(argv[0]);
@@ -499,12 +523,23 @@ int main(int argc, char **argv) {
                  * both are numeric (ID-matched seats can't collide numerically). */
                 int kbdClash   = g_seat[i].kbd   && g_seat[i].kbd   == g_seat[j].kbd;
                 int mouseClash = g_seat[i].mouse && g_seat[i].mouse == g_seat[j].mouse;
-                if (g_seat[i].port == g_seat[j].port || kbdClash || mouseClash) {
+                if (hydra_ports_overlap(g_seat[i].port, g_seat[j].port) || kbdClash || mouseClash) {
                     fprintf(stderr, "[router] seats %c and %c share a device "
                                     "or port\n", 'B' + i, 'B' + j);
                     return EXIT_CONFIG;
                 }
             }
+        }
+
+        if (check) {
+            InterceptionContext ctx = interception_create_context();
+            if (!ctx) {
+                fprintf(stderr, "[router] cannot inspect devices: Interception driver is unavailable.\n");
+                return 3;
+            }
+            int ok = resolve_bindings(ctx);
+            interception_destroy_context(ctx);
+            return ok ? 0 : EXIT_CONFIG;
         }
 
         /* Input forwarding and the heartbeat are both timing-sensitive; same
@@ -556,11 +591,14 @@ int main(int argc, char **argv) {
             Sleep(1000);
             continue;
         }
+        if (!learn && !resolve_bindings(context)) {
+            interception_destroy_context(context);
+            return EXIT_CONFIG;
+        }
         interception_set_filter(context, interception_is_keyboard,
                                 INTERCEPTION_FILTER_KEY_ALL);
         interception_set_filter(context, interception_is_mouse,
                                 INTERCEPTION_FILTER_MOUSE_ALL);
-        g_ctx = context;   /* match_kbd/match_mouse query hardware IDs via this */
 
         InterceptionDevice device;
         InterceptionStroke stroke;

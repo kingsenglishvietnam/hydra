@@ -89,6 +89,10 @@ same person. Your situation may differ.
 
 ## Getting started
 
+For work toward more than two directly connected local seats, see
+[`LOCAL-MULTISEAT.md`](LOCAL-MULTISEAT.md). It documents the four-user template,
+offline checks, input-isolation fixes and the experimental seat-scoped launcher.
+
 **Start with [`INSTALL.md`](INSTALL.md)** — a start-to-finish guide written for
 someone who has never seen this project. Prerequisites, the seat account, the
 third-party components, building, finding your own hardware IDs and audio
