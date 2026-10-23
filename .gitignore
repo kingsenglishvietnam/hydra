@@ -67,3 +67,10 @@ logs/
 /state/termsrv-UNPATCHED
 /logs/termsrv-guard.log
 /script_browser_profile/
+
+# local version archives
+*.v[0-9]*-[0-9]*.ps1
+*.v[0-9]*-[0-9]*.json
+# probe backups and logs
+safety/
+tests/gpu-probe-*.txt
