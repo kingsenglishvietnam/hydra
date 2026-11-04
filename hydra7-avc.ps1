@@ -41,9 +41,34 @@
 # UNCHANGED: input isolation. seat_router -> agent:B injects the wireless pair
 # into the session whatever the client is.
 #
+# THE CONSOLE'S SHELL STAYS OFF THE PANEL (2026-11-03). The panel is one of the
+# console's monitors, so shell effects played there too. Now, while the seat is
+# up:
+#   desktop slide   'Animate controls and elements inside windows' and
+#   Task View zoom  'Animate windows when minimizing and maximizing' are off
+#                   for this account, back on at -Stop. No window can sit these
+#                   out -- the slide covers even the UIAccess layer -- so the
+#                   switches are the fix. -KeepAnimations leaves them alone.
+#   Show desktop    the client is topmost, which Show desktop never covers.
+#   Task View,      the cursor overlay and the seat hold (hydra-seat-hold.ps1, a
+#   Start menu      click-through live DWM copy of the client) start with
+#                   UIAccess, the on-screen keyboard's layer, above every shell
+#                   surface. hydra-uia.ps1 sets that token flag as SYSTEM, via
+#                   PsExec. -NoHold, or a missing piece, falls back to the
+#                   ordinary overlay, and Task View reaches the panel again.
+# Needs hydra-uia.ps1 and hydra-seat-hold.ps1 in -Root, and PsExec (-PsExec).
+#
+# NO CONNECT PROMPT. Since the April 2026 security update mstsc shows a
+# Connect/Cancel dialog, Cancel first, whenever it opens an unsigned .rdp file.
+# The fresh .rdp is signed on every launch with a certificate that
+# hydra-rdp-trust.ps1 makes, once, a trusted .rdp publisher on this machine.
+# Without that certificate the launcher still runs; it just asks.
+#
 # USAGE (elevated, from the Hydra Shell)
 #   .\hydra7-avc.ps1
-#   .\hydra7-avc.ps1 -Monitor 2      # skip auto-detect, use this FreeRDP index
+#   .\hydra7-avc.ps1 -Monitor 2        # skip auto-detect, use this FreeRDP index
+#   .\hydra7-avc.ps1 -NoHold           # no UIAccess overlay or hold
+#   .\hydra7-avc.ps1 -KeepAnimations   # leave the animation switch alone
 #   .\hydra7-avc.ps1 -Stop
 
 param(
@@ -55,6 +80,9 @@ param(
     [int]$Scale = 150,          # session DPI %; mstsc takes 100/125/150/175/200
     [int]$OverlayScale = 8,     # cursor_overlay.exe size multiplier; 0 = don't start it
     [string]$Overlay = '',      # default: <Root>\dist\cursor_overlay_seat.exe
+    [switch]$NoHold,            # no UIAccess overlay or seat hold: Task View reaches the panel
+    [switch]$KeepAnimations,    # leave 'Animate controls...' on: the desktop slide reaches the panel
+    [string]$PsExec = 'C:\Programs\PSTools\PsExec64.exe',
     [string]$Root = 'C:\Programs\hydra'
 )
 
@@ -66,6 +94,8 @@ $ErrorActionPreference = 'Continue'
 $PSNativeCommandUseErrorActionPreference = $false
 Set-Location $Root
 function Say($m, $c = 'Gray') { Write-Host $m -ForegroundColor $c }
+$me   = (Get-Process -Id $PID).SessionId
+$self = Split-Path -Leaf $PSCommandPath
 
 # ------------------------------------------- console taskbar on seat panel --
 # Windows only hides a taskbar behind a fullscreen window while that window is
@@ -189,6 +219,81 @@ public static class HydraMstsc {
 }
 '@
 }
+if (-not ('HydraAvcShield2' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class HydraAvcShield2 {
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after,
+        int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] static extern bool GetWindowBand(IntPtr h, out uint band);   // undocumented, Win8+
+    [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint a, uint u, ref int p, uint f);
+    [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint a, uint u, IntPtr p, uint f);
+    [StructLayout(LayoutKind.Sequential)] struct ANIMATIONINFO { public uint cbSize; public int iMinAnimate; }
+    [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint a, uint u, ref ANIMATIONINFO p, uint f);
+
+    // HWND_TOPMOST; NOSIZE | NOMOVE | NOACTIVATE.
+    public static bool Topmost(IntPtr h) { return SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x13); }
+
+    public static IntPtr FindHold() { return FindWindow("HydraSeatHold", null); }
+    public static void CloseHold(IntPtr h) { PostMessage(h, 0x10, IntPtr.Zero, IntPtr.Zero); }   // WM_CLOSE
+
+    // z-order band: 1 = the ordinary one, 2 = UIAccess, 0 = could not read it.
+    public static uint Band(IntPtr h) {
+        uint b = 0;
+        try { GetWindowBand(h, out b); } catch (EntryPointNotFoundException) { }
+        return b;
+    }
+    // 2 if any visible window of the process is in the UIAccess band, else the
+    // first band seen, else 0.
+    public static uint ProcessBand(int pid) {
+        uint seen = 0;
+        EnumWindows(delegate (IntPtr h, IntPtr l) {
+            uint p;
+            GetWindowThreadProcessId(h, out p);
+            if (p == (uint)pid && IsWindowVisible(h)) {
+                uint b = Band(h);
+                if (b == 2 || seen == 0) seen = b;
+            }
+            return true;
+        }, IntPtr.Zero);
+        return seen;
+    }
+
+    // The two animation switches a lesson takes (hydra-anim.ps1 names):
+    //   Controls  'Animate controls and elements inside windows', SPI_GET/SETCLIENTAREAANIMATION:
+    //             the desktop slide follows it
+    //   Windows   'Animate windows when minimizing and maximizing', SPI_GET/SETANIMATION:
+    //             Task View's zoom follows it
+    public static bool Animation(string kind) {
+        if (kind == "Windows") {
+            ANIMATIONINFO ai = new ANIMATIONINFO();
+            ai.cbSize = 8;
+            SystemParametersInfo(0x48, 8, ref ai, 0);
+            return ai.iMinAnimate != 0;
+        }
+        int v = 0;
+        SystemParametersInfo(0x1042, 0, ref v, 0);
+        return v != 0;
+    }
+    public static bool SetAnimation(string kind, bool on) {
+        if (kind == "Windows") {
+            ANIMATIONINFO ai = new ANIMATIONINFO();
+            ai.cbSize = 8;
+            ai.iMinAnimate = on ? 1 : 0;
+            return SystemParametersInfo(0x49, 8, ref ai, 3);
+        }
+        return SystemParametersInfo(0x1043, 0, new IntPtr(on ? 1 : 0), 3);   // UPDATEINIFILE | SENDCHANGE
+    }
+}
+'@
+}
 function Set-ConsoleTaskbarOnAllDisplays([bool]$On) {
     $want = [int]$On
     $have = (Get-ItemProperty $mmKey -Name MMTaskbarEnabled -EA SilentlyContinue).MMTaskbarEnabled
@@ -228,11 +333,82 @@ function Set-ConsoleTaskbarOnAllDisplays([bool]$On) {
     Say "  console taskbar on all displays: $(if ($On) { 'on' } else { 'off' })" DarkGray
 }
 
+# ------------------------------------------------- lesson animations -------
+# The desktop slide (Ctrl+Win+arrows, four-finger swipe, Task View) plays on
+# every monitor of this session, and no window can sit it out: it covered even
+# a UIAccess window (hydra-seat-hold-uia.ps1). Task View's zoom reaches the
+# panel the same way. Each follows one of the switches hydra-anim.ps1 found
+# (-Off Controls, -Off Windows), so both are off while the seat is up -- and
+# each comes back at -Stop only if this script turned it off: a flag per switch
+# in state\. Per user, so seat B's account keeps its own. HKCU, so the
+# same-account rule of the taskbar toggle applies.
+$lessonAnimations = @(
+    @{ Kind = 'Controls'; Flag = 'controls-animation-off-for-lesson'
+       Name = 'Animate controls and elements inside windows' }       # the desktop slide
+    @{ Kind = 'Windows';  Flag = 'window-animation-off-for-lesson'
+       Name = 'Animate windows when minimizing and maximizing' }     # Task View's zoom
+)
+function Set-LessonAnimations([bool]$Lesson) {
+    foreach ($a in $lessonAnimations) {
+        $flag = Join-Path $Root "state\$($a.Flag)"
+        if ($Lesson) {
+            if (-not [HydraAvcShield2]::Animation($a.Kind)) { continue }    # already off: not ours to give back
+            if ([HydraAvcShield2]::SetAnimation($a.Kind, $false)) {
+                New-Item -ItemType Directory -Force -Path (Split-Path $flag) | Out-Null
+                New-Item -ItemType File -Force -Path $flag | Out-Null
+                Say "  '$($a.Name)' off for the lesson" DarkGray
+            } else {
+                Say "  could not switch '$($a.Name)' off -- its animation will reach the panel" Yellow
+            }
+        } elseif (Test-Path $flag) {
+            [void][HydraAvcShield2]::SetAnimation($a.Kind, $true)
+            Remove-Item $flag -Force
+            Say "  '$($a.Name)' back on" DarkGray
+        }
+    }
+}
+
+# ------------------------------------------------------------ UIAccess -----
+# Task View and the Start menu draw above every ordinary window on every
+# monitor, topmost included. UIAccess windows sit above them -- the on-screen
+# keyboard's layer. Windows grants UIAccess to signed exes under Program Files;
+# what it checks is a flag on the process token, which SYSTEM may set.
+# hydra-uia.ps1 does that, run as SYSTEM in session 0 through PsExec, and starts
+# the command in THIS session, as you, its console minimized. Returns $true if it
+# started.
+$ps51      = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+$uiaScript = Join-Path $Root 'hydra-uia.ps1'
+function Start-UiAccess([string]$CommandLine, [bool]$Elevated) {
+    $spec = @{ session = $me; cmd = $CommandLine; dir = $Root; elevated = $Elevated } |
+        ConvertTo-Json -Compress
+    $job = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($spec))
+    # -InputFormat None and an empty stdin: under PsExec, powershell.exe
+    # otherwise sits waiting for input that never comes.
+    $out = $null | & $PsExec -accepteula -nobanner -s `
+        $ps51 -NoProfile -NonInteractive -InputFormat None -ExecutionPolicy Bypass `
+        -File $uiaScript -Job $job 2>&1 | Out-String
+    # PsExec hands back hydra-uia.ps1's exit code, but not reliably its output:
+    # the first run of this saw exit 0, a started overlay, and no "started" line.
+    # So the exit code is the verdict.
+    if ($LASTEXITCODE -eq 0) { return $true }
+    Say "  UIAccess start failed (PsExec exit $LASTEXITCODE):" Yellow
+    foreach ($l in ($out -split "`r?`n")) { if ($l.Trim()) { Say "    $($l.Trim())" DarkGray } }
+    return $false
+}
+
 # ---------------------------------------------------------------- stop -----
 function Stop-Everything {
     Say "stopping ..." Cyan
+    # The seat hold first, so it is not left over the panel showing a dead client.
+    $hold = [HydraAvcShield2]::FindHold()
+    if ($hold -ne [IntPtr]::Zero) { [HydraAvcShield2]::CloseHold($hold) }
     Get-Process mirror, hydrardp, sdl-freerdp, mstsc, cursor_overlay, cursor_overlay_seat `
         -EA SilentlyContinue | Stop-Process -Force
+    # Each overlay's PowerShell host outlives it (-NoExit, so a failure stays
+    # readable). Close them too, or every launch leaves one more behind.
+    Get-Process powershell -EA SilentlyContinue |
+        Where-Object { $_.MainWindowTitle -like 'Hydra seat * -- cursor overlay' } |
+        Stop-Process -Force -EA SilentlyContinue
     Stop-Service Hydra -EA SilentlyContinue
     Start-Sleep 2
     $t = query session | Select-String $User
@@ -245,7 +421,7 @@ function Stop-Everything {
     Say "stopped." Green
 }
 
-if ($Stop) { Stop-Everything; Set-ConsoleTaskbarOnAllDisplays $true; return }
+if ($Stop) { Stop-Everything; Set-LessonAnimations $false; Set-ConsoleTaskbarOnAllDisplays $true; return }
 Stop-Everything
 Say ""
 
@@ -318,6 +494,7 @@ if ((Get-ItemProperty $cli -EA SilentlyContinue).fClientDisableUDP -ne 1) {
 # service start and audio pin to finish restarting before the client window
 # exists -- a window born into a half-started explorer can lose its pin.
 Set-ConsoleTaskbarOnAllDisplays $false
+if (-not $KeepAnimations) { Set-LessonAnimations $true }
 
 Say "starting Hydra service ..." Cyan
 Start-Service Hydra
@@ -415,6 +592,30 @@ Set-Content -Path $rdp -Encoding Unicode -Value @(
     'redirectsmartcards:i:0'
     'drivestoredirect:s:'
 )
+# Signed by the publisher hydra-rdp-trust.ps1 made trusted, mstsc opens it
+# without the Connect/Cancel security dialog. rdpsign signs in place; nothing
+# may touch the file after this, or the signature breaks.
+$signer = Get-ChildItem Cert:\LocalMachine\My -EA SilentlyContinue |
+    Where-Object { $_.Subject -eq 'CN=Hydra rdp signing' -and $_.HasPrivateKey } |
+    Select-Object -First 1
+if ($signer) {
+    $rdpsign = Join-Path $env:WINDIR 'System32\rdpsign.exe'
+    $certSha256 = -join ([Security.Cryptography.SHA256]::Create().ComputeHash($signer.RawData) |
+        ForEach-Object { $_.ToString('X2') })
+    # The verdict is the signature line in the file, not rdpsign's exit code.
+    $signOut = & $rdpsign /sha256 $certSha256 $rdp 2>&1 | Out-String
+    if (-not (Select-String -Path $rdp -Pattern '^signature:s:' -Quiet)) {
+        # Some builds want the SHA1 thumbprint after /sha256.
+        $signOut += & $rdpsign /sha256 $signer.Thumbprint $rdp 2>&1 | Out-String
+    }
+    if (Select-String -Path $rdp -Pattern '^signature:s:' -Quiet) {
+        Say ".rdp signed: mstsc should connect without the Connect/Cancel prompt" Green
+    } else {
+        Say "  could not sign the .rdp, so mstsc will ask: $($signOut.Trim())" Yellow
+    }
+} else {
+    Say "  .rdp unsigned, so mstsc asks Connect/Cancel -- hydra-rdp-trust.ps1, once, ends that" DarkGray
+}
 Say ""
 Say "starting mstsc on the seat panel -- LOG IN AS $User in its prompt" Cyan
 Start-Process mstsc -ArgumentList "`"$rdp`""
@@ -506,6 +707,19 @@ if ($pinned) {
     Say "  if the panel goes blank when you switch virtual desktops, that is why." Yellow
 }
 
+# ------------------------------------------------------------- topmost ------
+# Show desktop (the taskbar's far corner, Win+D) minimizes what it can, then
+# raises the desktop over every window that is not topmost -- on the panel,
+# over the seat. Topmost, the client sits it out (hydra-topmost.ps1). It stays
+# in the ordinary layer, below the overlay and the hold. With -NoHold, clicking
+# into the seat can lift it over the ordinary overlay.
+$h = [HydraMstsc]::Find()
+if ($h -ne [IntPtr]::Zero -and [HydraAvcShield2]::Topmost($h)) {
+    Say "client topmost: Show desktop leaves the panel alone" Green
+} else {
+    Say "  could not make the client topmost -- Show desktop will reach the panel." Yellow
+}
+
 # ------------------------------------------------------ taskbar button ------
 # With the console taskbar off the seat panel, the client's button lands on the
 # laptop's taskbar -- on every virtual desktop, since it is pinned. The teacher
@@ -516,30 +730,98 @@ if ($h -ne [IntPtr]::Zero) {
     catch { Say "  could not remove the client taskbar button: $_" Yellow }
 }
 
-# ------------------------------------------------------- cursor overlay ----
-# Seat mode: draws the cursor agent:B publishes, over the seat's panel, from
-# THIS session (see the header). Built without the uiAccess manifest, so it
-# needs no elevation and no trusted path. Through a minimized PowerShell like
-# hydra7's client: a minimized window of its own would hand the overlay its
-# first ShowWindow state and minimize the overlay too.
+# ------------------------------------------ cursor overlay and seat hold ----
+# Seat mode: the overlay draws the cursor agent:B publishes, over the seat's
+# panel, from THIS session (see the header). It runs in a minimized PowerShell
+# like hydra7's client: a minimized window of its own would hand the overlay
+# its first ShowWindow state and minimize the overlay too.
+#
+# Both the overlay and the hold start with UIAccess (Start-UiAccess above),
+# above every shell surface: Task View and the Start menu stay on the laptop.
+# The hold covers the panel with a live copy of the client and tucks itself
+# directly under the overlay. The overlay goes first, with your full token as
+# before; if it misses the UIAccess layer, there is no hold, because the hold
+# would cover the student's cursor. -NoHold, or a missing piece, starts the
+# ordinary overlay, as hydra7-avc always did.
 if (-not $Overlay) { $Overlay = Join-Path $Root 'dist\cursor_overlay_seat.exe' }
-if ($OverlayScale -gt 0) {
-    if (-not (Test-Path $Overlay)) {
-        Say "cursor overlay not built ($Overlay) -- see VIDEO-H264.md, 'The seat's cursor'." Yellow
-    } else {
-        $at = '{0},{1},{2},{3}' -f $panel.X, $panel.Y, $panel.W, $panel.H
-        $ovCmd = "`$host.UI.RawUI.WindowTitle = 'Hydra seat $Seat -- cursor overlay'; " +
-                 "& '$Overlay' $OverlayScale --seat $Seat --at $at"
-        Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit', '-Command', $ovCmd
-        Start-Sleep 2
-        $me = (Get-Process -Id $PID).SessionId
-        if (Get-Process cursor_overlay_seat -EA SilentlyContinue | Where-Object SessionId -eq $me) {
-            Say "cursor overlay drawing seat $Seat's cursor (x$OverlayScale)" Green
+$holdScript = Join-Path $Root 'hydra-seat-hold.ps1'
+$wantOverlay = $OverlayScale -gt 0
+if ($wantOverlay -and -not (Test-Path $Overlay)) {
+    Say "cursor overlay not built ($Overlay) -- see VIDEO-H264.md, 'The seat's cursor'." Yellow
+    $wantOverlay = $false
+}
+$shield = -not $NoHold
+if ($shield) {
+    $missing = @($PsExec, $uiaScript, $holdScript | Where-Object { -not (Test-Path $_) })
+    if ($missing) {
+        Say "no seat hold -- missing: $($missing -join ', ')" Yellow
+        $shield = $false
+    }
+}
+function Wait-Overlay {
+    for ($i = 0; $i -lt 10; $i++) {
+        $p = Get-Process cursor_overlay_seat -EA SilentlyContinue |
+            Where-Object SessionId -eq $me | Select-Object -First 1
+        if ($p) { return $p }
+        Start-Sleep -Milliseconds 500
+    }
+    return $null
+}
+$at = '{0},{1},{2},{3}' -f $panel.X, $panel.Y, $panel.W, $panel.H
+$ovCmd = "`$host.UI.RawUI.WindowTitle = 'Hydra seat $Seat -- cursor overlay'; " +
+         "& '$Overlay' $OverlayScale --seat $Seat --at $at"
+$ovUp = $false
+if ($wantOverlay -and $shield) {
+    $ovLine = "`"$ps51`" -NoProfile -NoExit -EncodedCommand " +
+              [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($ovCmd))
+    $ov = $null
+    if (Start-UiAccess $ovLine $true) { $ov = Wait-Overlay }
+    if ($ov) {
+        $ovUp = $true
+        Start-Sleep 1                                   # its window, not just its process
+        $band = [HydraAvcShield2]::ProcessBand($ov.Id)
+        if ($band -eq 2) {
+            Say "cursor overlay drawing seat $Seat's cursor (x$OverlayScale, UIAccess)" Green
+        } elseif ($band -eq 0) {
+            Say "cursor overlay drawing seat $Seat's cursor (x$OverlayScale); its layer could not be read" Yellow
         } else {
-            Say "cursor overlay did not start -- its minimized window says why." Yellow
+            Say "cursor overlay up (x$OverlayScale) but not in the UIAccess layer -- no seat hold." Yellow
+            $shield = $false
+        }
+    } else {
+        Say "  no UIAccess overlay -- starting the ordinary one, and no seat hold." Yellow
+        $shield = $false
+    }
+}
+if ($wantOverlay -and -not $ovUp) {
+    Start-Process powershell -WindowStyle Minimized -ArgumentList '-NoExit', '-Command', $ovCmd
+    if (Wait-Overlay) {
+        Say "cursor overlay drawing seat $Seat's cursor (x$OverlayScale)" Green
+    } else {
+        Say "cursor overlay did not start -- its minimized window says why." Yellow
+    }
+}
+$held = $false
+if ($shield) {
+    $holdLine = "`"$ps51`" -NoProfile -ExecutionPolicy Bypass -File `"$holdScript`" -Run"
+    if (Start-UiAccess $holdLine $false) {
+        # Windows PowerShell compiles the hold's C# first: give it time.
+        $hh = [IntPtr]::Zero
+        for ($i = 0; $i -lt 60 -and $hh -eq [IntPtr]::Zero; $i++) {
+            Start-Sleep -Milliseconds 250
+            $hh = [HydraAvcShield2]::FindHold()
+        }
+        if ($hh -eq [IntPtr]::Zero) {
+            Say "  seat hold did not come up -- its minimized window says why." Yellow
+        } else {
+            $held = $true
+            $hb = [HydraAvcShield2]::Band($hh)
+            Say "seat hold over the panel (layer $hb): Task View and the Start menu stay on the laptop" `
+                $(if ($hb -eq 2) { 'Green' } else { 'Yellow' })
         }
     }
 }
+if (-not $held) { Say "  Task View and the Start menu will show on the panel." DarkGray }
 
 # ------------------------------------------------------------- verify ------
 Start-Sleep 2
@@ -570,7 +852,7 @@ if ($mineSwapped -eq '1') {
 Say ""
 Say "To reach seat $Seat yourself, move your cursor onto its panel." DarkGray
 Say ""
-Say "Stop:   .\hydra7-avc.ps1 -Stop" Cyan
+Say "Stop:   .\$self -Stop" Cyan
 Say "Panic:  type  Stop-Service Hydra  and press Enter (works blind)" DarkGray
 
 # --------------------------------------------------------- audio note ------

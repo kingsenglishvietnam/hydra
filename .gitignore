@@ -74,3 +74,6 @@ logs/
 # probe backups and logs
 safety/
 tests/gpu-probe-*.txt
+
+# hydra7-avc.ps1's lesson flags: which animation switches it turned off
+/state/*-off-for-lesson

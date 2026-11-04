@@ -1,6 +1,6 @@
 # Hydra — current state.  Read this first after any reboot.
 
-Updated 2026-10-11. **Hydra is in active development.** Update this file as
+Updated 2026-11-04. **Hydra is in active development.** Update this file as
 things change; the August notes it used to hold are kept below as an archive.
 
 **When in doubt, read the source and `git log`, not this file.**
@@ -14,6 +14,7 @@ things change; the August notes it used to hold are kept below as an archive.
 | Daily use | `.\hydra7-avc.ps1` — mode 7: mstsc full-screen on the 2770, H.264 encoded on Quick Sync. `-Stop` to end; `Stop-Service Hydra` in a panic, works blind |
 | Fallback | `.\hydra7.ps1` — the same seat with FreeRDP and RemoteFX, about five times the CPU for video |
 | Seat B's pointer | `dist\cursor_overlay_seat.exe`, started by the launcher, draws it over the panel from your session, fed by agent:B with the seat's own 256 px pointer files. Size = `-OverlayScale` × the seat's 32 px on-screen pointer; x8 is the original 1:1 |
+| The console's shell | Kept off the panel while the seat is up: two animation switches off for your account, mstsc topmost, the overlay and a live copy of the seat (`hydra-seat-hold.ps1`) in the UIAccess layer. `.\hydra-rdp-trust.ps1`, once, ends the Connect/Cancel prompt. `VIDEO-H264.md`, *Keeping the console's shell off the panel*; `tools\diag\hydra-shield-check.ps1` shows what is in place |
 | Seat B's sound | mstsc plays it, pinned to the 2770 by `audio-pin-mstsc.json`. Silent? Check *Remote Desktop Connection* isn't muted in the Volume mixer |
 | Machine settings | The H.264 recipe in `VIDEO-H264.md`, set by `.\hydra-gpu-probe.ps1 -Apply`. AV1 blocked in seat B's browsers. Hyper-V is on, but only for checking the VM route |
 | Windows | Build 26300 at the last check; termsrv-guard re-patched it on its own |
@@ -34,9 +35,11 @@ attempts and 0 drops.
 
 - Text sharpness under H.264 against RemoteFX — not compared yet.
 - TCP-only applies to every mstsc connection from this laptop, not just seat B's.
-- mstsc stops drawing when minimized: Win+D on your keyboard hides seat B.
+- mstsc stops drawing when minimized. Show desktop and Win+D no longer reach it
+  (the client is topmost); minimizing it by hand still would.
 - Pointers that apps draw themselves come through at 32 px, enlarged.
-- The overlay is started by the launcher, not supervised by `hydrad`.
+- The overlay and the seat hold are started by the launcher, through PsExec as
+  SYSTEM (`hydra-uia.ps1`), and not supervised by `hydrad`.
 
 `ROADMAP.md` has the order these get done in.
 

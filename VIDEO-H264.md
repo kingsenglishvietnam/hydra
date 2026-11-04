@@ -167,6 +167,55 @@ clean shrink. Application-drawn pointers fall back to the live 32 px image. An
 "inverted" pointer flips whatever is underneath it, which a picture can't do,
 so it comes out black.
 
+## Keeping the console's shell off the panel
+
+The panel is one of the console's monitors, so anything the console's shell
+does on every monitor, the student saw too. While the seat is up, the launcher
+keeps each of these on the laptop (2026-11-03):
+
+| What reached the panel | What stops it |
+|---|---|
+| The desktop slide: Ctrl+Win+arrows, four-finger swipe | *Animate controls and elements inside windows* off for your account |
+| Task View's zoom | *Animate windows when minimizing and maximizing* off for your account |
+| Show desktop: the taskbar's far corner, Win+D | mstsc is topmost, and Show desktop never covers a topmost window |
+| Task View itself, the Start menu | The seat hold, `hydra-seat-hold.ps1`: a click-through window showing a live DWM thumbnail of mstsc, in the UIAccess layer above every shell surface, tucked under the cursor overlay, which runs there too |
+
+Both switches come back on at `-Stop`, but only the ones the launcher turned
+off: a flag for each sits in `state\`. They are per user, so seat B keeps its
+own. Windows grants the UIAccess layer to signed programs installed under
+Program Files; what it checks when a window is created is a flag on the process
+token, which SYSTEM may set. `hydra-uia.ps1` does that, run through PsExec
+(`C:\Programs\PSTools\PsExec64.exe`; `-PsExec` to change it), and starts the
+overlay and the hold in your session.
+
+No window can keep the slide itself off the panel. A topmost copy of the seat
+and the same copy in the UIAccess layer both went with it: the slide covers
+every layer a program can reach. Hence the switch.
+
+`-KeepAnimations` leaves the switches alone. `-NoHold` starts the ordinary
+overlay without the hold, and Task View reaches the panel again; a missing
+`hydra-uia.ps1`, `hydra-seat-hold.ps1` or PsExec falls back the same way, and
+says so. `tools\diag\hydra-shield-check.ps1` reports what is in place: the
+overlay and the hold should both be in layer 2.
+
+### No Connect prompt
+
+Since the April 2026 security update, mstsc shows a security dialog every time
+it opens an .rdp file, with Cancel the default for an unsigned one. A file
+signed by a publisher this machine trusts opens without it, so the launcher
+signs its fresh .rdp on every launch. Once, elevated:
+
+```powershell
+.\hydra-rdp-trust.ps1
+```
+
+That makes a self-signed code-signing certificate, `CN=Hydra rdp signing`, with
+its private key in the machine store and not exportable; trusts it on this
+machine only; and lists its thumbprints in the trusted-publisher policy,
+`TrustedCertThumbprints`. The price: this machine trusts code signed with that
+key, which only an admin here can use. `-Undo` takes it all back out. Without
+the certificate the launcher still runs, and mstsc asks.
+
 ## Checking it
 
 ```powershell
