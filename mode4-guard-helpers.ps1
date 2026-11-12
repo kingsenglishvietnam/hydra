@@ -171,7 +171,7 @@ function Start-ProtoRun {
 
     Rec "=== mode 4 retest, run $Label, $stamp ===" 'Cyan'
     Rec ("OS build      : {0}.{1} ({2})" -f $cv.CurrentBuild, $cv.UBR, $cv.DisplayVersion)
-    Rec ("termsrv.dll   : {0}  {1}" -f $dllVer.ProductVersion, $patched)
+    Rec ("termsrv.dll   : {0}  {1}" -f $dllVer.FileVersionRaw, $patched)
     Rec ("ServiceDll    : {0}" -f (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\TermService\Parameters').ServiceDll)
     $pk = @(Get-HydraIddPackage)
     Rec ("IDD packages  : {0}" -f $(if ($pk.Count) { ($pk | ForEach-Object { "$($_.Published)<-$($_.Original)" }) -join ', ' } else { 'none staged' }))
