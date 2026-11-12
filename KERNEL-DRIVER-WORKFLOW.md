@@ -1,3 +1,8 @@
+> **WITHDRAWN 2026-11-12 evening.** Premise wrong: termsrv does not block
+> provider sessions. Run A (31b1354) is a full desktop under the same patched
+> termsrv. KMDOD adds a display to the console session; it does not create a
+> second session. A second session still requires termsrv and the patch.
+> Do not install KMDOD on the teaching machine. See MODE4-RESULTS.md.
 # KERNEL-DRIVER-WORKFLOW.md — Path A, WDDM miniport replacing RDP
 
 Written 2026-11-12. Supersedes MODE4-RETEST-GUARD.md as the active procedure.
@@ -450,3 +455,4 @@ For each step: the gate output, plus the log file for that step
 (`C:\HydraLog\kmdod.log` for Step 2, `C:\HydraLog\frame-*.bin` for Step 3,
 and any diagnostic output). Without these, the next session starts from
 zero.
+

@@ -1,3 +1,8 @@
+> **WITHDRAWN 2026-11-12 evening.** Premise wrong: termsrv does not block
+> provider sessions. Run A (31b1354) is a full desktop under the same patched
+> termsrv. KMDOD adds a display to the console session; it does not create a
+> second session. A second session still requires termsrv and the patch.
+> Do not install KMDOD on the teaching machine. See MODE4-RESULTS.md.
 # KERNEL-DRIVER-PLAN.md — replacing RDP with a WDDM miniport
 
 Written 2026-11-12 after run B. Supersedes the mode 4 provider approach.
@@ -65,3 +70,4 @@ The session model requires termsrv to own the display and input paths.
 A WDDM miniport owns them directly. No session arbitration, no reason=18,
 no GetInputHandles contract to satisfy. Cost: kernel stability. Benefit:
 the stack is entirely ours.
+
