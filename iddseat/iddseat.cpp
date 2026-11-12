@@ -412,7 +412,7 @@ static void IddSeatLog(const char* fmt, ...)
     vfprintf(f, fmt, ap);
     va_end(ap);
 
-    fprintf(f, "\\n");
+    fprintf(f, "\n");
     fclose(f);
 }
 
@@ -530,6 +530,17 @@ extern "C" NTSTATUS IddSeatDeviceD0Entry(WDFDEVICE device, WDF_POWER_DEVICE_STAT
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&adapterAttr, IndirectAdapterContext);
     init.ObjectAttributes = &adapterAttr;
 
+    /* What the class extension says it is. The INF declares IddCx0102 and the
+     * compile line says minor 2, while the remote build links the 1.10 stub and
+     * calls a 1.10 function below. This is the number that settles which of
+     * those the framework actually bound. */
+    {
+        IDARG_OUT_GETVERSION ver{};
+        NTSTATUS verStatus = IddCxGetVersion(&ver);
+        IddSeatLog("IddCxGetVersion -> 0x%08X, IddCxVersion=0x%04lX",
+                   verStatus, (unsigned long)ver.IddCxVersion);
+    }
+
     IDARG_OUT_ADAPTER_INIT out{};
     IddSeatLog("D0Entry: calling IddCxAdapterInitAsync, caps.Flags=0x%X", (unsigned)caps.Flags);
     NTSTATUS status = IddCxAdapterInitAsync(&init, &out);
@@ -641,7 +652,32 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
         cfgIn.PathCount = 1;
         cfgIn.pPaths    = &path;
 
-        HRESULT hr = IddCxAdapterDisplayConfigUpdate2(adapter, &cfgIn);
+        /* SKIP FLAG. In C:\\HydraLog because that is the one directory this
+         * host (LOCAL SERVICE) is known to reach -- it is where this log goes.
+         * The error is logged too, so "access denied" cannot be read as
+         * "flag absent": 2 = not there, 5 = there but unreadable. */
+        DWORD flagAttr = GetFileAttributesW(L"C:\\HydraLog\\idd-skip-config-update.flag");
+        DWORD flagErr  = (flagAttr == INVALID_FILE_ATTRIBUTES) ? GetLastError() : 0;
+        bool  skipCfg  = (flagAttr != INVALID_FILE_ATTRIBUTES);
+        IddSeatLog("ConfigUpdate2: skip flag %s (err=%lu)",
+                   skipCfg ? "PRESENT" : "absent", (unsigned long)flagErr);
+
+        HRESULT hr = S_OK;
+        if (skipCfg)
+        {
+            IddSeatLog("IddCxAdapterDisplayConfigUpdate2 SKIPPED");
+        }
+        else
+        {
+            /* Logged BEFORE as well as after. If the bound class extension
+             * has no such function, the call does not return an error -- the
+             * host dies. "calling" with no "->" line after it is that case. */
+            IddSeatLog("IddCxAdapterDisplayConfigUpdate2: calling, %ux%u@%u",
+                       (unsigned)path.Mode.Resolution.cx, (unsigned)path.Mode.Resolution.cy,
+                       (unsigned)path.Mode.RefreshRate.Numerator);
+            hr = IddCxAdapterDisplayConfigUpdate2(adapter, &cfgIn);
+            IddSeatLog("IddCxAdapterDisplayConfigUpdate2 -> 0x%08lX", (unsigned long)hr);
+        }
         if (FAILED(hr))
         {
             /* DEVICE_STOPPED is expected when the session is disconnecting
@@ -660,13 +696,15 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     }
 #endif
 
+    IddSeatLog("AdapterInitFinished: returning 0x%08X", arrivalStatus);
     return arrivalStatus;
 }
 
 _Use_decl_annotations_
 extern "C" NTSTATUS IddSeatAdapterCommitModes(IDDCX_ADAPTER /*adapter*/,
-                                              const IDARG_IN_COMMITMODES* /*args*/)
+                                              const IDARG_IN_COMMITMODES* args)
 {
+    IddSeatLog("CommitModes: entered, PathCount=%u", (unsigned)args->PathCount);
     return STATUS_SUCCESS;
 }
 
@@ -739,10 +777,15 @@ extern "C" NTSTATUS IddSeatMonitorAssignSwapChain(IDDCX_MONITOR monitor,
 {
     auto* mctx = WdfObjectGet_IndirectMonitorContext(monitor);
 
+    IddSeatLog("AssignSwapChain: entered, render LUID %08lX:%08lX",
+               (unsigned long)args->RenderAdapterLuid.HighPart,
+               (unsigned long)args->RenderAdapterLuid.LowPart);
+
     auto device = std::make_shared<hydra::Direct3DDevice>(args->RenderAdapterLuid);
     mctx->Processor = std::make_unique<hydra::SwapChainProcessor>(
         mctx->SeatName, args->hSwapChain, device, args->hNextSurfaceAvailable);
 
+    IddSeatLog("AssignSwapChain: processor started");
     return STATUS_SUCCESS;
 }
 
@@ -750,6 +793,7 @@ _Use_decl_annotations_
 extern "C" NTSTATUS IddSeatMonitorUnassignSwapChain(IDDCX_MONITOR monitor)
 {
     auto* mctx = WdfObjectGet_IndirectMonitorContext(monitor);
+    IddSeatLog("UnassignSwapChain: entered");
     mctx->Processor.reset();
     return STATUS_SUCCESS;
 }
