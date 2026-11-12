@@ -68,3 +68,102 @@ Add before the current fix runs:
 
 HydraProvLog("GetInputHandles -> in kbd=%p mou=%p beep=%p",
 &#x20;            (void\*)\*pKeyboardHandle, (void\*)\*pMouseHandle, (void\*)\*pBeepHandle);
+
+## Run A, 2026-11-12 21:33 — driverless, reframes run B above
+
+**Read this before drawing conclusions from the run B section.** Run A was
+performed AFTER run B. It changes what run B means.
+
+Setup: same patched 9818, no IDD staged (`oem232` removed, `oem231` console
+seat still present). Same provider, same patched termsrv.
+
+### Result: full desktop session, 60-second lifetime, reason=15 timeout
+
+Provider log (21:33:20):
+- 20.674 EnableWddmIdd(1)
+- 20.674 AcceptConnection, GetClientData, AuthenticateClientToSession
+- 20.724 NotifySessionId
+- 20.724 GetInputHandles  (returned null — same as run B)
+- 20.724 GetHardwareId cap=200 -> hr=0x0, len=22
+- 20.737 ConnectNotify session=2
+- **20.907 NotifyCommandProcessCreated session=2**  (never fires in run B)
+
+LSM events:
+- 21.687 Begin session arbitration
+- 21.992 Session logon succeeded
+- 22.474 Shell start notification received
+
+RCMM events:
+- 20.674 Listener HydraProto received a connection
+- 22.502 WDDM graphics mode is enabled
+
+Sampler (2-second cadence):
+- t+6s  id=2 Active teacher, 17 procs
+- t+11s **explorer=True**, 30 procs, dwm=True
+- t+11s..t+32s Active, explorer=True throughout, 24-33 procs
+- Session silent from t+67s (dead before next sample at t+34s)
+
+PreDisconnect:
+- 21:34:20.728 PreDisconnect reason=15  (64.7s after trigger)
+- 21:34:20.729 LSM: Session 2 disconnected, reason code 15
+
+### What this establishes
+
+1. **The provider path creates a real desktop session.** 08-11 reproduced.
+   Patched termsrv + custom provider + no IDD = login shell, Explorer, DWM,
+   30 processes. Not a stalled session. A working one.
+
+2. **`cfe20f4` is refuted as stated.** "Null handles from GetInputHandles
+   produce PreDisconnect reason 18" — the handles returned null in run A
+   too, and the session ran 60 seconds. Null handles ALONE do not cause
+   reason 18. If they contribute, they only do so in combination with the
+   IDD arrival.
+
+3. **The IDD arrival is what triggers reason=18.** Run A and run B differ
+   in exactly two things: IDD presence (`oem232` staged or not) and outcome.
+   Every other input — patched termsrv, null handles, provider sample,
+   credentials, session creation — is identical.
+
+4. **`NotifyCommandProcessCreated` fires only without IDD.** In run B the
+   session never reaches userinit; the disconnect happens before the shell
+   process is created. That absence is downstream of the disconnect, not a
+   cause of it.
+
+### The 60-second reason=15 — a separate finding
+
+Reason=15 at exactly 60s after trigger. Different class of failure from
+reason=18. Likely the sample's `WaitToConnect` does not send periodic
+callbacks, so termsrv times out the session. Needs source reading of
+`WRdsProtocolListener.cpp` and the `IWRdsProtocolListenerCallback` interface
+to see what the sample calls after connection establishment. Not blocking:
+the shell came up, so the initial handshake works. The timeout is a
+keepalive issue.
+
+### What this does to the kernel-driver plan
+
+`KERNEL-DRIVER-PLAN.md` said: "termsrv's session cap blocks the provider
+path; a WDDM miniport bypasses it." That was wrong. Termsrv does not block
+provider sessions. It blocks them **when an IDDCX driver arrives.**
+
+The kernel display path is still a candidate — because a WDDM miniport is
+not IDDCX, and termsrv's check might be IDDCX-specific. But that is a
+hypothesis with real cost. There is a cheaper test first.
+
+### Next experiment: synthetic handle test
+
+Before any kernel work, test whether the IDD-arrival disconnect is caused
+by the null input handles:
+
+1. Log what termsrv passed in — `GetInputHandles -> in kbd=%p mou=%p beep=%p`
+   before the nulling fix in `WRdsProtocolConnection.cpp`.
+2. Flag-gated return of a real `CreateEventW` handle when the flag file
+   `C:\ProgramData\Hydra\input-nonnull.flag` is present.
+3. Rebuild, run B3 with IDD staged and the flag present.
+
+Outcomes:
+- **Session holds** -> input path is the fix. Kernel display driver
+   unnecessary. Virtual input driver is the next build.
+- **reason=18 again** -> handles exonerated even with IDD present. Kernel
+   display path becomes the only remaining option.
+
+Two runs, one rebuild, ~30 minutes.
