@@ -644,7 +644,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
          * rate with a denominator of one. */
         path.Mode.RefreshRate.Numerator   = actx->Mode.vsync;
         path.Mode.RefreshRate.Denominator = 1;
-        path.Mode.VSyncFreqDivider        = 1;
+        path.Mode.VSyncFreqDivider        = 0;
 
         path.Mode.MonitorColorMode = IDDCX_DISPLAYCONFIG_MONITOR_COLORMODE_SDR;
 
@@ -797,3 +797,4 @@ extern "C" NTSTATUS IddSeatMonitorUnassignSwapChain(IDDCX_MONITOR monitor)
     mctx->Processor.reset();
     return STATUS_SUCCESS;
 }
+

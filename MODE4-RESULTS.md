@@ -188,3 +188,41 @@ mattering. Candidates in order:
 
 B3's 108s survival is not reproducible under the current code. The 108s is
 not a working state; it's a lucky ordering.
+
+## B3–B6 — ConfigUpdate2 failure and the reason=18 stall
+
+Same binary across these except as noted. All runs: `IddCxGetVersion -> 0x10C00` (runtime IddCx 1.12), headers 1.10 (kit 26100).
+
+### Timeline
+
+| run | MINOR | VSync | AdapterInitFinished | ConfigUpdate2 | reason=18 |
+|---|---|---|---|---|---|
+| B3 | 2 | 1 | reached | 0xC000000D | never (lucky, 108s) |
+| B4 | 2 | 1 | reached | 0xC000000D | yes (2.2s) |
+| B5 | 10 | 0 | NOT reached (stall) | never called | yes (1.6s) |
+| B6 | 2 | 0 | reached | 0xC000000D | yes (1.6s) |
+
+### What B3–B6 establishes
+
+1. **B3's 108s survival was an ordering fluke, not a fix.** B4 was the same binary and died at 2.2s. Nothing about the code changed between them.
+2. **MINOR=10 stalls the async adapter init.** `IddCxAdapterInitAsync` returns `0x0` but `AdapterInitFinished` never fires. Runtime is 1.12; the 1.10 build doesn't complete the async handshake. MINOR=2 works. MINOR=10 does not.
+3. **VSyncFreqDivider=1 vs =0 makes no difference.** Both return `0xC000000D`. That field is eliminated.
+4. **ConfigUpdate2 failure is the constant.** It's present in every run that reaches that call. It's the standing cause.
+
+### Next candidates (in order)
+
+1. **MonitorColorMode** (line 663). The field is set to SDR but `IDDCX_DISPLAYCONFIGPATH2_FLAGS_MONITOR_COLOR_MODE_VALID` is not set in `path.Flags`. If the runtime validates "non-default MonitorColorMode requires the flag", it rejects. Fix: remove the line (leave default) or add the flag.
+2. **MINOR=12** (match runtime). Higher risk — MINOR=10 already stalled. Try only if MonitorColorMode fails.
+3. Another field of `IDDCX_DISPLAYCONFIGPATH2` that's set wrong for 1.12.
+
+### End-of-session state (2026-11-12 late)
+
+Working tree:
+- `build-driver.ps1`: `IDDCX_VERSION_MINOR=2`
+- `iddseat.cpp:647`: `path.Mode.VSyncFreqDivider = 0`
+
+Both committed in the next commit so tomorrow starts from a known baseline.
+
+Installed: `oem223.inf iddseat-remote.inf`, dist INF `DriverVer = 11/12/2026,1.6.0.3`.
+
+B6 log saved at `logs/mode4-guard-B6-20261112-223447.txt`. B5 at `logs/mode4-guard-B5-20261112-222648.txt`.

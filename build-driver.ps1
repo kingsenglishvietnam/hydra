@@ -175,3 +175,7 @@ Write-Host ""
 Write-Host "Built: $dll" -ForegroundColor Green
 Get-Item $dll | ForEach-Object { "  {0:N0} bytes" -f $_.Length }
 Write-Host "Next: stampinf + inf2cat + .\sign-driver.ps1, then pnputil /add-driver." -ForegroundColor Cyan
+
+
+
+
