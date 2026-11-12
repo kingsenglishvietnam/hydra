@@ -167,3 +167,24 @@ Outcomes:
    display path becomes the only remaining option.
 
 Two runs, one rebuild, ~30 minutes.
+
+## B3 / B4 — the ordering race, 2026-11-12 late
+
+Same binary, same inputs. B3 survived 108s. B4 died at 2.2s. The variable
+is ordering of MonitorArrival vs. Session logon:
+
+- B3: MonitorArrival at 15.465, logon succeeded at 15.864 (399ms BEFORE logon)
+- B4: MonitorArrival at 03.843, logon succeeded at 03.703 (140ms AFTER logon)
+
+Termsrv accepts a session where the display arrived before logon. Termsrv
+rejects one where the display arrived after logon with ConfigUpdate2 failing
+0xC000000D. The failure to commit a valid config makes termsrv's post-logon
+check reject.
+
+Fix: make IddCxAdapterDisplayConfigUpdate2 succeed. Then ordering stops
+mattering. Candidates in order:
+1. VSyncFreqDivider = 0 (currently 1, MS reference uses 0)
+2. Remove MonitorColorMode or add its valid flag
+
+B3's 108s survival is not reproducible under the current code. The 108s is
+not a working state; it's a lucky ordering.
