@@ -226,3 +226,58 @@ Both committed in the next commit so tomorrow starts from a known baseline.
 Installed: `oem223.inf iddseat-remote.inf`, dist INF `DriverVer = 11/12/2026,1.6.0.3`.
 
 B6 log saved at `logs/mode4-guard-B6-20261112-223447.txt`. B5 at `logs/mode4-guard-B5-20261112-222648.txt`.
+
+## B7 and B8, 2026-11-13 — scale factor test
+
+### B7 (13:43): state failure, driver never loaded
+
+reason=17 at 490ms after ConnectNotify. No `IddCxAdapterInitAsync` in the log because
+`C:\HydraLog\iddseat.log` was never created — `DriverEntry` did not run. DriverFrameworks
+shows no `id=1003` for the remote IDD. No `Begin session arbitration` event in LSM.
+Different failure class from every prior run. Not explained; didn't reproduce in B8.
+
+### B8 (13:50): full driver init, scale factor still fails
+
+Complete driver log:
+
+```
+13:50:51.376 IddCxGetVersion -> 0x00000000, IddCxVersion=0x10C00
+13:50:51.378 IddCxAdapterInitAsync -> 0x00000000
+13:50:51.382 AdapterInitFinished: entered, AdapterInitStatus=0x00000000
+13:50:51.383 IddCxMonitorCreate -> 0x00000000
+13:50:51.385 QueryTargetModes: entered, inputCount=0
+13:50:51.385 QueryTargetModes: entered, inputCount=1
+13:50:51.385 IddCxMonitorArrival -> 0x00000000
+13:50:51.386 IddCxAdapterDisplayConfigUpdate2: calling, 1920x1080@60 flags=0x3 scale=100 size=136
+13:50:51.388 IddCxAdapterDisplayConfigUpdate2 -> 0xC000000D
+13:50:51.389 AdapterInitFinished: returning 0x00000000
+```
+
+`PreDisconnect reason=18` at 13:50:51.389, 14ms after `AdapterInitFinished` entered.
+
+### What B8 establishes
+
+1. **The scale-factor patch is live.** `flags=0x3 scale=100 size=136` — MODE_VALID
+   and MONITOR_SCALE_FACTOR_VALID both set, MonitorScaleFactor=100.
+
+2. **Query ordering was already correct.** `QueryTargetModes` fires twice (inputCount=0
+   then inputCount=1) before the config update. The "call is too early" hypothesis
+   is refuted.
+
+3. **Scale factor was not the cause.** With the documented first-call requirement met,
+   `ConfigUpdate2` still returns `0xC000000D`.
+
+4. **Struct size the driver sends: 136 bytes.** Runtime IddCx 1.12 (`0x10C00`).
+   Compile MINOR=2. Header path is 1.10 per build-driver output.
+
+### Candidates remaining (in order of cheapness)
+
+- **A:** diagnose why `IDDCX_VERSION_MINOR=10` stalls `AdapterInitFinished` (B5) —
+  read the header diffs between 1.0/1.2/1.10, check `IDDCX_ENDPOINT_VERSION`,
+  check MS IddSampleDriver.
+- **B:** test `IDDCX_VERSION_MINOR=12` (match runtime exactly).
+- **B′:** `idd-skip-config-update.flag` — tests whether `ConfigUpdate2` is needed at all.
+- **C:** compare against Microsoft's IddSampleDriver on the same build.
+
+If MS's sample doesn't call `ConfigUpdate2` and works, the answer is A or B′,
+not C.
