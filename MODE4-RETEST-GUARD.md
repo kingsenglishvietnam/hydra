@@ -1,3 +1,9 @@
+> **Status 2026-11-13: open, paused.** The §4c reading table below was written
+> when the cause of reason=18 was unknown. B10 (2026-11-13) established that
+> the ConfigUpdate2 call is not the trigger. B11 established that termsrv
+> type-checks `GetInputHandles` output at the video subsystem. The one
+> remaining test is a correctly typed input handle — requires a VM. See
+> MODE4-RESULTS.md for the full arc from B2 through Phase A.
 # MODE4-RETEST-GUARD.md — is reason=18 the session cap?
 
 Written 2026-11-12. Read against repo `99db530`.
@@ -534,3 +540,4 @@ under `ProgramData`, so a search for `provider.log` will miss it.
 - **B dies at 17, or A differs from August with no IDD involved:** build 26300
   moved something. That is a rebuild-and-baseline question, on a machine that
   is not this one.
+
