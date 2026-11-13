@@ -619,14 +619,25 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
      * IddCxAdapterDisplayConfigUpdate2 supersedes the original call and
      * returns HRESULT rather than NTSTATUS -- unlike everything else here.
      *
-     * Only MODE_VALID is set. Scale factor, physical size, colorimetry and
-     * SDR white level are flag-gated and left to the OS defaults, which is
-     * what a fixed-resolution seat monitor wants. */
+     * MODE_VALID and MONITOR_SCALE_FACTOR_VALID are set. The function's
+     * reference page has a table, "First versus subsequent calls": the FIRST
+     * call for a path must carry Mode AND Scale factor. Physical size is only
+     * required when no EDID was passed (one is), colorimetry only for a
+     * non-SDR colour mode, SDR white level only for HDR.
+     *
+     * Until 2026-11-13 this set MODE_VALID alone, on the assumption that the
+     * rest could be left to OS defaults, and the call returned 0xC000000D on
+     * every run that reached it (B3, B4, B6). */
     {
         IDDCX_DISPLAYCONFIGPATH2 path{};
         path.Size          = sizeof(path);
-        path.Flags         = IDDCX_DISPLAYCONFIGPATH2_FLAGS_MODE_VALID;
+        path.Flags         = (IDDCX_DISPLAYCONFIGPATH2_FLAGS)(
+                                 IDDCX_DISPLAYCONFIGPATH2_FLAGS_MODE_VALID |
+                                 IDDCX_DISPLAYCONFIGPATH2_FLAGS_MONITOR_SCALE_FACTOR_VALID);
         path.MonitorObject = createOut.MonitorObject;
+
+        /* Percent. Valid range is 100 to 500; the OS treats it as a hint. */
+        path.MonitorScaleFactor = 100;
 
         /* Single seat monitor, so the desktop origin is 0,0. */
         path.Mode.Position.x = 0;
@@ -672,9 +683,11 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
             /* Logged BEFORE as well as after. If the bound class extension
              * has no such function, the call does not return an error -- the
              * host dies. "calling" with no "->" line after it is that case. */
-            IddSeatLog("IddCxAdapterDisplayConfigUpdate2: calling, %ux%u@%u",
+            IddSeatLog("IddCxAdapterDisplayConfigUpdate2: calling, %ux%u@%u flags=0x%X scale=%u size=%u",
                        (unsigned)path.Mode.Resolution.cx, (unsigned)path.Mode.Resolution.cy,
-                       (unsigned)path.Mode.RefreshRate.Numerator);
+                       (unsigned)path.Mode.RefreshRate.Numerator,
+                       (unsigned)path.Flags, (unsigned)path.MonitorScaleFactor,
+                       (unsigned)path.Size);
             hr = IddCxAdapterDisplayConfigUpdate2(adapter, &cfgIn);
             IddSeatLog("IddCxAdapterDisplayConfigUpdate2 -> 0x%08lX", (unsigned long)hr);
         }
@@ -743,6 +756,8 @@ extern "C" NTSTATUS IddSeatMonitorGetDefaultModes(IDDCX_MONITOR monitor,
                                                   IDARG_OUT_GETDEFAULTDESCRIPTIONMODES* out)
 {
     auto* mctx = WdfObjectGet_IndirectMonitorContext(monitor);
+    IddSeatLog("GetDefaultModes: entered, inputCount=%u",
+               (unsigned)in->DefaultMonitorModeBufferInputCount);
     out->DefaultMonitorModeBufferOutputCount = 1;
 
     if (in->DefaultMonitorModeBufferInputCount == 0)
@@ -760,6 +775,10 @@ extern "C" NTSTATUS IddSeatMonitorQueryModes(IDDCX_MONITOR monitor,
                                              IDARG_OUT_QUERYTARGETMODES* out)
 {
     auto* mctx = WdfObjectGet_IndirectMonitorContext(monitor);
+    /* Whether this fires BEFORE the config update matters: the update names
+     * a mode, and the OS only learns the target modes from this callback. */
+    IddSeatLog("QueryTargetModes: entered, inputCount=%u",
+               (unsigned)in->TargetModeBufferInputCount);
     out->TargetModeBufferOutputCount = 1;
 
     if (in->TargetModeBufferInputCount == 0)
