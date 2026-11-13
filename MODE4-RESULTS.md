@@ -394,3 +394,49 @@ other IDD-attached run, but the session lived 108 seconds. B4 with the
 identical binary (store hash 26B90E7565124820) died at 2.2s. B3's survival
 has never been reproduced and remains unexplained. **The pattern is "failing
 config usually ends in reason=18"; B3 is the exception.**
+
+## Phase A, 2026-11-13 late — MINOR=10 investigation (partial)
+
+Read-only header investigation into why MINOR=10 stalls AdapterInitFinished.
+Time-boxed at 2h; stopped before reaching a conclusion.
+
+### Findings
+
+**Header versions bundled with kit 10.0.26100.0:** 1.0, 1.2, 1.3, 1.4, 1.6,
+1.7, 1.8, 1.9, 1.10. **No 1.11 or 1.12.** MINOR=12 is not a valid build
+target — the "try MINOR=12 to match runtime" item from earlier workflows was
+wrong.
+
+**MS's IddSampleDriver build pattern:** /DIDDCX_VERSION_MINOR=6
+/DIDDCX_MINIMUM_VERSION_REQUIRED=4. Targets 1.6 features, requires framework
+1.4 to load. The separation enables runtime availability checks.
+
+**Hydra's pattern:** IDDCX_VERSION_MINOR=2 only.
+IDDCX_MINIMUM_VERSION_REQUIRED defaults to IDDCX_VERSION_MINOR per
+IddCxFuncEnum.h, which sets IDD_EVERYTHING_ALWAYS_AVAILABLE and makes all
+function calls direct (no runtime gating). Hydra should adopt MS's
+MINIMUM < MINOR pattern eventually; not blocking for the current failure.
+
+**0xC000000D reason is WPP-only.** Header doc for
+IddCxAdapterDisplayConfigUpdate2 says the reason will be "logged using WPP."
+WPP is Microsoft-side — not enablable from a driver. The specific reason
+STATUS_INVALID_PARAMETER is returned cannot be observed.
+
+### What this changes
+
+The config-call line of investigation is closed by B10 regardless. Phase A
+confirms there is no productive next step for it:
+
+- No way to enable the WPP diagnostic
+- No newer header to bump to
+- No clear fix path even if one existed
+
+MINIMUM/MINOR build hygiene is worth doing but does not advance the
+reason=18 problem.
+
+### The only remaining test
+
+Typed input handle. A file object or HID-like handle instead of an event.
+Requires a VM — the risk is a right-type handle pointing at a non-keyboard
+device, which win32k may attempt operations on. Set one slot at a time
+(B11 set all three to the same event, so we do not know which was rejected).
