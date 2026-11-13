@@ -510,3 +510,87 @@ Open, paused. The four handle-content hypotheses are eliminated:
 - Null vs non-null at the type check (B13-B15)
 
 The reason=18 decision remains unattributed at this instrumentation level.
+
+## B16, 2026-11-13 evening — Procmon trace of the file handle in the keyboard slot
+
+Filtered Procmon capture on a B13-style run (`input-file-kbd.flag`, file
+handle returned as `kbd=0x834`). Three-log timeline:
+
+```
+20:10:29.538  provider   GetInputHandles (entry)
+20:10:29.539  procmon    svchost CreateFile hydra-file-input.txt SUCCESS
+20:10:29.540  provider   GetInputHandles -> out kbd=0x834 mode=file-kbd
+20:10:29.541  provider   GetHardwareId -> hr=0x0
+20:10:29.559  provider   ConnectNotify session=3                (+20ms)
+20:10:29.573  procmon    csrss DeviceIoControl 0xb0000 -> INVALID PARAMETER  (+34ms)
+20:10:29.573  procmon    csrss QueryDeviceRelations SUCCESS
+20:10:29.708  iddseat    DriverEntry                           (+135ms after IOCTL)
+20:10:29.782  iddseat    IddCxMonitorArrival -> 0x0
+20:10:29.793  iddseat    ConfigUpdate2 -> 0xC000000D
+20:10:29.795  iddseat    AdapterInitFinished returning 0x0
+20:10:29.807  provider   PreDisconnect reason=18               (+25ms after MonitorArrival, +234ms after IOCTL)
+20:10:29.807  procmon    csrss CloseFile                       (same ms as PreDisconnect)
+```
+
+`0xb0000` decodes as `CTL_CODE(FILE_DEVICE_KEYBOARD=0xb, Function=0x0000,
+METHOD_BUFFERED=0, FILE_ANY_ACCESS=0)` = IOCTL_KEYBOARD_QUERY_ATTRIBUTES.
+Verified against `ntddkbd.h`.
+
+### What this establishes
+
+- Win32k (`csrss.exe`) probes the handle as a keyboard, not termsrv.
+- The probe is QUERY_ATTRIBUTES specifically; the general object-type check
+  already passed in B13-B15.
+- Win32k sends QueryDeviceRelations (likely TargetDeviceRelation, verify
+  from PML Detail) and holds the handle open until 20:10:29.807 — same ms
+  as PreDisconnect.
+- The disconnect fires 234 ms after the failed IOCTL, 25 ms after
+  MonitorArrival.
+
+### What this does not establish
+
+Two hypotheses fit the full picture:
+
+(a) Win32k requires a functional keyboard by IDD arrival. Null and broken
+    handles both fail; the IOCTL failure is the mechanism.
+
+(b) IDD arrival kills the session regardless; the failed IOCTL is
+    incidental.
+
+The handle being held open through QueryDeviceRelations cuts against
+"win32k wrote it off immediately" and is the one data point prior handoffs
+skipped. It is a hypothesis-consistent observation, not proof.
+
+B16b (mouse slot, 20 min, no rebuild) and B17 (UMDF keyboard device)
+distinguish (a) from (b).
+
+### IOCTL calibration (verified against ntddkbd.h)
+
+| IOCTL | function | code |
+|---|---|---|
+| QUERY_ATTRIBUTES | 0x0000 | 0xb0000 (B16) |
+| SET_TYPEMATIC | 0x0001 | 0xb0004 |
+| SET_INDICATORS | 0x0002 | 0xb0008 |
+| QUERY_TYPEMATIC | 0x0008 | 0xb0020 |
+| QUERY_INDICATORS | 0x0010 | 0xb0040 |
+| QUERY_INDICATOR_TRANSLATION | 0x0020 | 0xb0080 |
+| INSERT_DATA | 0x0040 | 0xb0100 |
+| QUERY_EXTENDED_ATTRIBUTES | 0x0080 | 0xb0200 |
+| QUERY_IME_STATUS | 0x0400 | 0xb1000 |
+| SET_IME_STATUS | 0x0401 | 0xb1004 |
+
+### Next
+
+B16b: mouse slot with Procmon filtered to hydra-file-input.txt. Prediction:
+IOCTL_MOUSE_QUERY_ATTRIBUTES at 0xf0000 (verify against ntddmou.h).
+
+### Tag force-update note
+
+The hydra tag mode4-B15-2026-11-13 was created before the B13-B15 commit
+landed and pointed at 826b64b instead of b746ddb. It has been force-updated
+to b746ddb. Any clone that fetched the old tag will keep the old value until
+it runs:
+
+    git fetch --tags --force
+
+Otherwise the tag points at different commits depending on who asked.
