@@ -281,3 +281,116 @@ Complete driver log:
 
 If MS's sample doesn't call `ConfigUpdate2` and works, the answer is A or B′,
 not C.
+
+## B10 and B11, 2026-11-13 — config call exonerated, input handle type-checked
+
+### B10-skipconfig (14:22): not calling ConfigUpdate2 also ends in reason=18
+
+Flag C:\HydraLog\idd-skip-config-update.flag present. Driver log:
+
+```
+14:22:11.581 ConfigUpdate2: skip flag PRESENT (err=0)
+14:22:11.581 IddCxAdapterDisplayConfigUpdate2 SKIPPED
+14:22:11.581 AdapterInitFinished: returning 0x00000000
+```
+
+PreDisconnect reason=18 90ms after ConnectNotify.
+
+**What this shows:** the *act* of calling IddCxAdapterDisplayConfigUpdate2 is
+not what kills the session. Not making the call produces the same reason=18
+outcome as making it and failing.
+
+**What this does not show:** that a *successful* config call would still end in
+reason=18. Skipping and failing the call leave the session in the same state —
+IDD present, no active display path. A successful call would produce a
+*different* state, and that condition has never been tested.
+
+The August 0xD000000D from the ConfigUpdate2 call is 0xC000000D with bit 28
+set — STATUS_INVALID_PARAMETER. See decode note below.
+
+### B11-synthetic (14:36): non-null event rejected at type check, before IDD
+
+Flag C:\ProgramData\Hydra\input-nonnull.flag present. GetInputHandles returns
+a real CreateEvent handle for all three slots.
+
+```
+GetInputHandles -> in kbd=0000000000000000 mou=0000000000000000 beep=0000000000000000
+GetInputHandles -> out kbd=0000000000000864 mou=0000000000000864 beep=0000000000000864 mode=synthetic
+```
+
+Termsrv never calls ConnectNotify. IDD host never starts. Failure:
+
+```
+id=20 Attempt to send connect (5) message to Windows video subsystem failed. Status 0xD0000024.
+id=36 An error occurred when transitioning from CsrConnected in response to EvCsrInitialized. (ErrorCode 0xD0000024)
+id=40 Session 5 has been disconnected, reason code 12
+```
+
+0xD0000024 with bit 28 cleared is 0xC0000024 — STATUS_OBJECT_TYPE_MISMATCH.
+Confirmed against
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared\ntstatus.h
+line 2411.
+
+**What this shows:**
+
+- termsrv passes NULL for all three handle slots — measured, not inferred
+- null values pass the video subsystem's connect check
+- an event handle is the wrong kernel object type; the video subsystem takes
+  the value, references it as a specific object type, and the kernel says
+  STATUS_OBJECT_TYPE_MISMATCH
+- the failure is pre-IDD: ConnectNotify never fires, the driver never loads
+
+**What this does not show:**
+
+- that null handles *cause* reason=18. The B11 run doesn't reach the
+  IDD-arrival code path at all; it fails before ConnectNotify.
+- which of the three handle slots was rejected. All three got the same event,
+  including beep, which the docs say may be null. A future test must set one
+  slot at a time.
+
+### Decode note for 0xD000xxxx status codes
+
+Bit 28 is the marker Windows sets when it wraps an NTSTATUS as an HRESULT. It
+is not part of the facility field. Clear it and the standard NTSTATUS layout
+applies:
+
+```
+0xD0000024 -> 0xC0000024 -> STATUS_OBJECT_TYPE_MISMATCH
+0xD000000D -> 0xC000000D -> STATUS_INVALID_PARAMETER
+```
+
+Check any new 0xD000xxxx code against shared\ntstatus.h with bit 28 cleared.
+
+### What this leaves open
+
+Two conditions remain untested:
+
+1. **A correctly typed input handle.** An event is the wrong type. What
+   handle *would* pass the type check, and whether it changes what termsrv
+   does at IDD arrival, is untested. Cheapest path is the same flag with a
+   file object or similar. **Run on a VM, not the teaching machine** — the
+   risk is a handle of the right *type* that points at a device which isn't
+   a keyboard or mouse. win32k may treat it as the device type the handle
+   advertises and attempt operations on a device that doesn't respond. Test
+   one slot at a time.
+
+2. **A config call that returns 0x0.** The remaining suspect is the version
+   skew: IDDCX_VERSION_MINOR=2 declares the driver as IddCx 1.2, runtime is
+   1.12, header kit is 1.10. MINOR=10 (B5) stalled AdapterInitFinished —
+   unexplained. Understanding that stall is a prerequisite to testing
+   MINOR=10 or MINOR=12 against the call.
+
+### Status: open, paused
+
+Mode 4 is not closed. The two untested conditions above are research
+problems — a VM, a few mornings, and the answer may not change the outcome.
+The design decision (separate from the research) is whether that's worth
+spending, given mode 7 already delivers the classroom value.
+
+### B3 as the exception to note
+
+Run B3 (2026-11-12 21:57) had the same failing ConfigUpdate2 call as every
+other IDD-attached run, but the session lived 108 seconds. B4 with the
+identical binary (store hash 26B90E7565124820) died at 2.2s. B3's survival
+has never been reproduced and remains unexplained. **The pattern is "failing
+config usually ends in reason=18"; B3 is the exception.**
