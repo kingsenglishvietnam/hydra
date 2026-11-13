@@ -448,7 +448,7 @@ An attempt to adopt MS's MINIMUM<MINOR pattern failed to compile:
   IddCxFuncEnum.h(47): #error: IDDCX_MINIMUM_VERSION_REQUIRED > IDDCX_VERSION_MINOR
 
 The header requires MINIMUM >= 3 AND MINIMUM <= MINOR. At MINOR=2 the pattern
-is structurally impossible. Adopting it requires bumping MINOto at least 3.
+is structurally impossible. Adopting it requires bumping MINOR to at least 3.
 
 Open observation: at MINIMUM == MINOR (the default) the driver calls IDD
 functions by direct table index. At MINIMUM < MINOR the driver checks
@@ -457,3 +457,4 @@ stall might be function-table drift between the 1.10 stub library and the
 1.12 runtime; if so, MINOR=10 + MINIMUM=3 would either fix it or fail loudly
 via WdfDriverErrorReportApiMissing rather than silently hanging. Testable,
 but not pursued - config call is closed by B10 and this doesn't reopen it.
+
