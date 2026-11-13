@@ -594,3 +594,48 @@ it runs:
     git fetch --tags --force
 
 Otherwise the tag points at different commits depending on who asked.
+
+## B16b, 2026-11-13 late — mouse slot Procmon: no IOCTL, no probe
+
+Filtered Procmon on a run with `input-file-mou.flag` only (mouse slot = File
+handle, keyboard and beep null). Three rows in the trace:
+
+```
+20:28:48.035  svchost.exe  CreateFile   hydra-file-input.txt  SUCCESS
+20:28:48.418  csrss.exe    CloseFile                         SUCCESS
+20:28:48.418  csrss.exe    IRP_MJ_CLOSE                      SUCCESS
+```
+
+**No DeviceIoControl from csrss.exe.** Contrast B16 keyboard slot:
+IOCTL_KEYBOARD_QUERY_ATTRIBUTES at +34 ms.
+
+Provider log confirms mouse-only:
+`GetInputHandles -> out kbd=0x0 mou=0x86C beep=0x0 mode=file-mou`
+
+### What this establishes
+
+- win32k does not issue keyboard-class or mouse-class IOCTLs against the
+  mouse slot handle. The mouse slot is not in the probe path.
+- Every run with a non-functional keyboard slot (null or File) and an IDD
+  present died at reason=18. The mouse slot content makes no observable
+  difference (B14 and B16b both had mouse=File, both died the same way).
+- Keyboard is the only input class win32k actively probes in this path.
+
+### B17 spec update
+
+**Only a keyboard UMDF device is needed.** Mouse device not required.
+`mou` and `beep` slots stay null in the first B17.
+
+### Hypothesis (a) vs (b) still open
+
+B16b narrows the design (keyboard only) but not the causal question.
+Hypothesis (b) — IDD arrival kills the session regardless of handles —
+remains consistent with every run so far. B17 (functional keyboard UMDF)
+is the test.
+
+### Timing note
+
+CloseFile at .418, 382 ms after CreateFile. B16's equivalent was 268 ms.
+Different session-establishment window — cannot compare directly without
+PreDisconnect timestamps. PreDisconnect fires at .417, same ms as CloseFile.
+Recorded for future reference.
