@@ -458,3 +458,55 @@ stall might be function-table drift between the 1.10 stub library and the
 via WdfDriverErrorReportApiMissing rather than silently hanging. Testable,
 but not pursued - config call is closed by B10 and this doesn't reopen it.
 
+
+## B13-B15, 2026-11-13 — null handles eliminated as the reason=18 cause
+
+Flag-gated File object test in GetInputHandles, one slot per run.
+
+### Results
+
+| run | slot with file | ConnectNotify | IDD level 0 | reason |
+|---|---|---|---|---|
+| B13 | kbd  | out kbd=0x86C | yes | 18 |
+| B14 | mou  | out mou=0x868 | yes | 18 |
+| B15 | beep | out beep=0x874 | yes | 18 |
+
+All three: `GetInputHandles -> in kbd=0x0 mou=0x0 beep=0x0`, single slot
+non-null on the out line, `ConnectNotify` fires, IDD loads to level 0,
+`AdapterInitFinished` enters, `MonitorArrival -> 0x0`, `reason=18`.
+
+### What this establishes
+
+The video subsystem accepts File objects in all three slots. The session
+reaches IDD arrival with a non-null handle and dies at reason=18 anyway.
+**Null handles are not the cause of reason=18.**
+
+Combined with B11 (event handle rejected at STATUS_OBJECT_TYPE_MISMATCH):
+- Null: passes
+- File: passes
+- Event: rejected
+
+So the check is a type check that File satisfies. The reason=18 disconnect
+is downstream of that check.
+
+### What this implies about the August kernel-driver conclusion
+
+A kernel keyboard/mouse driver's device handle, obtained via CreateFile on
+the device interface, is also a File object. B13-B15 passed that type check
+the same way a real device handle would. If reason=18 were about the type
+check, B13-B15 would have held. They did not.
+
+This does not refute August — it refutes the I8042prt/Mouclass framing of
+that conclusion. Either the reason=18 decision is downstream of the type
+check and only passes with a real device that responds to IOCTL, or the
+decision is unrelated to input handles entirely.
+
+### Where this leaves mode 4
+
+Open, paused. The four handle-content hypotheses are eliminated:
+- VSyncFreqDivider (B6)
+- Scale factor (B8)
+- ConfigUpdate2 invocation (B10)
+- Null vs non-null at the type check (B13-B15)
+
+The reason=18 decision remains unattributed at this instrumentation level.
