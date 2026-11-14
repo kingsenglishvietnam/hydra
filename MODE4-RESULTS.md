@@ -639,3 +639,129 @@ CloseFile at .418, 382 ms after CreateFile. B16's equivalent was 268 ms.
 Different session-establishment window — cannot compare directly without
 PreDisconnect timestamps. PreDisconnect fires at .417, same ms as CloseFile.
 Recorded for future reference.
+
+## B17 — 2026-11-14 — UMDF keyboard device
+
+### Result
+
+**Hypothesis (b) confirmed.** A fully functional UMDF keyboard device in the
+GetInputHandles keyboard slot does not prevent reason=18. The session dies
+regardless. The failed QUERY_ATTRIBUTES probe that B16 observed was
+incidental to the disconnect, not its cause.
+
+Decision-table row: **row 3** — CreateFile + 0xb0000 + SUCCESS, session dies
+at reason=18 within baseline window, and the device log shows no subsequent
+keyboard query or read failing. Trace is clean; (b) is the reading.
+
+### Evidence — provider.log
+
+```
+13:49:18.621 GetInputHandles   <-- the input path
+13:49:18.621 GetInputHandles -> in kbd=0000000000000000 mou=0000000000000000 beep=0000000000000000
+13:49:18.621 GetInputHandles: opening UMDF kbd path=\\?\root#system#0001#{a5b1c2d3-e4f5-6789-abcd-ef0123456789}
+13:49:18.623 GetInputHandles: UMDF kbd opened, h=0000000000000890
+13:49:18.623 GetInputHandles -> out kbd=0000000000000890 mou=0000000000000000 beep=0000000000000000 mode=umdf-kbd
+13:49:18.624 GetHardwareId     *** THE STACK IS ASKING FOR THE DRIVER *** cap=200
+13:49:18.624 GetHardwareId -> hr=0x00000000, len=22
+13:49:18.639 ConnectNotify session=3  (IDD creation starts here)
+13:49:18.717 PreDisconnect reason=18
+```
+
+Timeline (ms from GetInputHandles):
+- +0    GetInputHandles called
+- +2    FileCreate reached the driver (UMDF device opened)
+- +3    GetHardwareId (new vs B16)
+- +18   ConnectNotify — IDD creation starts
+- +33   IOCTL 0xb0000 SUCCESS 28 bytes
+- +34   READ pending 192 bytes
+- +96   PreDisconnect reason=18
+
+### Evidence — C:\HydraLog\keyboard-umdf.log
+
+```
+134391125586224759 FileCreate: file=FFFFFE23E94FB278
+134391125586539880 IOCTL: 0x000b0000 out=28
+134391125586543125   QUERY_ATTR: SUCCESS 28 bytes
+134391125586549852 READ: len=192 -> pending
+```
+
+192 bytes = 16 KEYBOARD_INPUT_DATA records (12 bytes each) — a batched read.
+
+### Evidence — UMDF operational log
+
+```
+13:49:18.706  id=2006  The UMDF Host successfully loaded the driver at level 0.
+13:49:18.709  id=2101  Completed Pnp or Power operation (27, 20) with status 0x0.
+```
+
+PreDisconnect fired at 13:49:18.717, 11 ms after the last PnP operation
+completed with status 0x0. The IDD stack did not fail to load.
+
+### What this proves
+
+- `UmdfKernelModeClientPolicy = AllowKernelModeClients` works. win32k's
+  kernel-client IRP reached the UMDF driver: 0xb0000 returned SUCCESS with
+  28 bytes, and the subsequent READ was accepted and left pending.
+- QUERY_ATTRIBUTES SUCCESS + pending READ means win32k accepted the handle
+  as a functional keyboard.
+- The keyboard is not the blocker. IDD arrival kills the session regardless.
+
+### Device implementation notes
+
+- **Class = System, not Keyboard.** Keyboard class policy overrode the
+  per-device SDDL. CreateFile returned 5 (ACCESS_DENIED) for any non-SYSTEM
+  token even with a permissive SDDL. Class=System and
+  ClassGUID={4d36e97d-...} fixed it.
+- **SDDL needed `WD`.** `(A;;GA;;;BA)` alone does not match a filtered
+  admin token. Add `(A;;GA;;;NS)(A;;GA;;;WD)`.
+- **`WdfDeviceInitAssignSDDLString` is KMDF-only.** Not in any UMDF 2.x
+  header. The only way to set the DACL for a UMDF driver is INF
+  `[.NT.HW]` Security.
+- **SDK 10.0.26100.0 + UMDF 2.25 + `/DWIN32_NO_STATUS`:** `ntstatus.h`
+  does not provide `STATUS_*` constants. Provide `#ifndef`-guarded
+  fallback defines.
+- **`DRIVER_INITIALIZE` expands to plain `NTSTATUS`.** In a .cpp driver,
+  `DriverEntry` gets C++ linkage and `WdfDriverStubUm.lib` cannot resolve
+  it. Fix: `extern "C" NTSTATUS DriverEntry(...)`.
+- **UMDF INF needs:** `[.NT.Wdf]` with UmdfService/UmdfServiceOrder; a
+  `[Service]` section named `<service>_Install` with UmdfLibraryVersion
+  and ServiceBinary; `[.NT.Services]` with `AddService=WUDFRd`.
+  ServiceBinary must be `%12%\UMDF\<name>.dll` (at `%12%\` the
+  co-installer returns Error 87).
+- **`GetDC` collides with `HDC GetDC(HWND)`.** Prefix context accessors
+  (KbdGetDC).
+- **`WdfDeviceInitSetExclusive` is KMDF-only.**
+
+### Instrument notes
+
+- IRPMon capture was inconclusive. 69 MB captured with WUDFRd hooked
+  driver-only. Per-device hook on `\Device\0080` returned
+  `ERROR_NOT_FOUND` (1168) — `\0080` in DEVPKEY_Device_Driver is the PnP
+  index, not the kernel device object number. After driver restart, `Ia:`
+  hook took, but B17's capture contained no 0xB0000. **IRP-path proof for
+  B17 comes from the driver log, not from IRPMon.**
+- CLI gotchas for rc3: `--input=D:\\.\irpmndrv` (not `\\.\IRPMon`);
+  `--enumerate` and `--install` are not valid options; `Ia:` works but
+  requires `sc stop/start irpmndrv` if a prior `I:`-only hook exists.
+
+### New calibration facts
+
+- **`GetHardwareId` fires 1 ms after GetInputHandles returns non-null.**
+  termsrv queries the seat hardware ID through the provider between the
+  input path and ConnectNotify. `len=22` returned; whether 22 is expected
+  or truncated is open for B18.
+- **Session state after reason=18 with a UMDF keyboard was `ConnQ`, not
+  torn down.** Session lifetime ~78 ms, sampler missed it.
+- **Cleanup order matters.** `Stop-ProtoRun` logoff requires the provider
+  registered. Log off the session first, verify gone, then
+  `rdsprov-register.ps1 -Unregister`. If logoff fails with 1753
+  (no more endpoints available), orphaned session needs
+  `taskkill /f /fi "SERVICES eq TermService"` + reboot.
+- **IDD stack completes load before the disconnect.** B18 should look at
+  display-config activation, D3D device creation, or session-activation
+  logic after IDD load — not at IDD load itself.
+
+### Device fate
+
+HydraKbd devnode `ROOT\SYSTEM\0001` left installed, driver running.
+IRPMon `irpmndrv` service: STOPPED.
