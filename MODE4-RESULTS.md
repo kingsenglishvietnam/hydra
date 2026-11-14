@@ -644,7 +644,7 @@ Recorded for future reference.
 
 ### Result
 
-**Hypothesis (b) confirmed.** A fully functional UMDF keyboard device in the
+**Hypothesis (b) leading reading.** A fully functional UMDF keyboard device in the
 GetInputHandles keyboard slot does not prevent reason=18. The session dies
 regardless. The failed QUERY_ATTRIBUTES probe that B16 observed was
 incidental to the disconnect, not its cause.
@@ -805,7 +805,7 @@ to PreDisconnect.
 ### What this eliminates
 
 - `IddCxAdapterDisplayConfigUpdate2 -> 0xC000000D` is not the trigger
-- Keyboard path ruled out by B17
+- Keyboard path not the trigger (B17)
 - PnP operations all complete `0x0`
 - `GetHardwareId` returns correct data (`HydraSeat_RemoteIDD_v1`, 22 bytes,
   matches SWD device name)
