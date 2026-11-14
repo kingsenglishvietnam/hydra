@@ -109,7 +109,7 @@ if ($Remote) {
 
 $src = Join-Path $root 'iddseat\iddseat.cpp'
 $obj = Join-Path $outdir 'iddseat.obj'
-$dll = Join-Path $outdir 'iddseat.dll'
+$dll = Join-Path $outdir ($(if ($Remote) { 'iddseat-remote.dll' } else { 'iddseat.dll' }))
 
 Write-Host "compiling iddseat.cpp ..." -ForegroundColor Cyan
 $compile = @('/nologo','/c','/EHsc','/std:c++17','/W3','/MT') + $cldefs + $incArgs + @($src,"/Fo:$obj")
@@ -120,7 +120,7 @@ if ($LASTEXITCODE -ne 0) {
            ForEach-Object { Write-Host "  $_" -ForegroundColor DarkRed }
     Write-Error "compile stage failed"
 }
-Write-Host "  compiled OK" -ForegroundColor Green
+Write-Host "linking $(Split-Path $dll -Leaf) ..." -ForegroundColor Cyan
 
 Write-Host "linking iddseat.dll ..." -ForegroundColor Cyan
 # /DLL, no default libs pulled that clash with UMDF; entry is the WDF stub.

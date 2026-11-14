@@ -67,7 +67,7 @@ DriverVer = 08/20/2026,1.6.0.0
 %DeviceName%=MyDevice_Install, HydraSeat_RemoteIDD_v1
 
 [SourceDisksFiles]
-iddseat.dll=1
+iddseat-remote.dll=1
 
 [SourceDisksNames]
 1 = %DiskName%
@@ -97,7 +97,7 @@ UmdfHostProcessSharing = ProcessSharingDisabled
 
 [iddseatremote_Install]
 UmdfLibraryVersion=$UMDFVERSION$
-ServiceBinary=%12%\UMDF\iddseat.dll
+ServiceBinary=%12%\UMDF\iddseat-remote.dll
 UmdfExtensions = IddCx0102
 
 [WUDFRD_ServiceInstall]
@@ -111,7 +111,7 @@ ServiceBinary = %12%\WUDFRd.sys
 UMDriverCopy=12,UMDF ; copy to drivers\umdf
 
 [UMDriverCopy]
-iddseat.dll
+iddseat-remote.dll
 
 ; =================== Generic ==================================
 
