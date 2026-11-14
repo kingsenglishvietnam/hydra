@@ -394,17 +394,31 @@ static void ReadSeatProperties(PWDFDEVICE_INIT init, std::wstring& seatOut,
  *
  * A file rather than OutputDebugStringW: WUDFHost is a service and nothing
  * is attached to catch debug strings. Opened and closed per line so a
- * failing load cannot lose the last one. */
+ * failing load cannot lose the last one.
+ *
+ * B20: switched to GetSystemTimePreciseAsFileTime with microsecond output so
+ * the IddCx ETW stream (which has microsecond resolution) can be bracketed
+ * against this log. Write-through per line still applies. */
 static void IddSeatLog(const char* fmt, ...)
 {
     FILE* f = nullptr;
     if (fopen_s(&f, "C:\\HydraLog\\iddseat.log", "a") != 0 || !f)
         return;
 
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-    fprintf(f, "%02u:%02u:%02u.%03u [pid %5lu] ",
-            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+    FILETIME ft;
+    GetSystemTimePreciseAsFileTime(&ft);
+    ULARGE_INTEGER u;
+    u.LowPart  = ft.dwLowDateTime;
+    u.HighPart = ft.dwHighDateTime;
+    unsigned long long us = u.QuadPart / 10ULL;   /* 100ns -> microseconds */
+
+    SYSTEMTIME stUtc, stLocal;
+    FileTimeToSystemTime(&ft, &stUtc);
+    SystemTimeToTzSpecificLocalTime(NULL, &stUtc, &stLocal);
+
+    fprintf(f, "%02u:%02u:%02u.%06llu [pid %5lu] ",
+            stLocal.wHour, stLocal.wMinute, stLocal.wSecond,
+            us % 1000000ULL,
             GetCurrentProcessId());
 
     va_list ap;
@@ -446,6 +460,7 @@ extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDevi
     cfg.EvtIddCxMonitorAssignSwapChain            = IddSeatMonitorAssignSwapChain;
     cfg.EvtIddCxMonitorUnassignSwapChain          = IddSeatMonitorUnassignSwapChain;
 
+    IddSeatLog("IddCxDeviceInitConfig: ENTRY");
     NTSTATUS status = IddCxDeviceInitConfig(pDeviceInit, &cfg);
     IddSeatLog("IddCxDeviceInitConfig -> 0x%08X", status);
     if (!NT_SUCCESS(status)) return status;
@@ -479,9 +494,23 @@ extern "C" NTSTATUS IddSeatDeviceAdd(WDFDRIVER /*Driver*/, PWDFDEVICE_INIT pDevi
     name[6 + nseat] = '\0';
     hydra_edid_build(ctx->Edid, ctx->Mode.width, ctx->Mode.height, ctx->Mode.vsync, mfr, name);
 
+    IddSeatLog("IddCxDeviceInitialize: ENTRY");
     NTSTATUS initStatus = IddCxDeviceInitialize(device);
     IddSeatLog("IddCxDeviceInitialize -> 0x%08X", initStatus);
     return initStatus;
+}
+
+/* B20: dump a version pointer's contents so the caps dump below is complete.
+ * The pointer is allowed to be NULL by the header; treat that as a fact worth
+ * recording rather than a failure. */
+static void DumpEndpointVersion(const char* label, const IDDCX_ENDPOINT_VERSION* p)
+{
+    if (!p) { IddSeatLog("CAPS.EPD.%s=NULL", label); return; }
+    IddSeatLog("CAPS.EPD.%s=%p Size=%u Major=%u Minor=%u Build=%u SKU=0x%llx",
+        label, p,
+        (unsigned)p->Size, (unsigned)p->MajorVer,
+        (unsigned)p->MinorVer, (unsigned)p->Build,
+        (unsigned long long)p->SKU);
 }
 
 _Use_decl_annotations_
@@ -541,6 +570,31 @@ extern "C" NTSTATUS IddSeatDeviceD0Entry(WDFDEVICE device, WDF_POWER_DEVICE_STAT
                    verStatus, (unsigned long)ver.IddCxVersion);
     }
 
+    /* B20: full caps dump so the ETW fork seen in B19 (98dc4ac4 event IDs
+     * 39/40/42 vs 50/51, inside AdapterInitAsync) can be correlated against
+     * what iddseat actually passed in. If a field is wrong here, that's the
+     * bug; if all fields match RdpIdd's usage, the fork is inside IddCx. */
+    IddSeatLog("CAPS: Size=%u Flags=0x%X MaxMonitorsSupported=%u "
+               "MaxDisplayPipelineRate=%llu StaticDesktopReencodeFrameCount=%u",
+        (unsigned)caps.Size, (unsigned)caps.Flags,
+        (unsigned)caps.MaxMonitorsSupported,
+        (unsigned long long)caps.MaxDisplayPipelineRate,
+        (unsigned)caps.StaticDesktopReencodeFrameCount);
+    {
+        const IDDCX_ENDPOINT_DIAGNOSTIC_INFO& epd = caps.EndPointDiagnostics;
+        IddSeatLog("CAPS.EPD: Size=%u TransmissionType=%u GammaSupport=%u",
+            (unsigned)epd.Size, (unsigned)epd.TransmissionType,
+            (unsigned)epd.GammaSupport);
+        IddSeatLog("CAPS.EPD.FriendlyName=%ls",
+            epd.pEndPointFriendlyName     ? epd.pEndPointFriendlyName     : L"(null)");
+        IddSeatLog("CAPS.EPD.ModelName=%ls",
+            epd.pEndPointModelName        ? epd.pEndPointModelName        : L"(null)");
+        IddSeatLog("CAPS.EPD.Manufacturer=%ls",
+            epd.pEndPointManufacturerName ? epd.pEndPointManufacturerName : L"(null)");
+        DumpEndpointVersion("pHardwareVersion", epd.pHardwareVersion);
+        DumpEndpointVersion("pFirmwareVersion", epd.pFirmwareVersion);
+    }
+
     IDARG_OUT_ADAPTER_INIT out{};
     IddSeatLog("D0Entry: calling IddCxAdapterInitAsync, caps.Flags=0x%X", (unsigned)caps.Flags);
     NTSTATUS status = IddCxAdapterInitAsync(&init, &out);
@@ -591,6 +645,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     createIn.pMonitorInfo = &info;
 
     IDARG_OUT_MONITORCREATE createOut{};
+    IddSeatLog("IddCxMonitorCreate: ENTRY");
     NTSTATUS status = IddCxMonitorCreate(adapter, &createIn, &createOut);
     IddSeatLog("IddCxMonitorCreate -> 0x%08X", status);
     if (!NT_SUCCESS(status)) return status;
@@ -603,6 +658,7 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     /* IddCxMonitorArrival takes only (monitor, out-args) -- there is no input
      * struct. The OS returns the adapter LUID / target id for companion apps. */
     IDARG_OUT_MONITORARRIVAL arrivalOut{};
+    IddSeatLog("IddCxMonitorArrival: ENTRY");
     NTSTATUS arrivalStatus = IddCxMonitorArrival(createOut.MonitorObject, &arrivalOut);
     IddSeatLog("IddCxMonitorArrival -> 0x%08X", arrivalStatus);
     if (!NT_SUCCESS(arrivalStatus)) return arrivalStatus;
@@ -743,10 +799,14 @@ extern "C" NTSTATUS IddSeatParseMonitorDescription(const IDARG_IN_PARSEMONITORDE
 
     out->MonitorModeBufferOutputCount = 1;
     if (in->MonitorModeBufferInputCount == 0)
-        return STATUS_SUCCESS;                       /* caller just wanted the count */
+    {
+        IddSeatLog("ParseMonitorDescription: EXIT (count only)");
+        return STATUS_SUCCESS;
+    }
 
     in->pMonitorModes[0] = hydra::MakeMonitorMode(m, IDDCX_MONITOR_MODE_ORIGIN_MONITORDESCRIPTOR);
     out->PreferredMonitorModeIdx = 0;
+    IddSeatLog("ParseMonitorDescription: EXIT");
     return STATUS_SUCCESS;
 }
 
@@ -782,9 +842,13 @@ extern "C" NTSTATUS IddSeatMonitorQueryModes(IDDCX_MONITOR monitor,
     out->TargetModeBufferOutputCount = 1;
 
     if (in->TargetModeBufferInputCount == 0)
+    {
+        IddSeatLog("QueryTargetModes: EXIT (count only)");
         return STATUS_SUCCESS;
+    }
 
     in->pTargetModes[0] = hydra::MakeTargetMode(mctx->Mode);
+    IddSeatLog("QueryTargetModes: EXIT");
     return STATUS_SUCCESS;
 }
 
@@ -816,4 +880,3 @@ extern "C" NTSTATUS IddSeatMonitorUnassignSwapChain(IDDCX_MONITOR monitor)
     mctx->Processor.reset();
     return STATUS_SUCCESS;
 }
-
