@@ -1,0 +1,71 @@
+; HydraKbdUmdf.inf -- B17 UMDF keyboard device for Mode 4 testing.
+; Private interface GUID {a5b1c2d3-e4f5-6789-abcd-ef0123456789}.
+; Hardware ID: Root\HydraKbd.
+; Structural clone of iddseat.inf (which loads on this machine).
+; SDDL and CoInstallers removed on purpose -- iddseat works without them.
+; If Phase 3d fails with access denied, add [.NT.HW] + [.Security] back
+; as ONE experiment. See iddseat.inf header for the full rationale.
+; UmdfLibraryVersion uses $UMDFVERSION$; build-hydrakbd-umdf.ps1 substitutes
+; it in the COPY, never the source (same pattern as iddseat).
+
+[Version]
+PnpLockdown=1
+Signature="$Windows NT$"
+ClassGUID = {4D36E97D-E325-11CE-BFC1-08002BE10318}
+Class = System
+ClassVer = 2.0
+Provider=%ManufacturerName%
+CatalogFile=HydraKbdUmdf.cat
+DriverVer = 11/14/2026,1.0.0.0
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%DeviceName%=MyDevice_Install, Root\HydraKbd
+
+[SourceDisksFiles]
+HydraKbdUmdf.dll=1
+
+[SourceDisksNames]
+1 = %DiskName%
+
+[MyDevice_Install.NT]
+CopyFiles=UMDriverCopy
+
+[MyDevice_Install.NT.HW]
+AddReg = MyDevice_HardwareDeviceSettings
+
+[MyDevice_HardwareDeviceSettings]
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GA;;;NS)(A;;GA;;;WD)"
+
+[MyDevice_Install.NT.Services]
+AddService=WUDFRd,0x000001fa,WUDFRD_ServiceInstall
+
+[MyDevice_Install.NT.Wdf]
+UmdfService=HydraKbdUmdf,HydraKbdUmdf_Install
+UmdfServiceOrder=HydraKbdUmdf
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+
+[HydraKbdUmdf_Install]
+UmdfLibraryVersion=$UMDFVERSION$
+ServiceBinary=%12%\UMDF\HydraKbdUmdf.dll
+
+[WUDFRD_ServiceInstall]
+DisplayName = %WudfRdDisplayName%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF
+
+[UMDriverCopy]
+HydraKbdUmdf.dll
+
+[Strings]
+ManufacturerName="Hydra Project"
+DiskName="Hydra Keyboard UMDF Device Installation Disk"
+WudfRdDisplayName="Windows Driver Foundation - User-mode Driver Framework Reflector"
+DeviceName="Hydra B17 Keyboard Device"
