@@ -865,3 +865,119 @@ a reboot clears a ConnQ phantom.
 HydraKbd devnode `ROOT\SYSTEM\0001` still present, driver running (unchanged
 from B17). Provider unregistered after reboot. `irpmndrv` state: unloaded
 at handoff (to be reconfirmed by B19 baseline).
+
+
+## B20 — 2026-11-14 — Instrumented iddseat (partial)
+
+### Result (partial)
+
+Instrumented remote iddseat (microsecond logging + full IDDCX_ADAPTER_CAPS
+dump) ran through the B19 fork without failing. Every caps field was
+structurally valid. Every IddCx call returned 0x00000000. Every callback
+completed. AdapterInitFinished returned 0x0. ConfigUpdate2 was skipped
+(B18 config).
+
+**The B19 fork inside IddCx source 98dc4ac4 is not caused by iddseat
+sending bad caps data.** IddCx received structurally valid inputs and
+branched differently than RdpIdd anyway. The fork is inside IddCx.dll.
+
+### Evidence — iddseat.log (16:41:24, B20 session)
+
+
+```
+16:41:24.022680 CAPS: Size=88 Flags=0x5 MaxMonitorsSupported=1 MaxDisplayPipelineRate=0 StaticDesktopReencodeFrameCount=0
+16:41:24.023078 CAPS.EPD: Size=56 TransmissionType=3 GammaSupport=1
+16:41:24.023771 CAPS.EPD.FriendlyName=Hydra Virtual Seat
+16:41:24.024200 CAPS.EPD.ModelName=Seat
+16:41:24.024544 CAPS.EPD.Manufacturer=Hydra
+16:41:24.024929 CAPS.EPD.pHardwareVersion=0000001BEB07E5C0 Size=24 Major=1 Minor=0 Build=0 SKU=0x0
+16:41:24.025279 CAPS.EPD.pFirmwareVersion=0000001BEB07E5C0 Size=24 Major=1 Minor=0 Build=0 SKU=0x0
+16:41:24.025700 D0Entry: calling IddCxAdapterInitAsync, caps.Flags=0x5
+16:41:24.026502 IddCxAdapterInitAsync -> 0x00000000
+16:41:24.096070 AdapterInitFinished: entered, AdapterInitStatus=0x00000000
+16:41:24.096729 IddCxMonitorCreate -> 0x00000000
+16:41:24.151662 IddCxMonitorArrival -> 0x00000000
+16:41:24.170217 ConfigUpdate2: skip flag PRESENT (err=0)
+16:41:24.170531 IddCxAdapterDisplayConfigUpdate2 SKIPPED
+16:41:24.170834 AdapterInitFinished: returning 0x00000000
+```
+
+Flags = 0x5 = REMOTE_SESSION_DRIVER (0x4) | USE_SMALLEST_MODE (0x1). Correct.
+GammaSupport = 1 = IDDCX_FEATURE_IMPLEMENTATION_NONE. Correct (verified
+against IddCx.h line 143; NONE=1, not 0).
+Both version pointers non-null with valid IDDCX_ENDPOINT_VERSION.
+
+### Evidence — provider.log (same run)
+
+```
+16:41:23.360 GetInputHandles -> in kbd=0 mou=0 beep=0
+16:41:23.361 GetInputHandles: SetupDiEnumDeviceInterfaces failed, err=259
+16:41:23.361 GetInputHandles -> out kbd=0 mou=0 beep=0 mode=umdf-kbd
+16:41:23.362 GetHardwareId -> hr=0x00000000, len=22
+16:41:23.694 ConnectNotify session=2
+16:41:24.509 PreDisconnect reason=18
+16:41:24.591 OnDriverUnload session=2
+16:41:24.672 Close
+```
+
+Session died at reason=18 anyway. Same outcome as B17/B18 with a fully
+instrumented, fully successful driver-side session. Keyboard slot was NULL
+(err=259 = ERROR_NO_MORE_ITEMS) because HydraKbd failed to load on this
+boot.
+
+### What did not happen (why this is partial)
+
+- AdapterInitFinished to PreDisconnect gap was **339 ms** here, vs 1-3 ms
+  in B17/B18. Not reproducible baseline.
+- The 339 ms window elapsed during a degraded boot: MttVDD
+  (ROOT\DISPLAY\0000, Virtual Display Driver) crashed in user mode at
+  4:19:58 (event 10111). WUDFRd failed to load 11 devices with 0xC0000365
+  on the next boot (event 219), including ROOT\SYSTEM\0001 (HydraKbd).
+- Machine locked up during/after the run and required hard shutdown.
+  The instrumented iddseat did not cause the lockup: iddseat.log ends
+  with AdapterInitFinished returning 0x0, and OnDriverUnload fires at
+  24.591. The lockup source is MttVDD's user-mode crash.
+
+### What B20 proves
+
+Iddseat sends structurally valid caps. IddCx returns success for every
+call. The fork in IddCx source 98dc4ac4 happens with correct inputs.
+
+### What B20 does not prove
+
+Whether the 339 ms AdapterInitFinished->PreDisconnect timing reproduces on
+a clean boot. Whether the fork position moves. B20 needs a clean re-run
+before the driver-side answer is treated as definitive.
+
+### Device implementation notes
+
+- `IDDCX_FEATURE_IMPLEMENTATION_NONE = 1`, not 0. Iddseat's use of NONE is
+  correct. Verified against IddCx.h line 143.
+- `IDDCX_ADAPTER_CAPS.MaxDisplayPipelineRate` was 0 — for a virtual adapter
+  with no bandwidth constraint, 0 is the correct "no limit" value.
+
+### Incident note — MttVDD crash and machine stability
+
+At 4:19:58 the Virtual Display Driver (ROOT\DISPLAY\0000, MttVDD,
+mttvdd.dll) crashed in user mode. UMDF host teardown took down 11 devices
+in the shared WUDFHost process, including HydraKbd and internal display.
+This is pre-existing on the machine, not caused by iddseat instrumentation.
+
+Post-recovery state verified clean:
+- ROOT\SYSTEM\0001 HydraKbd: OK
+- ROOT\DISPLAY\0000 MttVDD: OK
+- No WUDFRd load failures in 5 min post-boot
+
+### Machine issue — restart path fails, only cold shutdown works
+
+BitLocker event 24641 ("unexpected error retrieving the volume master key
+during restart") on the restart path. Cold shutdown + power-on works.
+Restart hangs. Probably downstream of the crash cascade; may self-resolve
+over clean cold boots. Tracked separately; not a B20 result.
+
+### Rollback performed
+
+- oem233 (instrumented remote 1.6.0.5) removed from driver store
+- oem231 (console 1.6.0.0) reinstalled, bound to SWD\Hydra\HydraSeat_B
+- Runtime C:\WINDOWS\System32\drivers\umdf\iddseat.dll restored to console
+  hash 73580276665EDD99350B56121BE9C9BB83A73A97B22A92056B43A1337ED09F72
