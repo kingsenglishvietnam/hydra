@@ -765,3 +765,103 @@ completed with status 0x0. The IDD stack did not fail to load.
 
 HydraKbd devnode `ROOT\SYSTEM\0001` left installed, driver running.
 IRPMon `irpmndrv` service: STOPPED.
+
+
+## B18 — 2026-11-14 — Skip ConfigUpdate2
+
+### Result
+
+**IddCxAdapterDisplayConfigUpdate2 failure is not the trigger.** With the
+call skipped via `C:\HydraLog\idd-skip-config-update.flag`, `AdapterInitFinished`
+returned `0x0`, and `PreDisconnect reason=18` fired 3 ms later. The 0xC000000D
+from ConfigUpdate2 in B17 was incidental.
+
+### Evidence — iddseat.log
+
+```
+14:17:15.286 D0Entry: calling IddCxAdapterInitAsync, caps.Flags=0x5
+14:17:15.286 IddCxAdapterInitAsync -> 0x00000000
+14:17:15.302 AdapterInitFinished: entered, AdapterInitStatus=0x00000000
+14:17:15.309 ConfigUpdate2: skip flag PRESENT (err=0)
+14:17:15.309 IddCxAdapterDisplayConfigUpdate2 SKIPPED
+14:17:15.309 AdapterInitFinished: returning 0x00000000
+```
+
+### Evidence — provider.log
+
+```
+14:17:15.153 GetInputHandles
+14:17:15.155 GetInputHandles: UMDF kbd opened, h=0x8A0
+14:17:15.155 GetInputHandles -> out kbd=0x8A0 mode=umdf-kbd
+14:17:15.156 GetHardwareId -> hr=0x00000000, len=22
+14:17:15.166 ConnectNotify session=3
+14:17:15.312 PreDisconnect reason=18
+```
+
+Same shape as B17. Handle open, hardware ID returned, ConnectNotify, disconnect.
+158 ms from GetInputHandles to PreDisconnect. 3 ms from AdapterInitFinished return
+to PreDisconnect.
+
+### What this eliminates
+
+- `IddCxAdapterDisplayConfigUpdate2 -> 0xC000000D` is not the trigger
+- Keyboard path ruled out by B17
+- PnP operations all complete `0x0`
+- `GetHardwareId` returns correct data (`HydraSeat_RemoteIDD_v1`, 22 bytes,
+  matches SWD device name)
+- Wrong DLL installed ruled out: installed
+  `C:\WINDOWS\System32\drivers\umdf\iddseat.dll` hash `F3D044EC...` matches
+  `dist\driver-remote\iddseat.dll`. `dist\driver\iddseat.dll` hash `73580276...`
+  does not match — correct remote build is installed.
+
+### Consistent signal across B17 and B18
+
+| Run | AdapterInitFinished | PreDisconnect | Gap |
+|---|---|---|---|
+| B17 | `0x0` at 18.716 | 18.717 | 1 ms |
+| B18 | `0x0` at 15.309 | 15.312 | 3 ms |
+
+Both: driver reports success, termsrv disconnects 1–3 ms later. No UMDF events
+fire between those two lines. Termsrv is not waiting for a driver callback —
+it's checking adapter state and rejecting.
+
+### Open for B19 — `caps.Flags=0x5` candidate
+
+The log shows `IddCxAdapterInitAsync, caps.Flags=0x5`. Per `iddcx.h`:
+
+- `0x2` — IDDCX_ADAPTER_FLAGS_CAN_PROCESS_FP_UPDATE
+- `0x4` — IDDCX_ADAPTER_FLAGS_USE_SMALLER_BUFFERS
+- `0x10` — IDDCX_ADAPTER_FLAGS_REMOTE_SESSION_DRIVER
+
+`0x5` = `0x1 | 0x4`. Does **not** include `0x10`. If the remote build is supposed
+to set the remote-session adapter flag but doesn't, that's the likely cause:
+termsrv loaded a driver identifying as a remote IDD (via GetHardwareId) but
+the adapter isn't flagged remote-capable.
+
+`build-driver.ps1`'s own comment references this exact risk: "newer headers,
+older declared extension, runtime-guarded calls — but whether the framework
+accepts it here is untested."
+
+**B19's next read:** `Select-String -Path C:\Programs\hydra\iddseat\iddseat.cpp
+-Pattern 'HYDRA_REMOTE_IDD|REMOTE_SESSION_DRIVER|caps.Flags|IDDCX_ADAPTER_FLAGS'
+-Context 2,8` — confirm the flag is meant to be set and whether it's actually
+compiling under `-Remote`.
+
+Caveat: if `IddCxAdapterInitAsync` masks unknown flags on a driver declaring
+`IddCx0102`, setting `0x10` may also be ignored — in which case B19 becomes
+a version-declaration fix (`UmdfExtensions=IddCx0110` in `iddseat-remote.inf`)
+rather than a code fix.
+
+### Phantom session behavior
+
+Same as B17. After reason=18, session 3 remained in `ConnQ`. `logoff` failed
+with 1753 (no more endpoints available). `taskkill /f /fi "SERVICES eq
+TermService"` followed by `Start-Service TermService` did not clear it. The
+session lives in `smss.exe`'s kernel session table, not TermService's. Only
+a reboot clears a ConnQ phantom.
+
+### Device fate
+
+HydraKbd devnode `ROOT\SYSTEM\0001` still present, driver running (unchanged
+from B17). Provider unregistered after reboot. `irpmndrv` state: unloaded
+at handoff (to be reconfirmed by B19 baseline).
