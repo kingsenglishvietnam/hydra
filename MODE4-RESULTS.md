@@ -981,3 +981,97 @@ over clean cold boots. Tracked separately; not a B20 result.
 - oem231 (console 1.6.0.0) reinstalled, bound to SWD\Hydra\HydraSeat_B
 - Runtime C:\WINDOWS\System32\drivers\umdf\iddseat.dll restored to console
   hash 73580276665EDD99350B56121BE9C9BB83A73A97B22A92056B43A1337ED09F72
+## B20b — 2026-11-15 — warm-up after B21 rename
+
+### Result: reason=17, first-session-after-install pattern
+
+Warm-up session on `oem220` (iddseat-remote 1.6.1.1, first install of the
+renamed package). Session died at reason=17.
+
+Timeline:
+
+```
+18:06:47.551  NotifySessionId
+18:06:47.552  GetInputHandles, kbd=0x888 (non-null)
+18:06:47.554  GetHardwareId, hr=0x0, len=22
+18:06:47.562  setupapi: [Device Install - SessionId_0004] Section start
+18:06:47.566  PreDisconnect reason=17
+18:06:47.566  ConnectNotify session=4
+18:06:47.584  setupapi: Select Drivers (oem220 1.6.1.1)
+18:06:47.700  setupapi: Configure Device
+18:06:47.716  setupapi: Configure Driver Package complete
+18:06:47.966  UMDF host starts
+18:06:48.004  iddseat.log: DriverEntry (six-digit microseconds)
+18:06:48.011  UMDF host: driver loaded at level 0
+```
+
+PreDisconnect and ConnectNotify landed in the same millisecond, 4 ms after
+the device install started and before PnP had selected a driver.
+
+LSM events at .566-.567:
+```
+id=40  Session 4 disconnected reason code 17   (decision already made)
+id=20  Disconnect message failed. Status 0xD0000008  (consequence)
+id=36  Error transitioning from CsrInitialized. ErrorCode 0xD0000008
+```
+
+`0xD0000008` = STATUS_INVALID_HANDLE. Event 20 is the disconnect message
+failing *after* reason=17 was decided (event 40 precedes it). It is not
+the cause.
+
+### Pattern, not mechanism
+
+Every reason=18 run in mode 4 to date has been on an already-installed IDD
+package. The first session after a new remote package install has ended in
+reason=17 twice today:
+
+| Run | Time | Install state at PreDisconnect | Timing |
+|---|---|---|---|
+| B20b warm-up #1 | 17:50 | PnP stuck on hung MttVDD | 192 ms, timed out 2 min |
+| B20b warm-up #2 | 18:06 | Install not yet started | 4 ms, install completed 450 ms later |
+
+Different timings, different setupapi states. setupapi.log shows the install
+completed successfully in both cases; the driver loaded and its service
+registered. **Mechanism unknown.**
+
+B7 (2026-11-13, reason=17, never reproduced) is the open question: was it
+also a first session after a reinstall? If yes, the pattern holds across
+three sessions. If no, reason=17 has multiple causes.
+
+Termsrv can wait — B18 had 146 ms between ConnectNotify and PreDisconnect.
+
+### Warm-up gates (all pass)
+
+```
+remote runtime match: True (3522B50C68CB4BCE26A0E20C3DEA43CE35A0387D11EECB73F34035CB616DF0B5)
+console runtime match: True (73580276665EDD99350B56121BE9C9BB83A73A97B22A92056B43A1337ED09F72)
+iddseat       -> iddseat.dll
+iddseatremote -> iddseat-remote.dll
+iddseat.log line 1: 18:06:48.004985 [pid 26464] DriverEntry (six-decimal microseconds)
+```
+
+### Flag state discrepancy
+
+Warm-up was intended as no-flags, but `kbd=0x888` was non-null, meaning
+`input-umdf-kbd.flag` was present — leftover from an earlier lockup that
+skipped cleanup. Does not change the reason=17 reading, but the run was not
+the deliberate no-flags config it was meant to be.
+
+### Package state
+
+```
+oem220.inf  iddseat-remote.inf  1.6.1.1  HydraTest  (remote, new)
+oem231.inf  iddseat.inf         1.6.0.0  HydraTest  (console, untouched)
+Store dirs: 1 (iddseat-remote.inf_amd64_a1d35476c4053f51)
+Store hash == built hash == 3522B50C68CB4BCE26A0E20C3DEA43CE35A0387D11EECB73F34035CB616DF0B5
+```
+
+### What B20b proper will test
+
+B20b proper runs on the now-installed package. Its job is to distinguish
+the pattern above from a third failure mode:
+
+- **reason=18** -> session reached IDD arrival. Pattern holds (first-session-
+  after-install causes reason=17; subsequent sessions are fine).
+- **reason=17 again on an installed package** -> third failure mode. Stop
+  and report before packaging. B21 rename or something else.
