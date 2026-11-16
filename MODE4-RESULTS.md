@@ -1075,3 +1075,25 @@ the pattern above from a third failure mode:
   after-install causes reason=17; subsequent sessions are fine).
 - **reason=17 again on an installed package** -> third failure mode. Stop
   and report before packaging. B21 rename or something else.
+
+### Corrections pending (2026-11-16 evening)
+
+1. B20b install-type table: "cached, no install" should read
+   "configured at connect, no setupapi section". The Kernel-PnP/
+   Configuration log shows an event 410 "Device Updated: true" for
+   B20b's SessionId_0002 at 14:50, so the device was configured at
+   connect even though no hardware-initiated install appears in
+   setupapi. The 9/9 correlation to install type stands.
+
+2. New defect entry: a mode 4 session that dies leaves a device that
+   refuses removal. Every lockup today traced to a package operation
+   while a dead session's device still existed. This is what turns a
+   procedural slip into a hang. Worth its own section under "known
+   defects" so future workflow iterations design around it.
+
+3. Open question: TermService restarted twice within ~20 seconds
+   just before the 17:35 warm-up session. If it was double
+   registration (register called twice, or register plus another
+   restart source), that's the first thing to avoid in B20c's
+   four-boot run.
+
