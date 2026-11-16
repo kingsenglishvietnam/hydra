@@ -619,6 +619,19 @@ extern "C" NTSTATUS IddSeatAdapterInitFinished(IDDCX_ADAPTER adapter,
     IddSeatLog("AdapterInitFinished: entered, AdapterInitStatus=0x%08X", args->AdapterInitStatus);
     if (!NT_SUCCESS(args->AdapterInitStatus)) return STATUS_SUCCESS;
 
+    /* B20c: flag-gated skip of monitor creation.
+     * Present -> return without creating or arriving a monitor.
+     * Tests whether the session survives with adapter only, no monitor. */
+    DWORD skipMonAttr = GetFileAttributesW(L"C:\\HydraLog\\idd-skip-monitor.flag");
+    bool  skipMon     = (skipMonAttr != INVALID_FILE_ATTRIBUTES);
+    IddSeatLog("MonitorArrival: skip flag %s", skipMon ? "PRESENT" : "absent");
+    if (skipMon)
+    {
+        IddSeatLog("monitor SKIPPED - returning without MonitorCreate/MonitorArrival");
+        IddSeatLog("AdapterInitFinished: returning 0x00000000");
+        return STATUS_SUCCESS;
+    }
+
     /* Reach the seat's identity/mode/EDID via the adapter context populated in
      * D0Entry. This is what makes the shared-surface name per-seat (so B and C
      * don't collide) and the advertised mode correct. */
